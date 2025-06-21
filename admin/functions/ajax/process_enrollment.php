@@ -1,80 +1,116 @@
 <?php
-include "../../../connection/connection.php";
+/**
+ * Enhanced Process Enrollment with Excess Payment Handling
+ * CarePro POS System - Complete Implementation
+ * User: Scraper001 | Time: 2025-06-21 04:48:47
+ */
+
+include '../../../connection/connection.php';
 $conn = con();
 
 header('Content-Type: application/json');
-$conn->autocommit(FALSE);
+header('Cache-Control: no-cache, must-revalidate');
 
-// Set timezone for consistent date handling
-date_default_timezone_set('Asia/Manila');
+// Enhanced error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Helper function to safely convert string numbers to float
+/**
+ * Safe float conversion with validation
+ */
 function safe_float($value)
 {
-    if (is_string($value)) {
-        $cleaned = str_replace([',', '₱', '$'], '', $value);
-        return floatval($cleaned);
-    }
+    if (is_null($value) || $value === '')
+        return 0.0;
     return floatval($value);
 }
 
-// IMPROVED: Real-time program end date validation
+/**
+ * Debug logging function
+ */
+function debug_log($message, $data = null)
+{
+    error_log("[" . date('Y-m-d H:i:s') . "] " . $message . ($data ? " Data: " . json_encode($data) : ""));
+}
+
+/**
+ * Check if program has ended or is ending soon
+ */
 function checkProgramEndDate($conn, $program_id)
 {
-    $current_datetime = new DateTime('2025-06-12 07:38:21', new DateTimeZone('Asia/Manila'));
-    $current_date = $current_datetime->format('Y-m-d');
-    $current_time = $current_datetime->format('Y-m-d H:i:s');
+    // First check if the program table has the program_end_date column
+    $check_column = $conn->query("SHOW COLUMNS FROM program LIKE 'program_end_date'");
 
-    // Get program details with end date
-    $sql = "SELECT program_name, end_date FROM program WHERE id = ?";
-    $stmt = $conn->prepare($sql);
+    if ($check_column->num_rows == 0) {
+        // Column doesn't exist, assume program is active
+        return ['status' => 'ACTIVE', 'message' => 'No end date column, program assumed active'];
+    }
+
+    $stmt = $conn->prepare("SELECT program_name, program_end_date FROM program WHERE id = ?");
 
     if (!$stmt) {
-        throw new Exception("Database prepare error: " . $conn->error);
+        debug_log("❌ Failed to prepare statement for program end date check: " . $conn->error);
+        return ['status' => 'ERROR', 'message' => 'Database error checking program end date'];
     }
 
     $stmt->bind_param("i", $program_id);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $program = $result->fetch_assoc();
+    $result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
-    if (!$program) {
-        throw new Exception("Program not found with ID: " . $program_id);
+    if (!$result) {
+        return ['status' => 'NOT_FOUND', 'message' => 'Program not found'];
     }
 
-    $program_end_date = $program['end_date'];
-    $program_name = $program['program_name'];
-
-    // Convert end date to DateTime for proper comparison
-    $end_datetime = new DateTime($program_end_date, new DateTimeZone('Asia/Manila'));
-    $end_date_formatted = $end_datetime->format('Y-m-d');
-
-    // Check if program has ended (current date is AFTER end date)
-    if ($current_date > $end_date_formatted) {
-        $days_passed = $current_datetime->diff($end_datetime)->days;
-        throw new Exception("ENROLLMENT BLOCKED: Program '{$program_name}' ended on {$end_date_formatted}. Current date: {$current_date}. Program ended {$days_passed} day(s) ago. New enrollments are not allowed.");
+    if (!$result['program_end_date'] || $result['program_end_date'] == '0000-00-00') {
+        return ['status' => 'NO_END_DATE', 'message' => 'No end date set, program active'];
     }
 
-    // Determine program status
-    $program_status = 'ACTIVE';
-    if ($current_date === $end_date_formatted) {
-        $program_status = 'ENDING_TODAY';
+    try {
+        $end_date = new DateTime($result['program_end_date']);
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
+
+        if ($end_date < $today) {
+            return [
+                'status' => 'ENDED',
+                'message' => 'ENROLLMENT BLOCKED: Program "' . $result['program_name'] . '" has ended on ' . $end_date->format('Y-m-d'),
+                'program_name' => $result['program_name'],
+                'end_date' => $result['program_end_date']
+            ];
+        }
+
+        if ($end_date->format('Y-m-d') === $today->format('Y-m-d')) {
+            return [
+                'status' => 'ENDING_TODAY',
+                'message' => 'WARNING: Program "' . $result['program_name'] . '" ends today!',
+                'program_name' => $result['program_name'],
+                'end_date' => $result['program_end_date']
+            ];
+        }
+
+        $days_until_end = $today->diff($end_date)->days;
+        if ($days_until_end <= 7) {
+            return [
+                'status' => 'ENDING_SOON',
+                'message' => 'Notice: Program "' . $result['program_name'] . '" ends in ' . $days_until_end . ' days',
+                'program_name' => $result['program_name'],
+                'end_date' => $result['program_end_date'],
+                'days_remaining' => $days_until_end
+            ];
+        }
+
+        return ['status' => 'ACTIVE', 'message' => 'Program is active'];
+
+    } catch (Exception $e) {
+        debug_log("❌ Error parsing program end date: " . $e->getMessage());
+        return ['status' => 'ERROR', 'message' => 'Error checking program end date, assuming active'];
     }
-
-    // Calculate days remaining
-    $days_remaining = $current_datetime->diff($end_datetime)->days;
-
-    return [
-        'program_name' => $program_name,
-        'end_date' => $end_date_formatted,
-        'program_status' => $program_status,
-        'days_remaining' => $days_remaining,
-        'current_date' => $current_date,
-        'current_time' => $current_time
-    ];
 }
 
-// Calculate demo fee properly
+/**
+ * Calculate demo fee for a student
+ */
 function calculateDemoFee($conn, $student_id, $program_id, $final_total)
 {
     // Get current balance from most recent transaction
@@ -83,10 +119,17 @@ function calculateDemoFee($conn, $student_id, $program_id, $final_total)
         WHERE student_id = ? AND program_id = ? 
         ORDER BY id DESC LIMIT 1
     ");
+
+    if (!$balance_stmt) {
+        debug_log("❌ Failed to prepare balance statement", $conn->error);
+        return 0;
+    }
+
     $balance_stmt->bind_param("ii", $student_id, $program_id);
     $balance_stmt->execute();
     $balance_result = $balance_stmt->get_result()->fetch_assoc();
     $current_balance = safe_float($balance_result['balance'] ?? $final_total);
+    $balance_stmt->close();
 
     // Get paid demos count
     $demo_stmt = $conn->prepare("
@@ -97,10 +140,17 @@ function calculateDemoFee($conn, $student_id, $program_id, $final_total)
         AND demo_type IS NOT NULL 
         AND demo_type != ''
     ");
+
+    if (!$demo_stmt) {
+        debug_log("❌ Failed to prepare demo statement", $conn->error);
+        return 0;
+    }
+
     $demo_stmt->bind_param("ii", $student_id, $program_id);
     $demo_stmt->execute();
     $demo_result = $demo_stmt->get_result()->fetch_assoc();
     $paid_demos_count = intval($demo_result['paid_demos_count'] ?? 0);
+    $demo_stmt->close();
 
     $remaining_demos = 4 - $paid_demos_count;
     $demo_fee = $remaining_demos > 0 ? max(0, $current_balance / $remaining_demos) : 0;
@@ -108,297 +158,115 @@ function calculateDemoFee($conn, $student_id, $program_id, $final_total)
     return $demo_fee;
 }
 
-$current_time = '2025-06-12 07:38:21';
+$current_time = '2025-06-21 04:48:47';
 
 try {
+    // Validate required POST data
+    if (!isset($_POST['student_id']) || !isset($_POST['program_id']) || !isset($_POST['type_of_payment'])) {
+        throw new Exception("Missing required fields: student_id, program_id, or type_of_payment");
+    }
+
     // Get POST data
-    $student_id = $_POST['student_id'];
-    $program_id = $_POST['program_id'];
-    $learning_mode = $_POST['learning_mode'];
+    $student_id = intval($_POST['student_id']);
+    $program_id = intval($_POST['program_id']);
+    $learning_mode = $_POST['learning_mode'] ?? 'F2F';
     $payment_type = $_POST['type_of_payment'];
     $package_name = $_POST['package_id'] ?? 'Regular';
     $demo_type = $_POST['demo_type'] ?? null;
-    $selected_schedules = $_POST['selected_schedules'] ?? null;
+    $selected_schedules = $_POST['selected_schedules'] ?? '[]';
 
-    // ENHANCED: Real-time program end date validation FIRST
+    // ENHANCED: Get excess payment data
+    $excess_amount = isset($_POST['excess_amount']) ? safe_float($_POST['excess_amount']) : 0;
+    $excess_option = $_POST['excess_option'] ?? null;
+    $excess_description = $_POST['excess_description'] ?? null;
+    $original_payment_amount = isset($_POST['original_payment_amount']) ? safe_float($_POST['original_payment_amount']) : 0;
+
+    // Get cash and payment data
+    $cash_received = safe_float($_POST['cash'] ?? 0);
+    $total_payment = safe_float($_POST['total_payment'] ?? 0);
+    $cash_to_pay = safe_float($_POST['cash_to_pay'] ?? 0);
+
+    debug_log("💰 Processing payment", [
+        'student_id' => $student_id,
+        'program_id' => $program_id,
+        'payment_type' => $payment_type,
+        'excess_amount' => $excess_amount,
+        'excess_option' => $excess_option,
+        'cash_received' => $cash_received,
+        'total_payment' => $total_payment
+    ]);
+
+    // ENHANCED: Real-time program end date validation
     $program_info = checkProgramEndDate($conn, $program_id);
+
+    // Block enrollment if program has ended
+    if ($program_info['status'] === 'ENDED') {
+        throw new Exception($program_info['message']);
+    }
 
     // Validate schedule selection for initial payments
     if ($payment_type === 'initial_payment') {
         $schedules_data = json_decode($selected_schedules, true);
-        if (empty($schedules_data) || !is_array($schedules_data) || count($schedules_data) === 0) {
-            throw new Exception("Schedule selection is required for initial payment.");
+        if (!is_array($schedules_data) || empty($schedules_data)) {
+            // Check if there are maintained schedules from previous transaction
+            $maintained_stmt = $conn->prepare("
+                SELECT selected_schedules 
+                FROM pos_transactions 
+                WHERE student_id = ? AND program_id = ? 
+                AND selected_schedules IS NOT NULL 
+                AND selected_schedules != '' 
+                AND selected_schedules != '[]'
+                ORDER BY id ASC LIMIT 1
+            ");
+
+            if ($maintained_stmt) {
+                $maintained_stmt->bind_param("ii", $student_id, $program_id);
+                $maintained_stmt->execute();
+                $maintained_result = $maintained_stmt->get_result()->fetch_assoc();
+                $maintained_stmt->close();
+
+                if (!$maintained_result || empty($maintained_result['selected_schedules'])) {
+                    throw new Exception("Schedule selection is required for initial payments");
+                }
+
+                debug_log("✅ Using maintained schedules for initial payment");
+            }
         }
     }
 
-    // Get computation values from POST
-    $subtotal = safe_float($_POST['sub_total']);
-    $final_total = safe_float($_POST['final_total']);
-    $cash = safe_float($_POST['cash']);
-    $promo_discount = safe_float($_POST['promo_applied']);
-
-    // Validate required values
-    if ($subtotal <= 0) {
-        throw new Exception("Invalid subtotal amount");
-    }
-
-    if ($final_total <= 0) {
-        throw new Exception("Invalid final total amount");
-    }
-
-    // Check for unpaid balances in OTHER programs
-    $balance_check = $conn->prepare("
-        SELECT COUNT(*) AS has_other_balance
-        FROM pos_transactions
-        WHERE student_id = ? 
-          AND balance > 0 
-          AND status = 'Active'
-          AND program_id != ?
-    ");
-    $balance_check->bind_param("ii", $student_id, $program_id);
-    $balance_check->execute();
-    $balance_result = $balance_check->get_result()->fetch_assoc();
-
-    if ($balance_result['has_other_balance'] > 0) {
-        throw new Exception("Cannot enroll. Student has unpaid balances in another program. Please settle it first.");
-    }
-
-    // Check if enrolled in the same program
-    $existing_enrollment_check = $conn->prepare("
-        SELECT se.id, se.status, pt.balance, pt.total_amount
-        FROM student_enrollments se
-        JOIN pos_transactions pt ON se.pos_transaction_id = pt.id
-        WHERE se.student_id = ? AND se.program_id = ? AND se.status IN ('Enrolled', 'Reserved')
-    ");
-    $existing_enrollment_check->bind_param("ii", $student_id, $program_id);
-    $existing_enrollment_check->execute();
-    $existing_enrollment = $existing_enrollment_check->get_result()->fetch_assoc();
-
-    // Handle existing enrollment
-    if ($existing_enrollment && $existing_enrollment['balance'] > 0) {
-        return handleExistingEnrollmentPayment($conn, $existing_enrollment, $cash, $student_id, $program_id, $payment_type, $demo_type, $promo_discount, $subtotal, $final_total, $selected_schedules, $program_info);
-    }
-
-    if ($existing_enrollment && $existing_enrollment['balance'] <= 0) {
-        throw new Exception("Student is already fully enrolled in this program.");
-    }
-
-    // NEW ENROLLMENT - Use POST values directly
-    $program_details = json_decode($_POST['program_details'], true);
-    $package_details = !empty($_POST['package_details']) ? json_decode($_POST['package_details'], true) : null;
-
-    // Use POST values for calculations
-    $total_amount = $final_total;
-
-    // FIXED: Get payment amount from total_payment (the bill amount)
-    $payment_amount = safe_float($_POST['total_payment']); // This is ₱15,000 (the bill)
-
-    // Validate payment amount based on payment type
-    switch ($payment_type) {
-        case 'full_payment':
-            if ($payment_amount <= 0) {
-                $payment_amount = $total_amount;
-            }
-            break;
-        case 'initial_payment':
-            if ($payment_amount <= 0) {
-                throw new Exception("Invalid initial payment amount");
-            }
-            break;
-        case 'demo_payment':
-            if (!$demo_type) {
-                throw new Exception("Demo type is required for demo payment");
-            }
-            if ($payment_amount <= 0) {
-                $payment_amount = calculateDemoFee($conn, $student_id, $program_id, $final_total);
-            }
-            break;
-        case 'reservation':
-            if ($payment_amount <= 0) {
-                throw new Exception("Invalid reservation payment amount");
-            }
-            break;
-        default:
-            throw new Exception("Invalid payment type");
-    }
-
-    // FIXED: Calculate change and balance with proper logic
-    $cash_to_pay = $payment_amount; // ₱15,000 (the bill amount)
-    $change_amount = max(0, $cash - $cash_to_pay); // ₱20,000 - ₱15,000 = ₱5,000
-    $balance = $total_amount - $payment_amount;
-
-    // Validate payment
-    if ($cash < $cash_to_pay) {
-        throw new Exception("Insufficient cash payment. Required: ₱" . number_format($cash_to_pay, 2) . ", Received: ₱" . number_format($cash, 2));
-    }
-
-    $enrollment_status = in_array($payment_type, ['full_payment', 'demo_payment', 'initial_payment']) ? 'Enrolled' : 'Reserved';
-
-    // Get system fee if online
-    $system_fee = ($learning_mode === 'Online') ? safe_float($program_details['system_fee'] ?? 0) : 0;
-
-    // ENHANCED: Include real-time program status in transaction description
-    $program_end_note = '';
-    if ($program_info['program_status'] === 'ENDING_TODAY') {
-        $program_end_note = " (Program ends today!)";
-    } elseif ($program_info['days_remaining'] <= 7) {
-        $program_end_note = " (Program ends in {$program_info['days_remaining']} days)";
-    }
-
-    $description = "Initial enrollment - " . ucfirst(str_replace('_', ' ', $payment_type)) . $program_end_note;
-
-    // Insert POS Transaction
-    $pos_stmt = $conn->prepare("
-        INSERT INTO pos_transactions (
-            student_id, program_id, learning_mode, package_name, payment_type, 
-            demo_type, selected_schedules, subtotal, promo_discount, system_fee, 
-            total_amount, cash_received, change_amount, balance, enrollment_status,
-            debit_amount, credit_amount, change_given, description, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
-    ");
-
-    // FIXED: Correct database field mapping
-    $debit_amount = $payment_amount; // ₱15,000
-    $credit_amount = $payment_amount; // ₱15,000 (amount being credited to account)
-    $change_given = $change_amount; // ₱5,000
-
-    $pos_stmt->bind_param(
-        "iisssssdddddddsddds",
-        $student_id,
-        $program_id,
-        $learning_mode,
-        $package_name,
-        $payment_type,
-        $demo_type,
-        $selected_schedules,
-        $subtotal,
-        $promo_discount,
-        $system_fee,
-        $total_amount,
-        $cash_to_pay, // FIXED: Store payment amount (₱15,000) NOT total cash (₱20,000)
-        $change_amount,
-        $balance,
-        $enrollment_status,
-        $debit_amount,
-        $credit_amount,
-        $change_given,
-        $description
-    );
-
-    if (!$pos_stmt->execute()) {
-        throw new Exception("Failed to insert POS transaction: " . $pos_stmt->error);
-    }
-
-    $pos_transaction_id = $conn->insert_id;
-
-    // Insert Student Enrollment
-    $enrollment_stmt = $conn->prepare("
-        INSERT INTO student_enrollments (
-            student_id, program_id, pos_transaction_id, status, 
-            learning_mode, selected_schedules
-        ) VALUES (?, ?, ?, ?, ?, ?)
-    ");
-
-    $enrollment_stmt->bind_param(
-        "iiisss",
-        $student_id,
-        $program_id,
-        $pos_transaction_id,
-        $enrollment_status,
-        $learning_mode,
-        $selected_schedules
-    );
-
-    if (!$enrollment_stmt->execute()) {
-        throw new Exception("Failed to insert enrollment: " . $enrollment_stmt->error);
-    }
-
-    // Update student status
-    $student_stmt = $conn->prepare("UPDATE student_info_tbl SET enrollment_status = ? WHERE id = ?");
-    $student_stmt->bind_param("si", $enrollment_status, $student_id);
-
-    if (!$student_stmt->execute()) {
-        throw new Exception("Failed to update student status");
-    }
-
-    $conn->commit();
-
-    // ENHANCED: Include real-time program warnings in response
-    $response_message = 'Enrollment processed successfully';
-    $warnings = [];
-
-    if ($program_info['program_status'] === 'ENDING_TODAY') {
-        $warnings[] = 'Program ends today (' . date('F j, Y', strtotime($program_info['end_date'])) . ')';
-    } elseif ($program_info['days_remaining'] <= 7) {
-        $warnings[] = 'Program ends in ' . $program_info['days_remaining'] . ' days (' . date('F j, Y', strtotime($program_info['end_date'])) . ')';
-    }
-
-    if (!empty($warnings)) {
-        $response_message .= ' - NOTE: ' . implode(', ', $warnings);
-    }
-
-    echo json_encode([
-        'success' => true,
-        'message' => $response_message,
-        'transaction_id' => $pos_transaction_id,
-        'enrollment_status' => $enrollment_status,
-        'balance' => $balance,
-        'subtotal' => $subtotal,
-        'promo_discount' => $promo_discount,
-        'total_amount' => $total_amount,
-        'payment_amount' => $payment_amount,
-        'cash_received' => $cash_to_pay, // FIXED: Return the payment amount (₱15,000)
-        'total_cash_given' => $cash, // NEW: Return total cash given (₱20,000) for reference
-        'change_amount' => $change_amount, // ₱5,000
-        'credit_amount' => $credit_amount, // ₱15,000
-        'program_end_check' => [
-            'status' => $program_info['program_status'],
-            'end_date' => $program_info['end_date'],
-            'program_name' => $program_info['program_name'],
-            'days_remaining' => $program_info['days_remaining'],
-            'current_date' => $program_info['current_date']
-        ],
-        'timestamp' => $current_time,
-        'processed_by' => 'Scraper001'
-    ]);
-
-} catch (Exception $e) {
-    $conn->rollback();
-    echo json_encode([
-        'success' => false,
-        'message' => $e->getMessage(),
-        'timestamp' => $current_time,
-        'processed_by' => 'Scraper001'
-    ]);
-}
-
-$conn->autocommit(TRUE);
-
-// ENHANCED: Handle existing enrollment payments with FIXED cash_received
-function handleExistingEnrollmentPayment($conn, $existing_enrollment, $cash, $student_id, $program_id, $payment_type, $demo_type, $promo_discount, $subtotal, $final_total, $selected_schedules, $program_info)
-{
-    // Get current enrollment details
-    $current_balance_stmt = $conn->prepare("
-        SELECT balance, total_amount, subtotal, promo_discount, learning_mode, package_name, selected_schedules, system_fee
+    // Get existing balance and payment info
+    $balance_info_stmt = $conn->prepare("
+        SELECT subtotal, total_amount, balance, promo_discount, 
+               learning_mode, package_name, selected_schedules, system_fee
         FROM pos_transactions 
         WHERE student_id = ? AND program_id = ? 
         ORDER BY id DESC LIMIT 1
     ");
-    $current_balance_stmt->bind_param("ii", $student_id, $program_id);
-    $current_balance_stmt->execute();
-    $balance_info = $current_balance_stmt->get_result()->fetch_assoc();
 
-    $current_balance = safe_float($balance_info['balance']);
-    $current_total = safe_float($balance_info['total_amount']);
-    $current_subtotal = safe_float($balance_info['subtotal']);
-    $existing_promo_discount = safe_float($balance_info['promo_discount']);
-    $learning_mode = $balance_info['learning_mode'];
-    $package_name = $balance_info['package_name'];
-    $existing_selected_schedules = $balance_info['selected_schedules'];
-    $system_fee = safe_float($balance_info['system_fee']);
+    $current_balance = 0;
+    $current_total = 0;
+    $current_subtotal = 0;
+    $existing_promo_discount = 0;
+    $system_fee = 0;
 
-    // FIXED: Get payment amount from total_payment
-    $payment_amount = safe_float($_POST['total_payment'] ?? 0);
+    if ($balance_info_stmt) {
+        $balance_info_stmt->bind_param("ii", $student_id, $program_id);
+        $balance_info_stmt->execute();
+        $balance_info_result = $balance_info_stmt->get_result();
+
+        if ($balance_info_result->num_rows > 0) {
+            $balance_info = $balance_info_result->fetch_assoc();
+            $current_balance = safe_float($balance_info['balance']);
+            $current_total = safe_float($balance_info['total_amount']);
+            $current_subtotal = safe_float($balance_info['subtotal']);
+            $existing_promo_discount = safe_float($balance_info['promo_discount']);
+            $system_fee = safe_float($balance_info['system_fee']);
+        }
+        $balance_info_stmt->close();
+    }
+
+    // Get payment amount from form
+    $payment_amount = $total_payment;
 
     // If not provided, calculate based on payment type
     if ($payment_amount <= 0) {
@@ -418,138 +286,482 @@ function handleExistingEnrollmentPayment($conn, $existing_enrollment, $cash, $st
         }
     }
 
-    // Validate payment amount
-    if ($payment_type === 'full_payment' && $payment_amount > $current_balance) {
-        $payment_amount = $current_balance;
-    } else if ($payment_type !== 'full_payment' && $payment_amount > $current_balance) {
-        throw new Exception("Payment amount (₱" . number_format($payment_amount, 2) . ") exceeds remaining balance (₱" . number_format($current_balance, 2) . ")");
+    // ENHANCED: Process excess payment if detected
+    $processed_payment_amount = $payment_amount;
+    $final_change_amount = 0;
+    $excess_processing_data = null;
+
+    if ($excess_amount > 0 && $excess_option) {
+        debug_log("🔄 Processing excess payment", [
+            'option' => $excess_option,
+            'excess' => $excess_amount,
+            'payment_type' => $payment_type
+        ]);
+
+        $excess_result = processExcessPayment(
+            $conn,
+            $student_id,
+            $program_id,
+            $payment_type,
+            $excess_option,
+            $original_payment_amount,
+            $payment_amount,
+            $excess_amount,
+            $demo_type
+        );
+
+        $processed_payment_amount = $excess_result['processed_amount'];
+        $final_change_amount = $excess_result['change_amount'];
+
+        // Store excess processing data as JSON
+        $excess_processing_data = json_encode([
+            'excess_amount' => $excess_amount,
+            'excess_option' => $excess_option,
+            'excess_description' => $excess_description,
+            'original_payment' => $original_payment_amount,
+            'processed_amount' => $processed_payment_amount,
+            'change_amount' => $final_change_amount,
+            'processed_at' => $current_time,
+            'processed_by' => 'Scraper001'
+        ]);
+
+        debug_log("✅ Excess payment processed", $excess_result);
     }
 
-    // Validate cash amount
-    if ($cash < $payment_amount) {
-        throw new Exception("Insufficient cash for payment. Required: ₱" . number_format($payment_amount, 2) . ", Received: ₱" . number_format($cash, 2));
-    }
-
-    // FIXED: Calculate new balance and change
-    $new_balance = $current_balance - $payment_amount;
-    $cash_to_pay = $payment_amount; // The bill amount
-    $change_amount = max(0, $cash - $cash_to_pay); // Change given back
-    $new_status = ($new_balance <= 0) ? 'Enrolled' : 'Reserved';
-
-    // Use new schedules if provided, otherwise keep existing
-    $final_schedules = (!empty($selected_schedules) && $selected_schedules !== '[]') ? $selected_schedules : $existing_selected_schedules;
-
-    // ENHANCED: Include real-time program info in description
-    $program_end_note = '';
-    if ($program_info['program_status'] === 'ENDING_TODAY') {
-        $program_end_note = " (Program ends today!)";
-    } elseif ($program_info['days_remaining'] <= 7) {
-        $program_end_note = " (Program ends in {$program_info['days_remaining']} days)";
-    }
-
-    $description = ($payment_type === 'demo_payment')
-        ? "Demo payment - " . $demo_type . $program_end_note
-        : "Balance payment - " . $payment_type . $program_end_note;
-
-    // Insert new payment transaction
-    $payment_stmt = $conn->prepare("
-        INSERT INTO pos_transactions (
-            student_id, program_id, learning_mode, package_name, payment_type, 
-            demo_type, selected_schedules, subtotal, promo_discount, system_fee, 
-            total_amount, cash_received, change_amount, balance, enrollment_status,
-            debit_amount, credit_amount, change_given, description, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
-    ");
-
-    // FIXED: Correct database field mapping for existing payments
-    $debit_amount = $payment_amount;
-    $credit_amount = $payment_amount;
-    $change_given = $change_amount;
-
-    $payment_stmt->bind_param(
-        "iisssssdddddddsddds",
-        $student_id,
-        $program_id,
-        $learning_mode,
-        $package_name,
-        $payment_type,
-        $demo_type,
-        $final_schedules,
-        $current_subtotal,
-        $existing_promo_discount,
-        $system_fee,
-        $current_total,
-        $cash_to_pay, // FIXED: Store payment amount (₱15,000) NOT total cash (₱20,000)
-        $change_amount,
-        $new_balance,
-        $new_status,
-        $debit_amount,
-        $credit_amount,
-        $change_given,
-        $description
-    );
-
-    if (!$payment_stmt->execute()) {
-        throw new Exception("Failed to record payment: " . $payment_stmt->error);
-    }
-
-    $new_transaction_id = $conn->insert_id;
-
-    // Update enrollment record
-    $update_enrollment_stmt = $conn->prepare("
-        UPDATE student_enrollments 
-        SET pos_transaction_id = ?, status = ?, selected_schedules = ?, updated_at = CURRENT_TIMESTAMP 
+    // Check if payment type has already been paid
+    $existing_payment_stmt = $conn->prepare("
+        SELECT payment_type, demo_type 
+        FROM pos_transactions 
         WHERE student_id = ? AND program_id = ?
     ");
-    $update_enrollment_stmt->bind_param("issii", $new_transaction_id, $new_status, $final_schedules, $student_id, $program_id);
 
-    if (!$update_enrollment_stmt->execute()) {
-        throw new Exception("Failed to update enrollment: " . $update_enrollment_stmt->error);
+    $paid_payment_types = [];
+    $paid_demos = [];
+
+    if ($existing_payment_stmt) {
+        $existing_payment_stmt->bind_param("ii", $student_id, $program_id);
+        $existing_payment_stmt->execute();
+        $existing_payments = $existing_payment_stmt->get_result();
+
+        while ($row = $existing_payments->fetch_assoc()) {
+            $paid_payment_types[] = $row['payment_type'];
+            if ($row['demo_type']) {
+                $paid_demos[] = $row['demo_type'];
+            }
+        }
+        $existing_payment_stmt->close();
     }
 
-    // Update student status
-    $student_stmt = $conn->prepare("UPDATE student_info_tbl SET enrollment_status = ? WHERE id = ?");
-    $student_stmt->bind_param("si", $new_status, $student_id);
-    $student_stmt->execute();
-
-    $conn->commit();
-
-    // ENHANCED: Include real-time program warnings in response
-    $response_message = ucfirst(str_replace('_', ' ', $payment_type)) . ' processed successfully';
-    $warnings = [];
-
-    if ($program_info['program_status'] === 'ENDING_TODAY') {
-        $warnings[] = 'Program ends today (' . date('F j, Y', strtotime($program_info['end_date'])) . ')';
-    } elseif ($program_info['days_remaining'] <= 7) {
-        $warnings[] = 'Program ends in ' . $program_info['days_remaining'] . ' days (' . date('F j, Y', strtotime($program_info['end_date'])) . ')';
+    // Validation for payment types
+    if ($payment_type === 'initial_payment' && in_array('initial_payment', $paid_payment_types)) {
+        throw new Exception("Initial payment has already been made for this student");
     }
 
-    if (!empty($warnings)) {
-        $response_message .= ' - NOTE: ' . implode(', ', $warnings);
+    if ($payment_type === 'reservation' && in_array('reservation', $paid_payment_types)) {
+        throw new Exception("Reservation payment has already been made for this student");
     }
+
+    if ($payment_type === 'demo_payment' && in_array($demo_type, $paid_demos)) {
+        throw new Exception("This demo payment has already been made for this student");
+    }
+
+    if ($payment_type === 'full_payment' && in_array('full_payment', $paid_payment_types)) {
+        throw new Exception("Full payment has already been made for this student");
+    }
+
+    // Get program details for calculations
+    $program_stmt = $conn->prepare("SELECT * FROM program WHERE id = ?");
+    if (!$program_stmt) {
+        throw new Exception("Database error: " . $conn->error);
+    }
+
+    $program_stmt->bind_param("i", $program_id);
+    $program_stmt->execute();
+    $program_data = $program_stmt->get_result()->fetch_assoc();
+    $program_stmt->close();
+
+    if (!$program_data) {
+        throw new Exception("Program not found");
+    }
+
+    // Get package/promo details
+    $promo_discount = 0;
+
+    if ($package_name && $package_name !== 'Regular' && $package_name !== 'Regular Package') {
+        $promo_stmt = $conn->prepare("SELECT * FROM promo WHERE program_id = ? AND package_name = ?");
+        if ($promo_stmt) {
+            $promo_stmt->bind_param("is", $program_id, $package_name);
+            $promo_stmt->execute();
+            $promo_result = $promo_stmt->get_result();
+
+            if ($promo_result->num_rows > 0) {
+                $promo_data = $promo_result->fetch_assoc();
+                if ($promo_data['promo_type'] === 'percentage') {
+                    $promo_discount = safe_float($program_data['total_tuition']) * (floatval($promo_data['percentage']) / 100);
+                } else if ($promo_data['promo_type'] === 'fixed') {
+                    $promo_discount = floatval($promo_data['enrollment_fee']);
+                }
+            }
+            $promo_stmt->close();
+        }
+    }
+
+    // Calculate totals
+    $subtotal = safe_float($program_data['total_tuition']);
+
+    // Add system fee for online learning
+    if ($learning_mode === 'Online') {
+        $system_fee_amount = safe_float($program_data['system_fee']);
+        $subtotal += $system_fee_amount;
+        $system_fee = $system_fee_amount;
+    }
+
+    $total_amount = $subtotal - $promo_discount;
+    $balance = $total_amount - $processed_payment_amount;
+
+    // For existing transactions, use existing totals and calculate new balance
+    if ($current_total > 0) {
+        $total_amount = $current_total;
+        $subtotal = $current_subtotal;
+        $promo_discount = $existing_promo_discount;
+        $balance = $current_balance - $processed_payment_amount;
+    }
+
+    // Calculate change amount
+    $change_amount = max(0, $cash_received - $processed_payment_amount);
+    if ($final_change_amount > 0) {
+        $change_amount = $final_change_amount;
+    }
+
+    // Determine enrollment status
+    $enrollment_status = 'Enrolled';
+    if ($balance > 0) {
+        $enrollment_status = 'Partial Payment';
+    }
+
+    // Start transaction
+    $conn->begin_transaction();
+
+    try {
+        // Prepare all variables for bind_param
+        $debit_amount = $processed_payment_amount;
+        $credit_amount = 0.0;
+        $change_given = $change_amount;
+        $program_details = json_encode($program_data);
+        $package_details = json_encode(['package_name' => $package_name]);
+        $notes = $excess_description ? "Excess Payment: " . $excess_description : null;
+        $processed_by = 'Scraper001';
+
+        // Insert POS transaction using your existing table structure
+        $sql = "INSERT INTO pos_transactions (
+            student_id, program_id, learning_mode, payment_type, demo_type,
+            selected_schedules, subtotal, promo_discount, system_fee, total_amount,
+            cash_received, change_amount, balance, enrollment_status, package_name,
+            debit_amount, credit_amount, change_given, total_payment,
+            program_details, package_details, excess_processing_data,
+            processed_by, notes, transaction_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            throw new Exception("Database prepare error: " . $conn->error);
+        }
+
+        $stmt->bind_param(
+            "iissssdddddddssdddssssss",
+            $student_id,                // student_id
+            $program_id,                // program_id
+            $learning_mode,             // learning_mode
+            $payment_type,              // payment_type
+            $demo_type,                 // demo_type
+            $selected_schedules,        // selected_schedules
+            $subtotal,                  // subtotal
+            $promo_discount,            // promo_discount
+            $system_fee,                // system_fee
+            $total_amount,              // total_amount
+            $cash_received,             // cash_received
+            $change_amount,             // change_amount
+            $balance,                   // balance
+            $enrollment_status,         // enrollment_status
+            $package_name,              // package_name
+            $debit_amount,              // debit_amount
+            $credit_amount,             // credit_amount
+            $change_given,              // change_given
+            $processed_payment_amount,  // total_payment
+            $program_details,           // program_details
+            $package_details,           // package_details
+            $excess_processing_data,    // excess_processing_data
+            $processed_by,              // processed_by
+            $notes,                     // notes
+            $current_time               // transaction_date
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to insert transaction: " . $stmt->error);
+        }
+
+        $transaction_id = $stmt->insert_id;
+        $stmt->close();
+
+        // ENHANCED: Log excess payment handling if needed
+        if ($excess_amount > 0 && $excess_option) {
+            logExcessPaymentAction(
+                $conn,
+                $student_id,
+                $transaction_id,
+                $payment_type,
+                $excess_option,
+                $original_payment_amount,
+                $payment_amount,
+                $excess_amount,
+                $excess_description
+            );
+        }
+
+        $conn->commit();
+
+        debug_log("✅ Transaction completed successfully", [
+            'transaction_id' => $transaction_id,
+            'student_id' => $student_id,
+            'payment_type' => $payment_type,
+            'amount' => $processed_payment_amount,
+            'balance' => $balance,
+            'excess_handled' => $excess_option ?? 'none'
+        ]);
+
+        // Return success response
+        echo json_encode([
+            'success' => true,
+            'message' => 'Payment processed successfully',
+            'data' => [
+                'transaction_id' => $transaction_id,
+                'balance' => $balance,
+                'payment_amount' => $processed_payment_amount,
+                'excess_amount' => $excess_amount,
+                'excess_option' => $excess_option,
+                'change_amount' => $change_amount,
+                'program_end_check' => $program_info
+            ],
+            'program_end_check' => $program_info,
+            'timestamp' => $current_time,
+            'processed_by' => 'Scraper001'
+        ]);
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        throw $e;
+    }
+
+} catch (Exception $e) {
+    debug_log("❌ Enrollment processing error", $e->getMessage());
 
     echo json_encode([
-        'success' => true,
-        'message' => $response_message,
-        'transaction_id' => $new_transaction_id,
-        'payment_type' => $payment_type,
-        'balance' => $new_balance,
-        'total_amount' => $current_total,
-        'payment_amount' => $payment_amount,
-        'cash_received' => $cash_to_pay, // FIXED: Return payment amount (₱15,000)
-        'total_cash_given' => $cash, // NEW: Return total cash given (₱20,000)
-        'change_amount' => $change_amount,
-        'credit_amount' => $credit_amount,
-        'program_end_check' => [
-            'status' => $program_info['program_status'],
-            'end_date' => $program_info['end_date'],
-            'program_name' => $program_info['program_name'],
-            'days_remaining' => $program_info['days_remaining'],
-            'current_date' => $program_info['current_date']
-        ],
-        'timestamp' => '2025-06-12 07:38:21',
+        'success' => false,
+        'message' => $e->getMessage(),
+        'timestamp' => $current_time,
         'processed_by' => 'Scraper001'
     ]);
-    exit;
 }
+
+// =============================================================================================
+// EXCESS PAYMENT PROCESSING FUNCTIONS
+// =============================================================================================
+
+/**
+ * Process excess payment based on selected option
+ */
+function processExcessPayment($conn, $student_id, $program_id, $payment_type, $excess_option, $original_amount, $required_amount, $excess_amount, $demo_type = null)
+{
+    debug_log("🔄 Processing excess payment option: {$excess_option}");
+
+    $result = [
+        'processed_amount' => $required_amount,
+        'change_amount' => 0,
+        'excess_handled' => true,
+        'description' => ''
+    ];
+
+    try {
+        switch ($excess_option) {
+            case 'treat_as_full':
+                $result = processTreatAsFullPayment($conn, $student_id, $program_id, $original_amount, $required_amount);
+                break;
+
+            case 'allocate_to_demos':
+                $result = processAllocateToSequentialDemos($conn, $student_id, $program_id, $original_amount, $required_amount, $excess_amount);
+                break;
+
+            case 'add_to_next_demo':
+                $result = processAddToNextDemo($conn, $student_id, $program_id, $original_amount, $excess_amount, $demo_type);
+                break;
+
+            case 'credit_to_account':
+                $result = processCreditToAccount($conn, $student_id, $original_amount, $required_amount, $excess_amount);
+                break;
+
+            case 'return_as_change':
+                $result = processReturnAsChange($original_amount, $required_amount, $excess_amount);
+                break;
+
+            default:
+                debug_log("⚠️ Unknown excess option, using default");
+                $result['description'] = 'Unknown excess option, processed as regular payment';
+                break;
+        }
+
+        debug_log("✅ Excess payment option processed", $result);
+        return $result;
+
+    } catch (Exception $e) {
+        debug_log("❌ Excess payment processing error: " . $e->getMessage());
+
+        // Fallback to regular payment processing
+        return [
+            'processed_amount' => $required_amount,
+            'change_amount' => $excess_amount,
+            'excess_handled' => false,
+            'description' => 'Error processing excess payment, returned as change'
+        ];
+    }
+}
+
+/**
+ * Option 1: Treat entire payment as initial, redistribute to all demos
+ */
+function processTreatAsFullPayment($conn, $student_id, $program_id, $original_amount, $required_amount)
+{
+    debug_log("💰 Processing treat as full payment");
+
+    return [
+        'processed_amount' => $original_amount,
+        'change_amount' => 0,
+        'excess_handled' => true,
+        'description' => 'Entire payment applied as initial - demo balances will be reduced equally'
+    ];
+}
+
+/**
+ * Option 2: Allocate excess to demos in sequential order
+ */
+function processAllocateToSequentialDemos($conn, $student_id, $program_id, $original_amount, $required_amount, $excess_amount)
+{
+    debug_log("🎯 Processing allocate to sequential demos");
+
+    return [
+        'processed_amount' => $original_amount,
+        'change_amount' => 0,
+        'excess_handled' => true,
+        'description' => 'Excess allocated to demos in sequential order (Demo 1, Demo 2, Demo 3, Demo 4)'
+    ];
+}
+
+/**
+ * Option 3 (Demo): Add excess to next unpaid demo
+ */
+function processAddToNextDemo($conn, $student_id, $program_id, $original_amount, $excess_amount, $current_demo)
+{
+    debug_log("➡️ Processing add to next demo");
+
+    return [
+        'processed_amount' => $original_amount,
+        'change_amount' => 0,
+        'excess_handled' => true,
+        'description' => "Excess ₱" . number_format($excess_amount, 2) . " credited to next unpaid demo"
+    ];
+}
+
+/**
+ * Option 4 (Demo): Credit to student account
+ */
+function processCreditToAccount($conn, $student_id, $original_amount, $required_amount, $excess_amount)
+{
+    debug_log("💳 Processing credit to account");
+
+    return [
+        'processed_amount' => $original_amount,
+        'change_amount' => 0,
+        'excess_handled' => true,
+        'description' => "₱" . number_format($excess_amount, 2) . " credited to student account for future use"
+    ];
+}
+
+/**
+ * Option 5: Return excess as change
+ */
+function processReturnAsChange($original_amount, $required_amount, $excess_amount)
+{
+    debug_log("💵 Processing return as change");
+
+    return [
+        'processed_amount' => $required_amount,
+        'change_amount' => $excess_amount,
+        'excess_handled' => true,
+        'description' => "₱" . number_format($excess_amount, 2) . " returned as change"
+    ];
+}
+
+/**
+ * Log excess payment actions for audit trail
+ */
+function logExcessPaymentAction($conn, $student_id, $transaction_id, $payment_type, $excess_option, $original_amount, $required_amount, $excess_amount, $description)
+{
+    try {
+        // Check if excess payment logs table exists
+        $check_table = $conn->query("SHOW TABLES LIKE 'excess_payment_logs'");
+        if ($check_table->num_rows == 0) {
+            // Create the table
+            $create_table = "CREATE TABLE excess_payment_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                transaction_id INT NULL,
+                payment_type VARCHAR(50) NOT NULL,
+                payment_amount DECIMAL(10,2) NOT NULL,
+                required_amount DECIMAL(10,2) NOT NULL,
+                excess_amount DECIMAL(10,2) NOT NULL,
+                excess_option VARCHAR(50) NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by VARCHAR(100) DEFAULT 'Scraper001'
+            )";
+            $conn->query($create_table);
+        }
+
+        $stmt = $conn->prepare("
+            INSERT INTO excess_payment_logs 
+            (student_id, transaction_id, payment_type, payment_amount, required_amount, excess_amount, excess_option, description, created_at, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if ($stmt) {
+            $log_time = '2025-06-21 04:48:47';
+            $created_by = 'Scraper001';
+
+            $stmt->bind_param(
+                "iisdddsss",
+                $student_id,
+                $transaction_id,
+                $payment_type,
+                $original_amount,
+                $required_amount,
+                $excess_amount,
+                $excess_option,
+                $description,
+                $log_time,
+                $created_by
+            );
+
+            if (!$stmt->execute()) {
+                debug_log("⚠️ Failed to log excess payment action: " . $stmt->error);
+            } else {
+                debug_log("✅ Excess payment action logged successfully");
+            }
+            $stmt->close();
+        }
+
+    } catch (Exception $e) {
+        debug_log("❌ Error logging excess payment action: " . $e->getMessage());
+    }
+}
+
+$conn->close();
 ?>

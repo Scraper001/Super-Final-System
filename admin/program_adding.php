@@ -1,3 +1,4 @@
+
 <?php include '../connection/connection.php';
 include "includes/header.php";
 $conn = con();
@@ -636,7 +637,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         { value: 'Weekday 1', text: 'Weekday 1' },
         { value: 'Weekday 2', text: 'Weekday 2' },
         { value: 'Weekday 3', text: 'Weekday 3' },
-        { value: ' Weekday 4', text: ' Wee k day 4' },
+        { value: 'Weekday 4', text: 'Weekday 4' },
     ];
 
     const weekendOptions = [
