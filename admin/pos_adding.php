@@ -477,42 +477,51 @@ if (isset($transactions) && count($transactions) > 0) {
         margin: 5px 0;
         font-size: 11px;
     }
-/* Demo Excess Payment Modal Styles */
-.demo-excess-modal .swal2-popup {
-    border-radius: 15px !important;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important;
-}
 
-.demo-excess-title {
-    color: #1565C0 !important;
-    font-weight: 600 !important;
-}
+    /* Demo Excess Payment Modal Styles */
+    .demo-excess-modal .swal2-popup {
+        border-radius: 15px !important;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2) !important;
+    }
 
-.demo-excess-option {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
+    .demo-excess-title {
+        color: #1565C0 !important;
+        font-weight: 600 !important;
+    }
 
-.demo-excess-option:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
-}
+    .demo-excess-option {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
 
-.demo-excess-option:active {
-    transform: translateY(-1px) !important;
-}
+    .demo-excess-option:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    }
 
-/* Loading state for submit button */
-.processing-payment {
-    background: linear-gradient(45deg, #667eea, #764ba2, #667eea) !important;
-    background-size: 200% 200% !important;
-    animation: gradientShift 2s ease infinite !important;
-}
+    .demo-excess-option:active {
+        transform: translateY(-1px) !important;
+    }
 
-@keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
+    /* Loading state for submit button */
+    .processing-payment {
+        background: linear-gradient(45deg, #667eea, #764ba2, #667eea) !important;
+        background-size: 200% 200% !important;
+        animation: gradientShift 2s ease infinite !important;
+    }
+
+    @keyframes gradientShift {
+        0% {
+            background-position: 0% 50%;
+        }
+
+        50% {
+            background-position: 100% 50%;
+        }
+
+        100% {
+            background-position: 0% 50%;
+        }
+    }
 </style>
 
 <div class="flex min-h-screen overflow-y-auto">
@@ -561,10 +570,10 @@ if (isset($transactions) && count($transactions) > 0) {
                     </p>
 
                     <?php if (isset($has_balance) && $has_balance): ?>
-                            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-2">
-                                <strong><i class="fa-solid fa-triangle-exclamation mr-2"></i>Alert:</strong> This student
-                                currently has an outstanding balance. Please settle the balance to re-enroll the student.
-                            </div>
+                        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-2">
+                            <strong><i class="fa-solid fa-triangle-exclamation mr-2"></i>Alert:</strong> This student
+                            currently has an outstanding balance. Please settle the balance to re-enroll the student.
+                        </div>
                     <?php endif; ?>
                 </div>
 
@@ -647,9 +656,9 @@ if (isset($transactions) && count($transactions) > 0) {
                             <div class="flex items-center justify-between mb-2">
                                 <h2 class="font-semibold">Class Schedule</h2>
                                 <?php if (!$open): ?>
-                                        <button type="button" id="editScheduleBtn" class="schedule-edit-btn">
-                                            <i class="fa-solid fa-edit mr-2"></i>Edit Schedule
-                                        </button>
+                                    <button type="button" id="editScheduleBtn" class="schedule-edit-btn">
+                                        <i class="fa-solid fa-edit mr-2"></i>Edit Schedule
+                                    </button>
                                 <?php endif; ?>
                             </div>
 
@@ -669,7 +678,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                 <thead class="bg-gray-100">
                                     <tr>
                                         <?php foreach (['Select', 'Week Description', 'Training Date', 'Start Time', 'End Time', 'Day'] as $header): ?>
-                                                <th class="border px-2 py-1"><?= htmlspecialchars($header) ?></th>
+                                            <th class="border px-2 py-1"><?= htmlspecialchars($header) ?></th>
                                         <?php endforeach; ?>
                                     </tr>
                                 </thead>
@@ -677,14 +686,14 @@ if (isset($transactions) && count($transactions) > 0) {
                             </table>
 
                             <?php if ($open == false): ?>
-                                    <input type="hidden" id="hiddenSchedule"
-                                        value="<?= htmlspecialchars(json_encode($selected_schedules_data ?? [])) ?>"
-                                        name="selected_schedules" />
-                                    <input type="hidden" id="maintainedSchedules"
-                                        value="<?= htmlspecialchars(json_encode($maintained_schedules ?? [])) ?>" />
+                                <input type="hidden" id="hiddenSchedule"
+                                    value="<?= htmlspecialchars(json_encode($selected_schedules_data ?? [])) ?>"
+                                    name="selected_schedules" />
+                                <input type="hidden" id="maintainedSchedules"
+                                    value="<?= htmlspecialchars(json_encode($maintained_schedules ?? [])) ?>" />
                             <?php else: ?>
-                                    <input type="hidden" id="hiddenSchedule" name="selected_schedules" value="[]" />
-                                    <input type="" id="maintainedSchedules" value="[]" />
+                                <input type="hidden" id="hiddenSchedule" name="selected_schedules" value="[]" />
+                                <input type="" id="maintainedSchedules" value="[]" />
                             <?php endif; ?>
                         </div>
                     </div>
@@ -709,161 +718,161 @@ if (isset($transactions) && count($transactions) > 0) {
                                     <h2 class="font-semibold text-xl mb-2">Description</h2>
 
                                     <?php if ($open == false): ?>
-                                            <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
-                                                <li id="learningMode">
-                                                    <strong>Program:</strong>
-                                                    <?= htmlspecialchars($row_program['program_name'] ?? "This Data is deleted") ?>
+                                        <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
+                                            <li id="learningMode">
+                                                <strong>Program:</strong>
+                                                <?= htmlspecialchars($row_program['program_name'] ?? "This Data is deleted") ?>
+                                                <span
+                                                    class="inline-block ml-2 px-2 py-1 text-xs font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
+                                                    <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
+                                                        <i class="fa-solid fa-laptop mr-1"></i>
+                                                    <?php else: ?>
+                                                        <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
+                                                    <?php endif; ?>
+                                                    <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
+                                                </span>
+                                            </li>
+                                            <li id="packageInfo">
+                                                <strong>Package:</strong>
+                                                <?= htmlspecialchars($row_promo['package_name'] ?? "Regular") ?>
+                                                <?php if (isset($row_promo['selection_type']) && $row_promo['selection_type'] > 0): ?>
                                                     <span
-                                                        class="inline-block ml-2 px-2 py-1 text-xs font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
-                                                        <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
-                                                                <i class="fa-solid fa-laptop mr-1"></i>
-                                                        <?php else: ?>
-                                                                <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
-                                                        <?php endif; ?>
-                                                        <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
+                                                        class="promo-selection-display promo-option-<?= $row_promo['selection_type'] ?>"
+                                                        style="display: inline-block; margin-left: 8px;">
+                                                        Option <?= $row_promo['selection_type'] ?>
                                                     </span>
-                                                </li>
-                                                <li id="packageInfo">
-                                                    <strong>Package:</strong>
-                                                    <?= htmlspecialchars($row_promo['package_name'] ?? "Regular") ?>
-                                                    <?php if (isset($row_promo['selection_type']) && $row_promo['selection_type'] > 0): ?>
-                                                            <span
-                                                                class="promo-selection-display promo-option-<?= $row_promo['selection_type'] ?>"
-                                                                style="display: inline-block; margin-left: 8px;">
-                                                                Option <?= $row_promo['selection_type'] ?>
-                                                            </span>
+                                                <?php endif; ?>
+                                            </li>
+                                            <li id="enrollmentDate">
+                                                <strong>Enrollment Date:</strong> <?= date('Y-m-d H:i:s') ?>
+                                            </li>
+                                            <li id="studentInfo">
+                                                <strong>Student ID:</strong> <?= htmlspecialchars($student_id) ?>
+                                            </li>
+                                            <?php if ($row_promo['package_name'] !== "Regular"): ?>
+                                                <li id="promoInfo" class="text-green-600 font-semibold">
+                                                    <?php
+                                                    $selection_type = intval($row_promo['selection_type'] ?? 1);
+                                                    if ($selection_type <= 2): ?>
+                                                        <strong>Promo Discount:</strong> ₱<?= number_format($PR ?? 0, 2) ?>
+                                                        <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
+                                                            applied</small>
+                                                    <?php else: ?>
+                                                        <strong>Custom Payment Option:</strong> <?= $row_promo['promo_type'] ?>
+                                                        <br><small>Required initial:
+                                                            ₱<?= number_format($row_promo['custom_initial_payment'] ?? 0, 2) ?></small>
                                                     <?php endif; ?>
                                                 </li>
-                                                <li id="enrollmentDate">
-                                                    <strong>Enrollment Date:</strong> <?= date('Y-m-d H:i:s') ?>
-                                                </li>
-                                                <li id="studentInfo">
-                                                    <strong>Student ID:</strong> <?= htmlspecialchars($student_id) ?>
-                                                </li>
-                                                <?php if ($row_promo['package_name'] !== "Regular"): ?>
-                                                        <li id="promoInfo" class="text-green-600 font-semibold">
-                                                            <?php
-                                                            $selection_type = intval($row_promo['selection_type'] ?? 1);
-                                                            if ($selection_type <= 2): ?>
-                                                                    <strong>Promo Discount:</strong> ₱<?= number_format($PR ?? 0, 2) ?>
-                                                                    <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
-                                                                        applied</small>
-                                                            <?php else: ?>
-                                                                    <strong>Custom Payment Option:</strong> <?= $row_promo['promo_type'] ?>
-                                                                    <br><small>Required initial:
-                                                                        ₱<?= number_format($row_promo['custom_initial_payment'] ?? 0, 2) ?></small>
-                                                            <?php endif; ?>
-                                                        </li>
-                                                <?php endif; ?>
-                                            </ul>
+                                            <?php endif; ?>
+                                        </ul>
                                     <?php else: ?>
-                                            <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
-                                                <li id="programName">Select a program to view details</li>
-                                                <li id="learningMode"></li>
-                                                <li id="packageInfo"></li>
-                                                <li id="promoInfo" class="text-green-600 font-semibold hidden"></li>
-                                            </ul>
+                                        <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
+                                            <li id="programName">Select a program to view details</li>
+                                            <li id="learningMode"></li>
+                                            <li id="packageInfo"></li>
+                                            <li id="promoInfo" class="text-green-600 font-semibold hidden"></li>
+                                        </ul>
                                     <?php endif; ?>
                                 </div>
 
                                 <!-- Charges with proper demo display -->
                                 <div class="w-full p-4 charges-section" id="chargesContainer">
                                     <?php if ($open == false): ?>
-                                            <h1 class="font-semibold text-xl mb-2">Charges</h1>
+                                        <h1 class="font-semibold text-xl mb-2">Charges</h1>
 
-                                            <div
-                                                class="mb-3 p-2 rounded-lg <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200' ?>">
-                                                <div class="flex items-center justify-between">
-                                                    <span class="text-sm font-medium">Learning Mode:</span>
-                                                    <span
-                                                        class="px-3 py-1 text-sm font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
-                                                        <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
-                                                                <i class="fa-solid fa-laptop mr-1"></i>
-                                                        <?php else: ?>
-                                                                <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
-                                                        <?php endif; ?>
-                                                        <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div class="flex flex-row w-full p-4 gap-4">
-                                                <ul class="flex-1 list-none space-y-1">
-                                                    <li>Assessment Fee:
-                                                        ₱<?= number_format($row_program['assesment_fee'] ?? 0, 2) ?></li>
-                                                    <li>Tuition Fee: ₱<?= number_format($row_program['tuition_fee'] ?? 0, 2) ?>
-                                                    </li>
-                                                    <li>Miscellaneous Fee:
-                                                        ₱<?= number_format($row_program['misc_fee'] ?? 0, 2) ?></li>
-                                                    <li>Uniform Fee: ₱<?= number_format($row_program['uniform_fee'] ?? 0, 2) ?>
-                                                    </li>
-                                                    <li>ID Fee: ₱<?= number_format($row_program['id_fee'] ?? 0, 2) ?></li>
-                                                    <li>Book Fee: ₱<?= number_format($row_program['book_fee'] ?? 0, 2) ?></li>
-                                                    <li>Kit Fee: ₱<?= number_format($row_program['kit_fee'] ?? 0, 2) ?></li>
-                                                    <?php if (($row_transaction['learning_mode'] ?? '') === 'Online' && isset($row_program['system_fee'])): ?>
-                                                            <li class="text-blue-600">System Fee:
-                                                                ₱<?= number_format($row_program['system_fee'] ?? 0, 2) ?></li>
+                                        <div
+                                            class="mb-3 p-2 rounded-lg <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200' ?>">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-sm font-medium">Learning Mode:</span>
+                                                <span
+                                                    class="px-3 py-1 text-sm font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
+                                                    <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
+                                                        <i class="fa-solid fa-laptop mr-1"></i>
+                                                    <?php else: ?>
+                                                        <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
                                                     <?php endif; ?>
-                                                </ul>
+                                                    <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
+                                                </span>
+                                            </div>
+                                        </div>
 
-                                                <!-- Demo fees with correct calculation -->
-                                                <ul class="flex-1 space-y-1 demo-fees-display">
-                                                    <li class="demo-fee-calculated">Demo 1 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                        <?php if (in_array('demo1', $paid_demos)): ?>
-                                                                <span class="text-green-600 text-xs ml-1"><i
-                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
-                                                        <?php endif; ?>
-                                                    </li>
-                                                    <li class="demo-fee-calculated">Demo 2 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                        <?php if (in_array('demo2', $paid_demos)): ?>
-                                                                <span class="text-green-600 text-xs ml-1"><i
-                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
-                                                        <?php endif; ?>
-                                                    </li>
-                                                    <li class="demo-fee-calculated">Demo 3 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                        <?php if (in_array('demo3', $paid_demos)): ?>
-                                                                <span class="text-green-600 text-xs ml-1"><i
-                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
-                                                        <?php endif; ?>
-                                                    </li>
-                                                    <li class="demo-fee-calculated">Demo 4 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                        <?php if (in_array('demo4', $paid_demos)): ?>
-                                                                <span class="text-green-600 text-xs ml-1"><i
-                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
-                                                        <?php endif; ?>
-                                                    </li>
+                                        <div class="flex flex-row w-full p-4 gap-4">
+                                            <ul class="flex-1 list-none space-y-1">
+                                                <li>Assessment Fee:
+                                                    ₱<?= number_format($row_program['assesment_fee'] ?? 0, 2) ?></li>
+                                                <li>Tuition Fee: ₱<?= number_format($row_program['tuition_fee'] ?? 0, 2) ?>
+                                                </li>
+                                                <li>Miscellaneous Fee:
+                                                    ₱<?= number_format($row_program['misc_fee'] ?? 0, 2) ?></li>
+                                                <li>Uniform Fee: ₱<?= number_format($row_program['uniform_fee'] ?? 0, 2) ?>
+                                                </li>
+                                                <li>ID Fee: ₱<?= number_format($row_program['id_fee'] ?? 0, 2) ?></li>
+                                                <li>Book Fee: ₱<?= number_format($row_program['book_fee'] ?? 0, 2) ?></li>
+                                                <li>Kit Fee: ₱<?= number_format($row_program['kit_fee'] ?? 0, 2) ?></li>
+                                                <?php if (($row_transaction['learning_mode'] ?? '') === 'Online' && isset($row_program['system_fee'])): ?>
+                                                    <li class="text-blue-600">System Fee:
+                                                        ₱<?= number_format($row_program['system_fee'] ?? 0, 2) ?></li>
+                                                <?php endif; ?>
+                                            </ul>
 
-                                                    <?php if (!empty($paid_demos)): ?>
-                                                            <li class="text-blue-600 text-sm mt-2">
-                                                                <strong>Completed Demos:</strong><br>
-                                                                <?= implode(', ', array_map('strtoupper', $paid_demos)) ?>
-                                                            </li>
+                                            <!-- Demo fees with correct calculation -->
+                                            <ul class="flex-1 space-y-1 demo-fees-display">
+                                                <li class="demo-fee-calculated">Demo 1 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                    <?php if (in_array('demo1', $paid_demos)): ?>
+                                                        <span class="text-green-600 text-xs ml-1"><i
+                                                                class="fa-solid fa-check-circle"></i> Paid</span>
                                                     <?php endif; ?>
-                                                </ul>
-                                            </div>
+                                                </li>
+                                                <li class="demo-fee-calculated">Demo 2 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                    <?php if (in_array('demo2', $paid_demos)): ?>
+                                                        <span class="text-green-600 text-xs ml-1"><i
+                                                                class="fa-solid fa-check-circle"></i> Paid</span>
+                                                    <?php endif; ?>
+                                                </li>
+                                                <li class="demo-fee-calculated">Demo 3 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                    <?php if (in_array('demo3', $paid_demos)): ?>
+                                                        <span class="text-green-600 text-xs ml-1"><i
+                                                                class="fa-solid fa-check-circle"></i> Paid</span>
+                                                    <?php endif; ?>
+                                                </li>
+                                                <li class="demo-fee-calculated">Demo 4 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                    <?php if (in_array('demo4', $paid_demos)): ?>
+                                                        <span class="text-green-600 text-xs ml-1"><i
+                                                                class="fa-solid fa-check-circle"></i> Paid</span>
+                                                    <?php endif; ?>
+                                                </li>
 
-                                            <?php if ($PR > 0): ?>
-                                                    <div class="text-green-600 text-center mb-2 p-2 bg-green-50 rounded">
-                                                        <strong>Promo Discount Applied: -₱<?= number_format($PR, 2) ?></strong>
-                                                    </div>
-                                            <?php endif; ?>
+                                                <?php if (!empty($paid_demos)): ?>
+                                                    <li class="text-blue-600 text-sm mt-2">
+                                                        <strong>Completed Demos:</strong><br>
+                                                        <?= implode(', ', array_map('strtoupper', $paid_demos)) ?>
+                                                    </li>
+                                                <?php endif; ?>
+                                            </ul>
+                                        </div>
 
-                                            <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
-                                                <div class="flex justify-between items-center">
-                                                    <span class="font-bold text-lg">Total Amount:</span>
-                                                    <span
-                                                        class="font-bold text-xl text-green-800">₱<?= number_format($final_total ?? 0, 2) ?></span>
-                                                </div>
+                                        <?php if ($PR > 0): ?>
+                                            <div class="text-green-600 text-center mb-2 p-2 bg-green-50 rounded">
+                                                <strong>Promo Discount Applied: -₱<?= number_format($PR, 2) ?></strong>
                                             </div>
+                                        <?php endif; ?>
+
+                                        <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-bold text-lg">Total Amount:</span>
+                                                <span
+                                                    class="font-bold text-xl text-green-800">₱<?= number_format($final_total ?? 0, 2) ?></span>
+                                            </div>
+                                        </div>
                                     <?php else: ?>
-                                            <!-- For first transactions, show placeholder that will be updated by JavaScript -->
-                                            <div id="chargesPlaceholder">
-                                                <h1 class="font-semibold text-xl mb-2">Charges</h1>
-                                                <div class="text-center text-gray-500 py-8">
-                                                    <i class="fa-solid fa-graduation-cap text-4xl mb-4"></i>
-                                                    <p>Select a program to view charges and demo fees immediately</p>
-                                                </div>
+                                        <!-- For first transactions, show placeholder that will be updated by JavaScript -->
+                                        <div id="chargesPlaceholder">
+                                            <h1 class="font-semibold text-xl mb-2">Charges</h1>
+                                            <div class="text-center text-gray-500 py-8">
+                                                <i class="fa-solid fa-graduation-cap text-4xl mb-4"></i>
+                                                <p>Select a program to view charges and demo fees immediately</p>
                                             </div>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -883,48 +892,48 @@ if (isset($transactions) && count($transactions) > 0) {
                                         </thead>
                                         <tbody>
                                             <?php if (!empty($transactions)): ?>
-                                                    <?php
-                                                    $total_credit = 0;
-                                                    $total_change = 0;
-                                                    foreach ($transactions as $row_transaction):
-                                                        $credit = floatval($row_transaction['cash_received'] ?? 0);
-                                                        $change = floatval($row_transaction['change_amount'] ?? 0);
-                                                        $total_credit += $credit;
-                                                        $total_change += $change;
-                                                        ?>
-                                                            <tr>
-                                                                <td class="border px-2 py-1">
-                                                                    <?= isset($row_transaction['transaction_date']) ? date('Y-m-d', strtotime($row_transaction['transaction_date'])) : 'N/A' ?>
-                                                                </td>
-                                                                <td class="border px-2 py-1">
-                                                                    <?= htmlspecialchars($row_transaction['payment_type'] . " " . ($row_transaction['demo_type'] ?? '')); ?>
-                                                                </td>
-                                                                <td class="border px-2 py-1">₱<?= number_format($credit, 2); ?></td>
-                                                                <td class="border px-2 py-1">₱<?= number_format($change, 2); ?></td>
-                                                            </tr>
-                                                    <?php endforeach; ?>
-                                                    <tr class="bg-gray-100 font-semibold">
-                                                        <td colspan="2" class="border px-2 py-1 text-right">Total:</td>
-                                                        <td class="border px-2 py-1">₱<?= number_format($total_credit, 2); ?>
-                                                        </td>
-                                                        <td class="border px-2 py-1">₱<?= number_format($total_change, 2); ?>
-                                                        </td>
-                                                    </tr>
-                                            <?php else: ?>
+                                                <?php
+                                                $total_credit = 0;
+                                                $total_change = 0;
+                                                foreach ($transactions as $row_transaction):
+                                                    $credit = floatval($row_transaction['cash_received'] ?? 0);
+                                                    $change = floatval($row_transaction['change_amount'] ?? 0);
+                                                    $total_credit += $credit;
+                                                    $total_change += $change;
+                                                    ?>
                                                     <tr>
-                                                        <td colspan="4" class="border px-2 py-1 text-center text-gray-500">
-                                                            <div class="py-4">
-                                                                <div class="text-gray-600 mb-2">
-                                                                    <i class="fa-solid fa-info-circle mr-2"></i>No payment
-                                                                    records found.
-                                                                </div>
-                                                                <div class="text-blue-600 text-sm">
-                                                                    <i class="fa-solid fa-check-circle mr-2"></i>Ready for new
-                                                                    enrollment
-                                                                </div>
-                                                            </div>
+                                                        <td class="border px-2 py-1">
+                                                            <?= isset($row_transaction['transaction_date']) ? date('Y-m-d', strtotime($row_transaction['transaction_date'])) : 'N/A' ?>
                                                         </td>
+                                                        <td class="border px-2 py-1">
+                                                            <?= htmlspecialchars($row_transaction['payment_type'] . " " . ($row_transaction['demo_type'] ?? '')); ?>
+                                                        </td>
+                                                        <td class="border px-2 py-1">₱<?= number_format($credit, 2); ?></td>
+                                                        <td class="border px-2 py-1">₱<?= number_format($change, 2); ?></td>
                                                     </tr>
+                                                <?php endforeach; ?>
+                                                <tr class="bg-gray-100 font-semibold">
+                                                    <td colspan="2" class="border px-2 py-1 text-right">Total:</td>
+                                                    <td class="border px-2 py-1">₱<?= number_format($total_credit, 2); ?>
+                                                    </td>
+                                                    <td class="border px-2 py-1">₱<?= number_format($total_change, 2); ?>
+                                                    </td>
+                                                </tr>
+                                            <?php else: ?>
+                                                <tr>
+                                                    <td colspan="4" class="border px-2 py-1 text-center text-gray-500">
+                                                        <div class="py-4">
+                                                            <div class="text-gray-600 mb-2">
+                                                                <i class="fa-solid fa-info-circle mr-2"></i>No payment
+                                                                records found.
+                                                            </div>
+                                                            <div class="text-blue-600 text-sm">
+                                                                <i class="fa-solid fa-check-circle mr-2"></i>Ready for new
+                                                                enrollment
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
@@ -966,16 +975,16 @@ if (isset($transactions) && count($transactions) > 0) {
                                 ?>
 
                                 <?php foreach ($paymentTypes as $value => $label): ?>
-                                        <?php $isHidden = in_array($value, $hiddenPayments); ?>
-                                        <label
-                                            class="flex items-center mb-2 payment-type-option <?= $isHidden ? 'payment-hidden' : '' ?>"
-                                            data-payment-type="<?= $value ?>">
-                                            <input type="radio" name="type_of_payment" value="<?= $value ?>" class="mr-2"
-                                                onchange="updatePaymentData()" <?= $isHidden ? 'disabled' : '' ?> />
-                                            <span><?= htmlspecialchars($label) ?></span>
-                                            <span class="payment-status text-sm text-gray-500 ml-2"
-                                                style="display: none;"></span>
-                                        </label>
+                                    <?php $isHidden = in_array($value, $hiddenPayments); ?>
+                                    <label
+                                        class="flex items-center mb-2 payment-type-option <?= $isHidden ? 'payment-hidden' : '' ?>"
+                                        data-payment-type="<?= $value ?>">
+                                        <input type="radio" name="type_of_payment" value="<?= $value ?>" class="mr-2"
+                                            onchange="updatePaymentData()" <?= $isHidden ? 'disabled' : '' ?> />
+                                        <span><?= htmlspecialchars($label) ?></span>
+                                        <span class="payment-status text-sm text-gray-500 ml-2"
+                                            style="display: none;"></span>
+                                    </label>
                                 <?php endforeach; ?>
 
                                 <!-- Payment note for cash drawer info -->
