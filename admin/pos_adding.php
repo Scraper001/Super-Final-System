@@ -477,6 +477,42 @@ if (isset($transactions) && count($transactions) > 0) {
         margin: 5px 0;
         font-size: 11px;
     }
+/* Demo Excess Payment Modal Styles */
+.demo-excess-modal .swal2-popup {
+    border-radius: 15px !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2) !important;
+}
+
+.demo-excess-title {
+    color: #1565C0 !important;
+    font-weight: 600 !important;
+}
+
+.demo-excess-option {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.demo-excess-option:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.demo-excess-option:active {
+    transform: translateY(-1px) !important;
+}
+
+/* Loading state for submit button */
+.processing-payment {
+    background: linear-gradient(45deg, #667eea, #764ba2, #667eea) !important;
+    background-size: 200% 200% !important;
+    animation: gradientShift 2s ease infinite !important;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
 </style>
 
 <div class="flex min-h-screen overflow-y-auto">
@@ -525,10 +561,10 @@ if (isset($transactions) && count($transactions) > 0) {
                     </p>
 
                     <?php if (isset($has_balance) && $has_balance): ?>
-                        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-2">
-                            <strong><i class="fa-solid fa-triangle-exclamation mr-2"></i>Alert:</strong> This student
-                            currently has an outstanding balance. Please settle the balance to re-enroll the student.
-                        </div>
+                            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mt-2">
+                                <strong><i class="fa-solid fa-triangle-exclamation mr-2"></i>Alert:</strong> This student
+                                currently has an outstanding balance. Please settle the balance to re-enroll the student.
+                            </div>
                     <?php endif; ?>
                 </div>
 
@@ -611,9 +647,9 @@ if (isset($transactions) && count($transactions) > 0) {
                             <div class="flex items-center justify-between mb-2">
                                 <h2 class="font-semibold">Class Schedule</h2>
                                 <?php if (!$open): ?>
-                                    <button type="button" id="editScheduleBtn" class="schedule-edit-btn">
-                                        <i class="fa-solid fa-edit mr-2"></i>Edit Schedule
-                                    </button>
+                                        <button type="button" id="editScheduleBtn" class="schedule-edit-btn">
+                                            <i class="fa-solid fa-edit mr-2"></i>Edit Schedule
+                                        </button>
                                 <?php endif; ?>
                             </div>
 
@@ -633,7 +669,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                 <thead class="bg-gray-100">
                                     <tr>
                                         <?php foreach (['Select', 'Week Description', 'Training Date', 'Start Time', 'End Time', 'Day'] as $header): ?>
-                                            <th class="border px-2 py-1"><?= htmlspecialchars($header) ?></th>
+                                                <th class="border px-2 py-1"><?= htmlspecialchars($header) ?></th>
                                         <?php endforeach; ?>
                                     </tr>
                                 </thead>
@@ -641,14 +677,14 @@ if (isset($transactions) && count($transactions) > 0) {
                             </table>
 
                             <?php if ($open == false): ?>
-                                <input type="hidden" id="hiddenSchedule"
-                                    value="<?= htmlspecialchars(json_encode($selected_schedules_data ?? [])) ?>"
-                                    name="selected_schedules" />
-                                <input type="hidden" id="maintainedSchedules"
-                                    value="<?= htmlspecialchars(json_encode($maintained_schedules ?? [])) ?>" />
+                                    <input type="hidden" id="hiddenSchedule"
+                                        value="<?= htmlspecialchars(json_encode($selected_schedules_data ?? [])) ?>"
+                                        name="selected_schedules" />
+                                    <input type="hidden" id="maintainedSchedules"
+                                        value="<?= htmlspecialchars(json_encode($maintained_schedules ?? [])) ?>" />
                             <?php else: ?>
-                                <input type="hidden" id="hiddenSchedule" name="selected_schedules" value="[]" />
-                                <input type="" id="maintainedSchedules" value="[]" />
+                                    <input type="hidden" id="hiddenSchedule" name="selected_schedules" value="[]" />
+                                    <input type="" id="maintainedSchedules" value="[]" />
                             <?php endif; ?>
                         </div>
                     </div>
@@ -673,161 +709,161 @@ if (isset($transactions) && count($transactions) > 0) {
                                     <h2 class="font-semibold text-xl mb-2">Description</h2>
 
                                     <?php if ($open == false): ?>
-                                        <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
-                                            <li id="learningMode">
-                                                <strong>Program:</strong>
-                                                <?= htmlspecialchars($row_program['program_name'] ?? "This Data is deleted") ?>
-                                                <span
-                                                    class="inline-block ml-2 px-2 py-1 text-xs font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
-                                                    <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
-                                                        <i class="fa-solid fa-laptop mr-1"></i>
-                                                    <?php else: ?>
-                                                        <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
-                                                    <?php endif; ?>
-                                                    <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
-                                                </span>
-                                            </li>
-                                            <li id="packageInfo">
-                                                <strong>Package:</strong>
-                                                <?= htmlspecialchars($row_promo['package_name'] ?? "Regular") ?>
-                                                <?php if (isset($row_promo['selection_type']) && $row_promo['selection_type'] > 0): ?>
+                                            <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
+                                                <li id="learningMode">
+                                                    <strong>Program:</strong>
+                                                    <?= htmlspecialchars($row_program['program_name'] ?? "This Data is deleted") ?>
                                                     <span
-                                                        class="promo-selection-display promo-option-<?= $row_promo['selection_type'] ?>"
-                                                        style="display: inline-block; margin-left: 8px;">
-                                                        Option <?= $row_promo['selection_type'] ?>
+                                                        class="inline-block ml-2 px-2 py-1 text-xs font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
+                                                        <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
+                                                                <i class="fa-solid fa-laptop mr-1"></i>
+                                                        <?php else: ?>
+                                                                <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
+                                                        <?php endif; ?>
+                                                        <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
                                                     </span>
-                                                <?php endif; ?>
-                                            </li>
-                                            <li id="enrollmentDate">
-                                                <strong>Enrollment Date:</strong> <?= date('Y-m-d H:i:s') ?>
-                                            </li>
-                                            <li id="studentInfo">
-                                                <strong>Student ID:</strong> <?= htmlspecialchars($student_id) ?>
-                                            </li>
-                                            <?php if ($row_promo['package_name'] !== "Regular"): ?>
-                                                <li id="promoInfo" class="text-green-600 font-semibold">
-                                                    <?php
-                                                    $selection_type = intval($row_promo['selection_type'] ?? 1);
-                                                    if ($selection_type <= 2): ?>
-                                                        <strong>Promo Discount:</strong> ₱<?= number_format($PR ?? 0, 2) ?>
-                                                        <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
-                                                            applied</small>
-                                                    <?php else: ?>
-                                                        <strong>Custom Payment Option:</strong> <?= $row_promo['promo_type'] ?>
-                                                        <br><small>Required initial:
-                                                            ₱<?= number_format($row_promo['custom_initial_payment'] ?? 0, 2) ?></small>
+                                                </li>
+                                                <li id="packageInfo">
+                                                    <strong>Package:</strong>
+                                                    <?= htmlspecialchars($row_promo['package_name'] ?? "Regular") ?>
+                                                    <?php if (isset($row_promo['selection_type']) && $row_promo['selection_type'] > 0): ?>
+                                                            <span
+                                                                class="promo-selection-display promo-option-<?= $row_promo['selection_type'] ?>"
+                                                                style="display: inline-block; margin-left: 8px;">
+                                                                Option <?= $row_promo['selection_type'] ?>
+                                                            </span>
                                                     <?php endif; ?>
                                                 </li>
-                                            <?php endif; ?>
-                                        </ul>
+                                                <li id="enrollmentDate">
+                                                    <strong>Enrollment Date:</strong> <?= date('Y-m-d H:i:s') ?>
+                                                </li>
+                                                <li id="studentInfo">
+                                                    <strong>Student ID:</strong> <?= htmlspecialchars($student_id) ?>
+                                                </li>
+                                                <?php if ($row_promo['package_name'] !== "Regular"): ?>
+                                                        <li id="promoInfo" class="text-green-600 font-semibold">
+                                                            <?php
+                                                            $selection_type = intval($row_promo['selection_type'] ?? 1);
+                                                            if ($selection_type <= 2): ?>
+                                                                    <strong>Promo Discount:</strong> ₱<?= number_format($PR ?? 0, 2) ?>
+                                                                    <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
+                                                                        applied</small>
+                                                            <?php else: ?>
+                                                                    <strong>Custom Payment Option:</strong> <?= $row_promo['promo_type'] ?>
+                                                                    <br><small>Required initial:
+                                                                        ₱<?= number_format($row_promo['custom_initial_payment'] ?? 0, 2) ?></small>
+                                                            <?php endif; ?>
+                                                        </li>
+                                                <?php endif; ?>
+                                            </ul>
                                     <?php else: ?>
-                                        <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
-                                            <li id="programName">Select a program to view details</li>
-                                            <li id="learningMode"></li>
-                                            <li id="packageInfo"></li>
-                                            <li id="promoInfo" class="text-green-600 font-semibold hidden"></li>
-                                        </ul>
+                                            <ul id="descriptionList" class="space-y-1 text-sm text-gray-700">
+                                                <li id="programName">Select a program to view details</li>
+                                                <li id="learningMode"></li>
+                                                <li id="packageInfo"></li>
+                                                <li id="promoInfo" class="text-green-600 font-semibold hidden"></li>
+                                            </ul>
                                     <?php endif; ?>
                                 </div>
 
                                 <!-- Charges with proper demo display -->
                                 <div class="w-full p-4 charges-section" id="chargesContainer">
                                     <?php if ($open == false): ?>
-                                        <h1 class="font-semibold text-xl mb-2">Charges</h1>
-
-                                        <div
-                                            class="mb-3 p-2 rounded-lg <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200' ?>">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-sm font-medium">Learning Mode:</span>
-                                                <span
-                                                    class="px-3 py-1 text-sm font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
-                                                    <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
-                                                        <i class="fa-solid fa-laptop mr-1"></i>
-                                                    <?php else: ?>
-                                                        <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
-                                                    <?php endif; ?>
-                                                    <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div class="flex flex-row w-full p-4 gap-4">
-                                            <ul class="flex-1 list-none space-y-1">
-                                                <li>Assessment Fee:
-                                                    ₱<?= number_format($row_program['assesment_fee'] ?? 0, 2) ?></li>
-                                                <li>Tuition Fee: ₱<?= number_format($row_program['tuition_fee'] ?? 0, 2) ?>
-                                                </li>
-                                                <li>Miscellaneous Fee:
-                                                    ₱<?= number_format($row_program['misc_fee'] ?? 0, 2) ?></li>
-                                                <li>Uniform Fee: ₱<?= number_format($row_program['uniform_fee'] ?? 0, 2) ?>
-                                                </li>
-                                                <li>ID Fee: ₱<?= number_format($row_program['id_fee'] ?? 0, 2) ?></li>
-                                                <li>Book Fee: ₱<?= number_format($row_program['book_fee'] ?? 0, 2) ?></li>
-                                                <li>Kit Fee: ₱<?= number_format($row_program['kit_fee'] ?? 0, 2) ?></li>
-                                                <?php if (($row_transaction['learning_mode'] ?? '') === 'Online' && isset($row_program['system_fee'])): ?>
-                                                    <li class="text-blue-600">System Fee:
-                                                        ₱<?= number_format($row_program['system_fee'] ?? 0, 2) ?></li>
-                                                <?php endif; ?>
-                                            </ul>
-
-                                            <!-- Demo fees with correct calculation -->
-                                            <ul class="flex-1 space-y-1 demo-fees-display">
-                                                <li class="demo-fee-calculated">Demo 1 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                    <?php if (in_array('demo1', $paid_demos)): ?>
-                                                        <span class="text-green-600 text-xs ml-1"><i
-                                                                class="fa-solid fa-check-circle"></i> Paid</span>
-                                                    <?php endif; ?>
-                                                </li>
-                                                <li class="demo-fee-calculated">Demo 2 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                    <?php if (in_array('demo2', $paid_demos)): ?>
-                                                        <span class="text-green-600 text-xs ml-1"><i
-                                                                class="fa-solid fa-check-circle"></i> Paid</span>
-                                                    <?php endif; ?>
-                                                </li>
-                                                <li class="demo-fee-calculated">Demo 3 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                    <?php if (in_array('demo3', $paid_demos)): ?>
-                                                        <span class="text-green-600 text-xs ml-1"><i
-                                                                class="fa-solid fa-check-circle"></i> Paid</span>
-                                                    <?php endif; ?>
-                                                </li>
-                                                <li class="demo-fee-calculated">Demo 4 Fee: ₱<?= number_format($CDM, 2) ?>
-                                                    <?php if (in_array('demo4', $paid_demos)): ?>
-                                                        <span class="text-green-600 text-xs ml-1"><i
-                                                                class="fa-solid fa-check-circle"></i> Paid</span>
-                                                    <?php endif; ?>
-                                                </li>
-
-                                                <?php if (!empty($paid_demos)): ?>
-                                                    <li class="text-blue-600 text-sm mt-2">
-                                                        <strong>Completed Demos:</strong><br>
-                                                        <?= implode(', ', array_map('strtoupper', $paid_demos)) ?>
-                                                    </li>
-                                                <?php endif; ?>
-                                            </ul>
-                                        </div>
-
-                                        <?php if ($PR > 0): ?>
-                                            <div class="text-green-600 text-center mb-2 p-2 bg-green-50 rounded">
-                                                <strong>Promo Discount Applied: -₱<?= number_format($PR, 2) ?></strong>
-                                            </div>
-                                        <?php endif; ?>
-
-                                        <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
-                                            <div class="flex justify-between items-center">
-                                                <span class="font-bold text-lg">Total Amount:</span>
-                                                <span
-                                                    class="font-bold text-xl text-green-800">₱<?= number_format($final_total ?? 0, 2) ?></span>
-                                            </div>
-                                        </div>
-                                    <?php else: ?>
-                                        <!-- For first transactions, show placeholder that will be updated by JavaScript -->
-                                        <div id="chargesPlaceholder">
                                             <h1 class="font-semibold text-xl mb-2">Charges</h1>
-                                            <div class="text-center text-gray-500 py-8">
-                                                <i class="fa-solid fa-graduation-cap text-4xl mb-4"></i>
-                                                <p>Select a program to view charges and demo fees immediately</p>
+
+                                            <div
+                                                class="mb-3 p-2 rounded-lg <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200' ?>">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-sm font-medium">Learning Mode:</span>
+                                                    <span
+                                                        class="px-3 py-1 text-sm font-semibold rounded-full <?= ($row_transaction['learning_mode'] ?? '') === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' ?>">
+                                                        <?php if (($row_transaction['learning_mode'] ?? '') === 'Online'): ?>
+                                                                <i class="fa-solid fa-laptop mr-1"></i>
+                                                        <?php else: ?>
+                                                                <i class="fa-solid fa-chalkboard-teacher mr-1"></i>
+                                                        <?php endif; ?>
+                                                        <?= htmlspecialchars($row_transaction['learning_mode'] ?? 'N/A') ?>
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
+
+                                            <div class="flex flex-row w-full p-4 gap-4">
+                                                <ul class="flex-1 list-none space-y-1">
+                                                    <li>Assessment Fee:
+                                                        ₱<?= number_format($row_program['assesment_fee'] ?? 0, 2) ?></li>
+                                                    <li>Tuition Fee: ₱<?= number_format($row_program['tuition_fee'] ?? 0, 2) ?>
+                                                    </li>
+                                                    <li>Miscellaneous Fee:
+                                                        ₱<?= number_format($row_program['misc_fee'] ?? 0, 2) ?></li>
+                                                    <li>Uniform Fee: ₱<?= number_format($row_program['uniform_fee'] ?? 0, 2) ?>
+                                                    </li>
+                                                    <li>ID Fee: ₱<?= number_format($row_program['id_fee'] ?? 0, 2) ?></li>
+                                                    <li>Book Fee: ₱<?= number_format($row_program['book_fee'] ?? 0, 2) ?></li>
+                                                    <li>Kit Fee: ₱<?= number_format($row_program['kit_fee'] ?? 0, 2) ?></li>
+                                                    <?php if (($row_transaction['learning_mode'] ?? '') === 'Online' && isset($row_program['system_fee'])): ?>
+                                                            <li class="text-blue-600">System Fee:
+                                                                ₱<?= number_format($row_program['system_fee'] ?? 0, 2) ?></li>
+                                                    <?php endif; ?>
+                                                </ul>
+
+                                                <!-- Demo fees with correct calculation -->
+                                                <ul class="flex-1 space-y-1 demo-fees-display">
+                                                    <li class="demo-fee-calculated">Demo 1 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                        <?php if (in_array('demo1', $paid_demos)): ?>
+                                                                <span class="text-green-600 text-xs ml-1"><i
+                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
+                                                        <?php endif; ?>
+                                                    </li>
+                                                    <li class="demo-fee-calculated">Demo 2 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                        <?php if (in_array('demo2', $paid_demos)): ?>
+                                                                <span class="text-green-600 text-xs ml-1"><i
+                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
+                                                        <?php endif; ?>
+                                                    </li>
+                                                    <li class="demo-fee-calculated">Demo 3 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                        <?php if (in_array('demo3', $paid_demos)): ?>
+                                                                <span class="text-green-600 text-xs ml-1"><i
+                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
+                                                        <?php endif; ?>
+                                                    </li>
+                                                    <li class="demo-fee-calculated">Demo 4 Fee: ₱<?= number_format($CDM, 2) ?>
+                                                        <?php if (in_array('demo4', $paid_demos)): ?>
+                                                                <span class="text-green-600 text-xs ml-1"><i
+                                                                        class="fa-solid fa-check-circle"></i> Paid</span>
+                                                        <?php endif; ?>
+                                                    </li>
+
+                                                    <?php if (!empty($paid_demos)): ?>
+                                                            <li class="text-blue-600 text-sm mt-2">
+                                                                <strong>Completed Demos:</strong><br>
+                                                                <?= implode(', ', array_map('strtoupper', $paid_demos)) ?>
+                                                            </li>
+                                                    <?php endif; ?>
+                                                </ul>
+                                            </div>
+
+                                            <?php if ($PR > 0): ?>
+                                                    <div class="text-green-600 text-center mb-2 p-2 bg-green-50 rounded">
+                                                        <strong>Promo Discount Applied: -₱<?= number_format($PR, 2) ?></strong>
+                                                    </div>
+                                            <?php endif; ?>
+
+                                            <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
+                                                <div class="flex justify-between items-center">
+                                                    <span class="font-bold text-lg">Total Amount:</span>
+                                                    <span
+                                                        class="font-bold text-xl text-green-800">₱<?= number_format($final_total ?? 0, 2) ?></span>
+                                                </div>
+                                            </div>
+                                    <?php else: ?>
+                                            <!-- For first transactions, show placeholder that will be updated by JavaScript -->
+                                            <div id="chargesPlaceholder">
+                                                <h1 class="font-semibold text-xl mb-2">Charges</h1>
+                                                <div class="text-center text-gray-500 py-8">
+                                                    <i class="fa-solid fa-graduation-cap text-4xl mb-4"></i>
+                                                    <p>Select a program to view charges and demo fees immediately</p>
+                                                </div>
+                                            </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -847,48 +883,48 @@ if (isset($transactions) && count($transactions) > 0) {
                                         </thead>
                                         <tbody>
                                             <?php if (!empty($transactions)): ?>
-                                                <?php
-                                                $total_credit = 0;
-                                                $total_change = 0;
-                                                foreach ($transactions as $row_transaction):
-                                                    $credit = floatval($row_transaction['cash_received'] ?? 0);
-                                                    $change = floatval($row_transaction['change_amount'] ?? 0);
-                                                    $total_credit += $credit;
-                                                    $total_change += $change;
-                                                    ?>
-                                                    <tr>
-                                                        <td class="border px-2 py-1">
-                                                            <?= isset($row_transaction['transaction_date']) ? date('Y-m-d', strtotime($row_transaction['transaction_date'])) : 'N/A' ?>
+                                                    <?php
+                                                    $total_credit = 0;
+                                                    $total_change = 0;
+                                                    foreach ($transactions as $row_transaction):
+                                                        $credit = floatval($row_transaction['cash_received'] ?? 0);
+                                                        $change = floatval($row_transaction['change_amount'] ?? 0);
+                                                        $total_credit += $credit;
+                                                        $total_change += $change;
+                                                        ?>
+                                                            <tr>
+                                                                <td class="border px-2 py-1">
+                                                                    <?= isset($row_transaction['transaction_date']) ? date('Y-m-d', strtotime($row_transaction['transaction_date'])) : 'N/A' ?>
+                                                                </td>
+                                                                <td class="border px-2 py-1">
+                                                                    <?= htmlspecialchars($row_transaction['payment_type'] . " " . ($row_transaction['demo_type'] ?? '')); ?>
+                                                                </td>
+                                                                <td class="border px-2 py-1">₱<?= number_format($credit, 2); ?></td>
+                                                                <td class="border px-2 py-1">₱<?= number_format($change, 2); ?></td>
+                                                            </tr>
+                                                    <?php endforeach; ?>
+                                                    <tr class="bg-gray-100 font-semibold">
+                                                        <td colspan="2" class="border px-2 py-1 text-right">Total:</td>
+                                                        <td class="border px-2 py-1">₱<?= number_format($total_credit, 2); ?>
                                                         </td>
-                                                        <td class="border px-2 py-1">
-                                                            <?= htmlspecialchars($row_transaction['payment_type'] . " " . ($row_transaction['demo_type'] ?? '')); ?>
+                                                        <td class="border px-2 py-1">₱<?= number_format($total_change, 2); ?>
                                                         </td>
-                                                        <td class="border px-2 py-1">₱<?= number_format($credit, 2); ?></td>
-                                                        <td class="border px-2 py-1">₱<?= number_format($change, 2); ?></td>
                                                     </tr>
-                                                <?php endforeach; ?>
-                                                <tr class="bg-gray-100 font-semibold">
-                                                    <td colspan="2" class="border px-2 py-1 text-right">Total:</td>
-                                                    <td class="border px-2 py-1">₱<?= number_format($total_credit, 2); ?>
-                                                    </td>
-                                                    <td class="border px-2 py-1">₱<?= number_format($total_change, 2); ?>
-                                                    </td>
-                                                </tr>
                                             <?php else: ?>
-                                                <tr>
-                                                    <td colspan="4" class="border px-2 py-1 text-center text-gray-500">
-                                                        <div class="py-4">
-                                                            <div class="text-gray-600 mb-2">
-                                                                <i class="fa-solid fa-info-circle mr-2"></i>No payment
-                                                                records found.
+                                                    <tr>
+                                                        <td colspan="4" class="border px-2 py-1 text-center text-gray-500">
+                                                            <div class="py-4">
+                                                                <div class="text-gray-600 mb-2">
+                                                                    <i class="fa-solid fa-info-circle mr-2"></i>No payment
+                                                                    records found.
+                                                                </div>
+                                                                <div class="text-blue-600 text-sm">
+                                                                    <i class="fa-solid fa-check-circle mr-2"></i>Ready for new
+                                                                    enrollment
+                                                                </div>
                                                             </div>
-                                                            <div class="text-blue-600 text-sm">
-                                                                <i class="fa-solid fa-check-circle mr-2"></i>Ready for new
-                                                                enrollment
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
+                                                        </td>
+                                                    </tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
@@ -930,16 +966,16 @@ if (isset($transactions) && count($transactions) > 0) {
                                 ?>
 
                                 <?php foreach ($paymentTypes as $value => $label): ?>
-                                    <?php $isHidden = in_array($value, $hiddenPayments); ?>
-                                    <label
-                                        class="flex items-center mb-2 payment-type-option <?= $isHidden ? 'payment-hidden' : '' ?>"
-                                        data-payment-type="<?= $value ?>">
-                                        <input type="radio" name="type_of_payment" value="<?= $value ?>" class="mr-2"
-                                            onchange="updatePaymentData()" <?= $isHidden ? 'disabled' : '' ?> />
-                                        <span><?= htmlspecialchars($label) ?></span>
-                                        <span class="payment-status text-sm text-gray-500 ml-2"
-                                            style="display: none;"></span>
-                                    </label>
+                                        <?php $isHidden = in_array($value, $hiddenPayments); ?>
+                                        <label
+                                            class="flex items-center mb-2 payment-type-option <?= $isHidden ? 'payment-hidden' : '' ?>"
+                                            data-payment-type="<?= $value ?>">
+                                            <input type="radio" name="type_of_payment" value="<?= $value ?>" class="mr-2"
+                                                onchange="updatePaymentData()" <?= $isHidden ? 'disabled' : '' ?> />
+                                            <span><?= htmlspecialchars($label) ?></span>
+                                            <span class="payment-status text-sm text-gray-500 ml-2"
+                                                style="display: none;"></span>
+                                        </label>
                                 <?php endforeach; ?>
 
                                 <!-- Payment note for cash drawer info -->
@@ -1107,74 +1143,127 @@ if (isset($transactions) && count($transactions) > 0) {
         }
 
         function showExcessPaymentModal(paymentAmount, requiredAmount, excessAmount, paymentType) {
-            let modalContent = `
-                <div style="text-align: left; padding: 15px;">
-                    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 5px; margin-bottom: 15px;">
-                        <h4 style="margin: 0 0 8px 0; color: #856404;">
-                            <i class="fa-solid fa-exclamation-triangle"></i> Excess Payment Detected
+            return new Promise((resolve) => {
+                let modalContent = '';
+
+                if (paymentType === 'initial_payment') {
+                    modalContent = `
+                <div style="text-align: left; padding: 20px;">
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 10px 0; color: #856404;">
+                            <i class="fa-solid fa-exclamation-triangle"></i> Excess Initial Payment Detected
                         </h4>
-                        <div style="font-size: 13px;">
-                            <strong>Required:</strong> ₱${requiredAmount.toLocaleString()}<br>
-                            <strong>Paid:</strong> ₱${paymentAmount.toLocaleString()}<br>
-                            <strong style="color: #d63031;">Excess:</strong> ₱${excessAmount.toLocaleString()}
+                        <div style="font-size: 14px; line-height: 1.5;">
+                            <strong>Required Initial Payment:</strong> ₱${requiredAmount.toLocaleString()}<br>
+                            <strong>Amount Paid:</strong> ₱${paymentAmount.toLocaleString()}<br>
+                            <strong style="color: #d63031;">Excess Amount:</strong> ₱${excessAmount.toLocaleString()}
                         </div>
                     </div>
-                    <p style="margin-bottom: 15px;">How would you like to handle the excess payment?</p>
+                    
+                    <p style="margin-bottom: 20px; font-weight: 500;">How would you like to handle the excess payment?</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="excess-option-btn" data-option="treat_as_full" style="padding: 15px; border: 2px solid #28a745; background: #d4edda; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.3s;">
+                            <div style="font-weight: bold; color: #155724; margin-bottom: 5px;">
+                                1️⃣ Treat Payment as Full Initial
+                            </div>
+                            <small style="color: #155724;">Treat the entire payment as part of the initial tuition to reduce the balance of all demo sessions equally.</small>
+                        </button>
+                        
+                        <button class="excess-option-btn" data-option="allocate_to_demos" style="padding: 15px; border: 2px solid #007bff; background: #d1ecf1; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.3s;">
+                            <div style="font-weight: bold; color: #004085; margin-bottom: 5px;">
+                                2️⃣ Allocate Excess to Demos (Fixed)
+                            </div>
+                            <small style="color: #004085;">Apply initial payment first, then allocate excess to demo sessions in order (Demo 1, Demo 2, etc.) without changing original per-demo amounts.</small>
+                        </button>
+                        
+                        <button class="excess-option-btn" data-option="return_as_change" style="padding: 15px; border: 2px solid #ffc107; background: #fff3cd; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.3s;">
+                            <div style="font-weight: bold; color: #856404; margin-bottom: 5px;">
+                                3️⃣ Return the Excess as Change
+                            </div>
+                            <small style="color: #856404;">Only process the required initial amount, and return ₱${excessAmount.toLocaleString()} to the customer.</small>
+                        </button>
+                    </div>
+                </div>
             `;
-
-            if (paymentType === 'initial_payment') {
-                modalContent += `
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button class="excess-option-btn" data-option="treat_as_full" style="padding: 10px; border: 2px solid #28a745; background: #d4edda; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>1️⃣ Treat as Full Initial Payment</strong><br>
-                            <small>Reduce all demo balances equally</small>
+                } else if (paymentType === 'demo_payment') {
+                    modalContent = `
+                <div style="text-align: left; padding: 20px;">
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 10px 0; color: #856404;">
+                            <i class="fa-solid fa-exclamation-triangle"></i> Excess Demo Payment Detected
+                        </h4>
+                        <div style="font-size: 14px; line-height: 1.5;">
+                            <strong>Required Demo Payment:</strong> ₱${requiredAmount.toLocaleString()}<br>
+                            <strong>Amount Paid:</strong> ₱${paymentAmount.toLocaleString()}<br>
+                            <strong style="color: #d63031;">Excess Amount:</strong> ₱${excessAmount.toLocaleString()}
+                        </div>
+                    </div>
+                    
+                    <p style="margin-bottom: 20px; font-weight: 500;">How would you like to handle the excess demo payment?</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="excess-option-btn" data-option="add_to_next_demo" style="padding: 15px; border: 2px solid #28a745; background: #d4edda; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.3s;">
+                            <div style="font-weight: bold; color: #155724; margin-bottom: 5px;">
+                                💳 Add Excess to Next Demo
+                            </div>
+                            <small style="color: #155724;">Carry the overpayment of ₱${excessAmount.toLocaleString()} to the next unpaid or partially paid demo session.</small>
                         </button>
-                        <button class="excess-option-btn" data-option="allocate_to_demos" style="padding: 10px; border: 2px solid #007bff; background: #d1ecf1; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>2️⃣ Allocate Excess to Demos</strong><br>
-                            <small>Apply excess to demos in order (Demo 1, 2, 3, 4)</small>
+                        
+                        <button class="excess-option-btn" data-option="credit_to_account" style="padding: 15px; border: 2px solid #007bff; background: #d1ecf1; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.3s;">
+                            <div style="font-weight: bold; color: #004085; margin-bottom: 5px;">
+                                💰 Credit to Student's Account
+                            </div>
+                            <small style="color: #004085;">Save the excess of ₱${excessAmount.toLocaleString()} as a balance for future use by this student.</small>
                         </button>
-                        <button class="excess-option-btn" data-option="return_as_change" style="padding: 10px; border: 2px solid #ffc107; background: #fff3cd; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>3️⃣ Return as Change</strong><br>
-                            <small>Process only required amount, return ₱${excessAmount.toLocaleString()}</small>
+                        
+                        <button class="excess-option-btn" data-option="return_as_change" style="padding: 15px; border: 2px solid #ffc107; background: #fff3cd; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.3s;">
+                            <div style="font-weight: bold; color: #856404; margin-bottom: 5px;">
+                                💵 Return as Change
+                            </div>
+                            <small style="color: #856404;">Give the extra amount of ₱${excessAmount.toLocaleString()} back to the customer.</small>
                         </button>
                     </div>
-                `;
-            } else if (paymentType === 'demo_payment') {
-                modalContent += `
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button class="excess-option-btn" data-option="add_to_next_demo" style="padding: 10px; border: 2px solid #28a745; background: #d4edda; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>💳 Add to Next Demo</strong><br>
-                            <small>Apply ₱${excessAmount.toLocaleString()} to next unpaid demo</small>
-                        </button>
-                        <button class="excess-option-btn" data-option="credit_to_account" style="padding: 10px; border: 2px solid #007bff; background: #d1ecf1; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>💰 Credit to Account</strong><br>
-                            <small>Save ₱${excessAmount.toLocaleString()} for future payments</small>
-                        </button>
-                        <button class="excess-option-btn" data-option="return_as_change" style="padding: 10px; border: 2px solid #ffc107; background: #fff3cd; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>💵 Return as Change</strong><br>
-                            <small>Return ₱${excessAmount.toLocaleString()} to customer</small>
-                        </button>
-                    </div>
-                `;
-            }
+                </div>
+            `;
+                }
 
-            modalContent += `</div>`;
-
-            return new Promise((resolve) => {
                 Swal.fire({
                     title: 'Handle Excess Payment',
                     html: modalContent,
-                    width: '500px',
+                    width: '600px',
                     showCancelButton: true,
                     showConfirmButton: false,
                     cancelButtonText: 'Cancel Payment',
                     allowOutsideClick: false,
+                    customClass: {
+                        container: 'excess-payment-modal'
+                    },
                     didOpen: () => {
                         document.querySelectorAll('.excess-option-btn').forEach(btn => {
+                            btn.addEventListener('mouseenter', () => {
+                                btn.style.transform = 'translateY(-2px)';
+                                btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                            });
+
+                            btn.addEventListener('mouseleave', () => {
+                                btn.style.transform = 'translateY(0)';
+                                btn.style.boxShadow = 'none';
+                            });
+
                             btn.addEventListener('click', () => {
                                 const option = btn.dataset.option;
                                 Swal.close();
-                                resolve(processExcessOption(option, paymentAmount, requiredAmount, excessAmount));
+
+                                const result = {
+                                    choice: option,
+                                    excessAmount: excessAmount,
+                                    paymentAmount: paymentAmount,
+                                    requiredAmount: requiredAmount,
+                                    description: getExcessDescription(option, excessAmount, paymentType)
+                                };
+
+                                resolve(result);
                             });
                         });
                     }
@@ -1185,6 +1274,65 @@ if (isset($transactions) && count($transactions) > 0) {
                 });
             });
         }
+
+        function getExcessDescription(option, excessAmount, paymentType) {
+            const descriptions = {
+                'treat_as_full': 'Entire payment treated as initial - demo balances reduced equally',
+                'allocate_to_demos': 'Excess allocated to demos in sequential order',
+                'add_to_next_demo': `₱${excessAmount.toLocaleString()} credited to next demo`,
+                'credit_to_account': `₱${excessAmount.toLocaleString()} credited to student account`,
+                'return_as_change': `₱${excessAmount.toLocaleString()} returned as change`
+            };
+
+            return descriptions[option] || 'Excess payment processed';
+        }
+        async function checkForExcessPayment() {
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
+            const totalPayment = parseFloat($('#totalPayment').val()) || 0;
+
+            if (!paymentType || totalPayment <= 0) {
+                return null;
+            }
+
+            let requiredAmount = 0;
+            const demoType = $('#demoSelect').val();
+
+            switch (paymentType) {
+                case 'initial_payment':
+                    if (currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment) {
+                        requiredAmount = parseFloat(currentPackage.custom_initial_payment);
+                    } else {
+                        requiredAmount = parseFloat(currentProgram?.initial_fee || 0);
+                    }
+                    break;
+                case 'demo_payment':
+                    if (demoType) {
+                        requiredAmount = calculateDemoFeeJS();
+                    }
+                    break;
+                case 'full_payment':
+                    requiredAmount = currentBalance > 0 ? currentBalance : parseFloat($('#finalTotalHidden').val()) || 0;
+                    break;
+                case 'reservation':
+                    requiredAmount = parseFloat(currentProgram?.reservation_fee || 0);
+                    break;
+                default:
+                    return null;
+            }
+
+            const isExcess = totalPayment > requiredAmount && requiredAmount > 0;
+
+            if (isExcess && (paymentType === 'initial_payment' || paymentType === 'demo_payment')) {
+                const excessAmount = totalPayment - requiredAmount;
+                console.log(`💰 Excess payment detected: ₱${excessAmount.toFixed(2)} for ${paymentType}`);
+
+                const result = await showExcessPaymentModal(totalPayment, requiredAmount, excessAmount, paymentType);
+                return result;
+            }
+
+            return null;
+        }
+
         function processExcessOption(option, paymentAmount, requiredAmount, excessAmount) {
             const result = {
                 excessOption: option,
@@ -1238,28 +1386,33 @@ if (isset($transactions) && count($transactions) > 0) {
          * Add excess payment info to receipt
          */
         function addExcessInfoToReceipt(excessData) {
-            if (excessData.excessOption === 'none') return;
+            if (!excessData || !excessData.choice) return;
 
             // Remove existing excess info
             $('#excessPaymentInfo').remove();
 
             const excessInfoHtml = `
-                <div id="excessPaymentInfo" style="background: #e8f5e8; border: 1px solid #28a745; border-radius: 5px; padding: 10px; margin: 10px 0; font-size: 12px;">
-                    <div style="font-weight: bold; color: #155724; margin-bottom: 5px;">
-                        <i class="fa-solid fa-info-circle"></i> Excess Payment Handling
-                    </div>
-                    <div><strong>Payment:</strong> ₱${excessData.paymentAmount.toLocaleString()} | <strong>Required:</strong> ₱${excessData.requiredAmount.toLocaleString()} | <strong>Excess:</strong> ₱${excessData.excessAmount.toLocaleString()}</div>
-                    <div style="margin-top: 5px;"><strong>Action:</strong> ${excessData.description}</div>
-                    ${excessData.changeAmount > 0 ? `<div style="color: #d63031;"><strong>Change Given:</strong> ₱${excessData.changeAmount.toLocaleString()}</div>` : ''}
-                    <div style="font-size: 10px; color: #6c757d; margin-top: 5px;">Processed: ${new Date().toLocaleString()} by Scraper001</div>
-                </div>
-            `;
+        <div id="excessPaymentInfo" style="background: #e8f5e8; border: 1px solid #28a745; border-radius: 8px; padding: 15px; margin: 15px 0; font-size: 13px;">
+            <div style="font-weight: bold; color: #155724; margin-bottom: 8px;">
+                <i class="fa-solid fa-info-circle"></i> Excess Payment Handling
+            </div>
+            <div style="margin-bottom: 5px;">
+                <strong>Payment:</strong> ₱${excessData.paymentAmount.toLocaleString()} | 
+                <strong>Required:</strong> ₱${excessData.requiredAmount.toLocaleString()} | 
+                <strong>Excess:</strong> ₱${excessData.excessAmount.toLocaleString()}
+            </div>
+            <div style="margin-bottom: 8px;">
+                <strong>Action:</strong> ${excessData.description}
+            </div>
+            <div style="font-size: 11px; color: #6c757d;">
+                Processed: ${new Date().toLocaleString()} by Scraper001
+            </div>
+        </div>
+    `;
 
             // Insert before payment schedule
             $('.p-4:last').before(excessInfoHtml);
         }
-
-
 
         async function autoSearchCashDrawer() {
             if (!isWebSerialSupported()) {
@@ -1973,20 +2126,32 @@ if (isset($transactions) && count($transactions) > 0) {
         const updateDebugInfo = () => {
             const scheduleJson = $('#hiddenSchedule').val() || '[]';
             let selectedCount = 0;
+            let scheduleParseStatus = 'Valid';
+
             try {
                 const parsed = JSON.parse(scheduleJson);
                 selectedCount = Array.isArray(parsed) ? parsed.length : 0;
             } catch (e) {
-                selectedCount = 'Invalid JSON';
+                selectedCount = 'Parse Error';
+                scheduleParseStatus = 'Invalid JSON';
             }
 
-            const promoSelection = currentPackage ? `Option ${currentPackage.selection_type || 1} - ${currentPackage.package_name}` : 'No Promo';
+            const domCheckedCount = document.querySelectorAll('.row-checkbox:checked').length;
+            const validationStatus = validateScheduleSelection() ? 'PASS' : 'FAIL';
+            const paymentType = $('input[name="type_of_payment"]:checked').val() || 'None';
 
             $('#debugMaintained').text(`Maintained Schedules: ${maintainedSchedules.length} items`);
-            $('#debugSelected').text(`Selected Schedules: ${selectedCount} items`);
-            $('#debugValidation').text(`Validation Status: ${validateScheduleSelection() ? 'PASS' : 'FAIL'}`);
+            $('#debugSelected').text(`Selected Schedules: ${selectedCount} items (${scheduleParseStatus})`);
+            $('#debugValidation').text(`Validation Status: ${validationStatus} (Payment: ${paymentType}, DOM: ${domCheckedCount})`);
             $('#debugCashDrawer').text(`Cash Drawer: ${cashDrawerConnected ? 'Connected' : 'Disconnected'}`);
-            $('#debugPromo').text(`Promo Selection: ${promoSelection}`);
+
+            if (currentPackage) {
+                $('#debugPromo').text(`Promo Selection: Option ${currentPackage.selection_type} - ${currentPackage.package_name}`);
+            } else {
+                $('#debugPromo').text(`Promo Selection: No Promo`);
+            }
+
+            console.log(`🐛 Debug Info Updated - Selected: ${selectedCount}, DOM: ${domCheckedCount}, Validation: ${validationStatus} | User: Scraper001 | Time: 2025-06-21 09:13:47`);
         };
 
         const ajax = (url, data = {}, success, error = 'Request failed') => {
@@ -2180,30 +2345,116 @@ if (isset($transactions) && count($transactions) > 0) {
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const learningMode = $('input[name="learning_mode"]:checked').val();
 
+            console.log(`🔍 Validating schedule selection - Payment: ${paymentType}, Learning: ${learningMode} | User: Scraper001 | Time: 2025-06-21 09:13:47`);
+
             if (paymentType === 'initial_payment') {
+                // FIXED: Get schedule data with proper error handling
                 const scheduleJson = $('#hiddenSchedule').val() || '[]';
                 let currentSchedules = [];
+                let schedulesValid = false;
+
+                // FIXED: Improved JSON parsing with better error handling
                 try {
                     currentSchedules = JSON.parse(scheduleJson);
                     if (!Array.isArray(currentSchedules)) {
+                        console.warn('⚠️ Schedule data is not an array, resetting to empty array');
                         currentSchedules = [];
                     }
                 } catch (e) {
+                    console.error('❌ JSON parsing error for schedules:', e);
                     currentSchedules = [];
                 }
 
-                if (currentSchedules.length === 0 && maintainedSchedules.length === 0) {
+                // FIXED: Check maintained schedules with proper validation
+                let maintainedValid = false;
+                if (maintainedSchedules && Array.isArray(maintainedSchedules) && maintainedSchedules.length > 0) {
+                    maintainedValid = true;
+                    console.log(`✅ Found ${maintainedSchedules.length} maintained schedules`);
+                }
+
+                // FIXED: Check currently selected schedules
+                let currentValid = false;
+                if (currentSchedules && currentSchedules.length > 0) {
+                    currentValid = true;
+                    console.log(`✅ Found ${currentSchedules.length} currently selected schedules`);
+                }
+
+                // FIXED: Check DOM checkboxes as final validation
+                let domValid = false;
+                const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+                if (checkedBoxes && checkedBoxes.length > 0) {
+                    domValid = true;
+                    console.log(`✅ Found ${checkedBoxes.length} checked schedule boxes in DOM`);
+                }
+
+                // FIXED: Any of these validation methods should pass
+                schedulesValid = maintainedValid || currentValid || domValid;
+
+                console.log(`📊 Schedule validation status:
+            - Maintained schedules: ${maintainedValid} (${maintainedSchedules.length} items)
+            - Current schedules: ${currentValid} (${currentSchedules.length} items)
+            - DOM checkboxes: ${domValid} (${checkedBoxes ? checkedBoxes.length : 0} checked)
+            - Overall valid: ${schedulesValid}
+        `);
+
+                if (!schedulesValid) {
                     $('#scheduleWarning').show().text('⚠️ Initial payment requires schedule selection');
+                    console.error('❌ Schedule validation failed for initial payment');
                     return false;
+                } else {
+                    // FIXED: If DOM has selections but hidden field is empty, update it
+                    if (domValid && !currentValid) {
+                        updateHiddenScheduleFromDOM();
+                    }
                 }
             }
 
-            // Enhanced: Reservation handling
+            function updateHiddenScheduleFromDOM() {
+                console.log('🔄 Updating hidden schedule field from DOM selections | User: Scraper001 | Time: 2025-06-21 09:13:47');
+
+                const newSelectedSchedules = [];
+
+                document.querySelectorAll('.row-checkbox:checked').forEach(checkbox => {
+                    const row = checkbox.closest('tr');
+                    const rowId = row.getAttribute('data-row-id');
+
+                    if (rowId) {
+                        const scheduleData = {
+                            id: rowId,
+                            schedule_id: rowId,
+                            week_description: row.cells[1].textContent.trim(),
+                            weekDescription: row.cells[1].textContent.trim(),
+                            training_date: row.cells[2].textContent.trim(),
+                            trainingDate: row.cells[2].textContent.trim(),
+                            start_time: row.cells[3].textContent.trim(),
+                            startTime: row.cells[3].textContent.trim(),
+                            end_time: row.cells[4].textContent.trim(),
+                            endTime: row.cells[4].textContent.trim(),
+                            day_of_week: row.cells[5].textContent.trim(),
+                            dayOfWeek: row.cells[5].textContent.trim()
+                        };
+
+                        newSelectedSchedules.push(scheduleData);
+                    }
+                });
+
+                // Update the global selectedSchedules array
+                selectedSchedules = newSelectedSchedules;
+
+                // Update the hidden field
+                const scheduleJson = JSON.stringify(selectedSchedules);
+                $('#hiddenSchedule').val(scheduleJson);
+
+                console.log(`✅ Updated hidden schedule field with ${newSelectedSchedules.length} schedules:`, scheduleJson);
+            }
+
+
+            // FIXED: Enhanced reservation handling
             if (paymentType === 'reservation') {
                 if (learningMode === 'F2F' || learningMode === 'Online') {
                     $('#scheduleWarning').hide();
 
-                    // Uncheck and disable all checkboxes
+                    // Uncheck and disable all checkboxes for reservation
                     document.querySelectorAll(".row-checkbox").forEach(el => {
                         el.checked = false;
                         el.disabled = true;
@@ -2213,15 +2464,18 @@ if (isset($transactions) && count($transactions) > 0) {
                     const alertDiv = document.getElementById('alert');
                     if (alertDiv) {
                         alertDiv.innerText = 'Reservation mode: Schedules not required for F2F/Online learning';
-                        document.getElementById("hiddenSchedule").value = "[]"
+                        document.getElementById("hiddenSchedule").value = "[]";
                         alertDiv.style.display = 'block';
                     }
 
+                    console.log('✅ Reservation validation passed - schedules not required for F2F/Online');
                     return true;
                 }
 
+                // For other learning modes, check if schedules are available
                 if (maintainedSchedules.length > 0) {
                     $('#scheduleWarning').hide();
+                    console.log('✅ Reservation validation passed - using maintained schedules');
                     return true;
                 }
 
@@ -2238,11 +2492,13 @@ if (isset($transactions) && count($transactions) > 0) {
 
                 if (currentSchedules.length === 0) {
                     $('#scheduleWarning').show().text('⚠️ Reservation payment requires schedule selection');
+                    console.error('❌ Schedule validation failed for reservation payment');
                     return false;
                 }
             }
 
             $('#scheduleWarning').hide();
+            console.log('✅ Schedule validation passed');
             return true;
         };
 
@@ -2260,14 +2516,14 @@ if (isset($transactions) && count($transactions) > 0) {
         };
 
         // ENHANCED: Payment calculation with corrected change logic and promo validation
-        const updatePaymentAmountsEnhanced = () => {
+        function updatePaymentAmountsEnhanced() {
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const demoType = $('#demoSelect').val();
             let amount = 0;
 
             if (!currentProgram) return;
 
-            // Enhanced: Update payment note to reflect optional cash drawer
+            // Show payment processing note
             if (paymentType) {
                 if (paymentType === 'reservation' || paymentType === 'initial_payment') {
                     $('#paymentNote').show().text('Payment processing - cash drawer not required');
@@ -2278,10 +2534,12 @@ if (isset($transactions) && count($transactions) > 0) {
                 $('#paymentNote').hide();
             }
 
+            // Validate schedule selection
             if (paymentType) {
                 validateScheduleSelection();
             }
 
+            // Calculate payment amounts based on type
             switch (paymentType) {
                 case 'full_payment':
                     if (currentBalance > 0) {
@@ -2291,17 +2549,21 @@ if (isset($transactions) && count($transactions) > 0) {
                     }
                     break;
                 case 'initial_payment':
-                    // Enhanced: Handle custom initial payments for promo options 3-4
                     if (currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment) {
                         amount = parseFloat(currentPackage.custom_initial_payment);
-                        console.log(`💰 Using custom initial payment: ₱${amount} for Option ${currentPackage.selection_type}`);
                     } else {
                         amount = parseFloat(currentProgram.initial_fee || 0);
                     }
                     break;
                 case 'demo_payment':
+                    // FIXED: Always calculate demo fee even if no demo type selected yet
                     if (demoType) {
                         amount = calculateDemoFeeJS();
+                        console.log(`💰 Demo fee calculated for ${demoType}: ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+                    } else {
+                        // Still show a demo fee even without selection for reference
+                        amount = calculateDemoFeeJS();
+                        console.log(`💰 Demo fee calculated (no demo selected): ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
                     }
                     break;
                 case 'reservation':
@@ -2309,23 +2571,314 @@ if (isset($transactions) && count($transactions) > 0) {
                     break;
             }
 
+            // Auto-fill total payment if empty
             if (!$('#totalPayment').val() || $('#totalPayment').val() == '0') {
                 $('#totalPayment').val(amount.toFixed(2));
             }
 
             $('#cashToPay').val($('#totalPayment').val());
 
-            // ENHANCED: Correct change calculation
+            // Calculate change
             const cash = parseFloat($('#cash').val()) || 0;
             const cashToPay = parseFloat($('#cashToPay').val()) || 0;
-            const change = Math.max(0, cash - cashToPay); // Ensure change is never negative
+            const change = Math.max(0, cash - cashToPay);
             $('#change').val(change.toFixed(2));
 
             updateDemoFeesDisplay();
             updateDebugInfo();
 
-            console.log(`💳 Payment amounts updated - Type: ${paymentType}, Amount: ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        };
+            console.log(`💳 Payment amounts updated - Type: ${paymentType}, Amount: ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+        }
+
+        function validateDemoPayment() {
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
+            const demoType = $('#demoSelect').val();
+            const totalPayment = parseFloat($('#totalPayment').val()) || 0;
+
+            if (paymentType === 'demo_payment') {
+                if (!demoType) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Demo Type Required',
+                        text: 'Please select which demo you want to pay for before processing payment.',
+                        confirmButtonText: 'OK'
+                    });
+                    return false;
+                }
+
+                if (totalPayment <= 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Amount Required',
+                        text: 'Please enter a valid payment amount for the demo.',
+                        confirmButtonText: 'OK'
+                    });
+                    return false;
+                }
+
+                console.log(`✅ Demo payment validation passed - Demo: ${demoType}, Amount: ₱${totalPayment} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+            }
+
+            return true;
+        }
+
+
+        async function showDemoExcessPaymentModal(paymentAmount, requiredAmount, excessAmount, demoType) {
+            return new Promise((resolve) => {
+                const modalContent = `
+            <div style="text-align: left; padding: 20px;">
+                <div style="background: #e3f2fd; border: 1px solid #2196F3; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #1565C0;">
+                        <i class="fa-solid fa-coins"></i> Demo Payment Excess Detected
+                    </h4>
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <strong>Demo Type:</strong> ${demoType.replace('demo', 'Demo ').replace(/(\d)/, '$1')}<br>
+                        <strong>Required Amount:</strong> ₱${requiredAmount.toLocaleString()}<br>
+                        <strong>Amount Paid:</strong> ₱${paymentAmount.toLocaleString()}<br>
+                        <strong style="color: #d63031;">Excess Amount:</strong> ₱${excessAmount.toLocaleString()}
+                    </div>
+                </div>
+                
+                <p style="margin-bottom: 20px; font-weight: 500; color: #333;">
+                    You have paid more than required for this demo. How would you like to allocate the excess payment?
+                </p>
+                
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <button class="demo-excess-option" data-option="allocate_to_next_demo" 
+                            style="padding: 18px; border: 2px solid #4CAF50; background: #e8f5e9; border-radius: 10px; cursor: pointer; text-align: left; transition: all 0.3s; position: relative;">
+                        <div style="font-weight: bold; color: #2e7d32; margin-bottom: 8px; font-size: 16px;">
+                            🎯 Allocate to Next Demo
+                        </div>
+                        <div style="color: #2e7d32; font-size: 14px; line-height: 1.4;">
+                            Apply the excess ₱${excessAmount.toLocaleString()} to the next unpaid demo session.
+                            This will reduce the amount needed for your next demo payment.
+                        </div>
+                        <div style="position: absolute; top: 15px; right: 15px; background: #4CAF50; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                            1
+                        </div>
+                    </button>
+                    
+                    <button class="demo-excess-option" data-option="credit_to_account" 
+                            style="padding: 18px; border: 2px solid #2196F3; background: #e3f2fd; border-radius: 10px; cursor: pointer; text-align: left; transition: all 0.3s; position: relative;">
+                        <div style="font-weight: bold; color: #1565C0; margin-bottom: 8px; font-size: 16px;">
+                            💰 Credit to Student Account
+                        </div>
+                        <div style="color: #1565C0; font-size: 14px; line-height: 1.4;">
+                            Save the excess ₱${excessAmount.toLocaleString()} as account credit.
+                            Can be used for future payments, demos, or other program expenses.
+                        </div>
+                        <div style="position: absolute; top: 15px; right: 15px; background: #2196F3; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                            2
+                        </div>
+                    </button>
+                    
+                    <button class="demo-excess-option" data-option="return_as_change" 
+                            style="padding: 18px; border: 2px solid #FF9800; background: #fff3e0; border-radius: 10px; cursor: pointer; text-align: left; transition: all 0.3s; position: relative;">
+                        <div style="font-weight: bold; color: #F57C00; margin-bottom: 8px; font-size: 16px;">
+                            💵 Return as Change
+                        </div>
+                        <div style="color: #F57C00; font-size: 14px; line-height: 1.4;">
+                            Return the excess ₱${excessAmount.toLocaleString()} as cash change to the customer.
+                            Only the required demo amount will be processed.
+                        </div>
+                        <div style="position: absolute; top: 15px; right: 15px; background: #FF9800; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">
+                            3
+                        </div>
+                    </button>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 12px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #6c757d;">
+                    <small style="color: #6c757d; font-style: italic;">
+                        💡 Tip: Option 1 is recommended if you plan to pay for more demos. 
+                        Option 2 is best for long-term students. Option 3 if you want immediate cash back.
+                    </small>
+                </div>
+            </div>
+        `;
+
+                Swal.fire({
+                    title: 'Allocate Demo Excess Payment',
+                    html: modalContent,
+                    width: '650px',
+                    showCancelButton: true,
+                    showConfirmButton: false,
+                    cancelButtonText: 'Cancel Payment',
+                    allowOutsideClick: false,
+                    customClass: {
+                        container: 'demo-excess-modal',
+                        title: 'demo-excess-title'
+                    },
+                    didOpen: () => {
+                        // Add hover effects and click handlers
+                        document.querySelectorAll('.demo-excess-option').forEach(btn => {
+                            btn.addEventListener('mouseenter', () => {
+                                btn.style.transform = 'translateY(-3px)';
+                                btn.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
+                                btn.style.borderWidth = '3px';
+                            });
+
+                            btn.addEventListener('mouseleave', () => {
+                                btn.style.transform = 'translateY(0)';
+                                btn.style.boxShadow = 'none';
+                                btn.style.borderWidth = '2px';
+                            });
+
+                            btn.addEventListener('click', async () => {
+                                const option = btn.dataset.option;
+
+                                // Show confirmation with preview
+                                const preview = await showDemoAllocationPreview(option, excessAmount, demoType, requiredAmount);
+
+                                if (preview) {
+                                    Swal.close();
+
+                                    const result = {
+                                        choice: option,
+                                        excessAmount: excessAmount,
+                                        paymentAmount: paymentAmount,
+                                        requiredAmount: requiredAmount,
+                                        demoType: demoType,
+                                        description: getDemoExcessDescription(option, excessAmount, demoType),
+                                        allocationDetails: preview
+                                    };
+
+                                    console.log(`✅ Demo excess choice selected: ${option} | Amount: ₱${excessAmount} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+                                    resolve(result);
+                                }
+                            });
+                        });
+                    }
+                }).then((result) => {
+                    if (result.isDismissed) {
+                        console.log(`❌ Demo excess payment cancelled by user | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+                        resolve(null); // Cancel payment
+                    }
+                });
+            });
+        }
+        async function showDemoAllocationPreview(option, excessAmount, currentDemo, requiredAmount) {
+            return new Promise((resolve) => {
+                let previewContent = '';
+
+                switch (option) {
+                    case 'allocate_to_next_demo':
+                        const nextDemo = findNextUnpaidDemoForPreview(currentDemo);
+                        if (nextDemo) {
+                            previewContent = `
+                        <div style="text-align: left;">
+                            <h4 style="color: #2e7d32; margin-bottom: 15px;">
+                                <i class="fa-solid fa-preview"></i> Allocation Preview
+                            </h4>
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <div style="margin-bottom: 10px;">
+                                    <strong>Current Demo (${currentDemo.replace('demo', 'Demo ')}):</strong> ₱${requiredAmount.toLocaleString()} ✅ Will be marked as paid
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <strong>Next Demo (${nextDemo.replace('demo', 'Demo ')}):</strong> ₱${excessAmount.toLocaleString()} will be credited
+                                </div>
+                                <div style="color: #2e7d32; font-weight: bold;">
+                                    Total processed: ₱${(requiredAmount + excessAmount).toLocaleString()}
+                                </div>
+                            </div>
+                            <p>Proceed with this allocation?</p>
+                        </div>
+                    `;
+                        } else {
+                            previewContent = `
+                        <div style="text-align: left;">
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <strong>⚠️ No Next Demo Available</strong><br>
+                                All demos appear to be paid. The excess will be returned as change instead.
+                            </div>
+                            <p>Proceed with returning ₱${excessAmount.toLocaleString()} as change?</p>
+                        </div>
+                    `;
+                        }
+                        break;
+
+                    case 'credit_to_account':
+                        previewContent = `
+                    <div style="text-align: left;">
+                        <h4 style="color: #1565C0; margin-bottom: 15px;">
+                            <i class="fa-solid fa-piggy-bank"></i> Account Credit Preview
+                        </h4>
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Demo Payment:</strong> ₱${requiredAmount.toLocaleString()} ✅ Will be processed
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <strong>Account Credit:</strong> ₱${excessAmount.toLocaleString()} will be saved
+                            </div>
+                            <div style="color: #1565C0; font-weight: bold;">
+                                Available for future: Demos, fees, or other program expenses
+                            </div>
+                        </div>
+                        <p>Proceed with crediting ₱${excessAmount.toLocaleString()} to student account?</p>
+                    </div>
+                `;
+                        break;
+
+                    case 'return_as_change':
+                        previewContent = `
+                    <div style="text-align: left;">
+                        <h4 style="color: #F57C00; margin-bottom: 15px;">
+                            <i class="fa-solid fa-hand-holding-usd"></i> Change Return Preview
+                        </h4>
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Demo Payment:</strong> ₱${requiredAmount.toLocaleString()} ✅ Will be processed
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <strong>Cash Change:</strong> ₱${excessAmount.toLocaleString()} will be returned
+                            </div>
+                            <div style="color: #F57C00; font-weight: bold;">
+                                Customer receives immediate cash back
+                            </div>
+                        </div>
+                        <p>Proceed with returning ₱${excessAmount.toLocaleString()} as change?</p>
+                    </div>
+                `;
+                        break;
+                }
+
+                Swal.fire({
+                    title: 'Confirm Allocation',
+                    html: previewContent,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Proceed',
+                    cancelButtonText: 'Go Back',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    resolve(result.isConfirmed);
+                });
+            });
+        }
+
+        function findNextUnpaidDemoForPreview(currentDemo) {
+            const demos = ['demo1', 'demo2', 'demo3', 'demo4'];
+            const currentIndex = demos.indexOf(currentDemo);
+
+            // Check paid demos from global variable
+            for (let i = currentIndex + 1; i < demos.length; i++) {
+                if (!paidDemos.includes(demos[i])) {
+                    return demos[i];
+                }
+            }
+
+            return null;
+        }
+        function getDemoExcessDescription(option, excessAmount, demoType) {
+            const descriptions = {
+                'allocate_to_next_demo': `₱${excessAmount.toLocaleString()} allocated to next demo`,
+                'credit_to_account': `₱${excessAmount.toLocaleString()} credited to student account`,
+                'return_as_change': `₱${excessAmount.toLocaleString()} returned as change`
+            };
+
+            return descriptions[option] || 'Demo excess processed';
+        }
+
 
         window.updatePaymentData = updatePaymentAmountsEnhanced;
 
@@ -2719,6 +3272,9 @@ if (isset($transactions) && count($transactions) > 0) {
             const rowId = row.getAttribute('data-row-id');
             const paymentType = $('input[name="type_of_payment"]:checked').val();
 
+            console.log(`📝 Schedule row selection - ID: ${rowId}, Checked: ${checkbox.checked}, Payment: ${paymentType} | User: Scraper001 | Time: 2025-06-21 09:13:47`);
+
+            // FIXED: Handle locked schedules properly
             if (row.classList.contains('schedule-locked') && paymentType === 'reservation') {
                 if (!checkbox.checked) {
                     checkbox.checked = true;
@@ -2732,6 +3288,7 @@ if (isset($transactions) && count($transactions) > 0) {
                 }
             }
 
+            // FIXED: Create proper schedule data structure
             const scheduleData = {
                 id: rowId,
                 schedule_id: rowId,
@@ -2752,79 +3309,86 @@ if (isset($transactions) && count($transactions) > 0) {
                 if (existingIndex === -1) {
                     selectedSchedules.push(scheduleData);
                     row.classList.add('bg-blue-50');
+                    console.log(`✅ Added schedule ${rowId} to selection`);
                 }
             } else {
                 selectedSchedules = selectedSchedules.filter(s => s.id !== rowId);
                 row.classList.remove('bg-blue-50');
+                console.log(`➖ Removed schedule ${rowId} from selection`);
             }
 
+            // FIXED: Always update hidden field with proper JSON
             try {
                 const scheduleJson = JSON.stringify(selectedSchedules);
                 $('#hiddenSchedule').val(scheduleJson);
+                console.log(`📄 Updated hidden field:`, scheduleJson);
             } catch (e) {
+                console.error('❌ Error updating hidden field:', e);
                 $('#hiddenSchedule').val('[]');
             }
 
-            validateScheduleSelection();
+            // FIXED: Immediate validation after selection
+            const validationResult = validateScheduleSelection();
+            console.log(`🔍 Immediate validation result: ${validationResult}`);
+
             updateDebugInfo();
         };
-
         // Enhanced: Form submission with promo selection validation and proper change calculation
+        // FIXED: Enhanced form submission with better schedule validation
+        // ENHANCED: Form submission with excess payment handling
         $('#posForm').submit(async function (e) {
             e.preventDefault();
 
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const totalPayment = parseFloat($('#totalPayment').val()) || 0;
-            const learningMode = $('input[name="learning_mode"]:checked').val();
+            const demoType = $('#demoSelect').val();
 
-            // Calculate required amount based on payment type
-            let requiredAmount = 0;
-            switch (paymentType) {
-                case 'initial_payment':
-                    if (currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment) {
-                        requiredAmount = parseFloat(currentPackage.custom_initial_payment);
-                    } else {
-                        requiredAmount = parseFloat(currentProgram.initial_fee || 0);
-                    }
-                    break;
-                case 'demo_payment':
-                    requiredAmount = calculateDemoFeeJS();
-                    break;
-                case 'reservation':
-                    requiredAmount = parseFloat(currentProgram.reservation_fee || 0);
-                    break;
-                case 'full_payment':
-                    requiredAmount = currentBalance > 0 ? currentBalance : parseFloat($('#finalTotalHidden').val()) || 0;
-                    break;
+            console.log(`🚀 Form submission started - Payment: ${paymentType}, Amount: ₱${totalPayment}, Demo: ${demoType} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
+            // ENHANCED: Validate demo payment first
+            if (!validateDemoPayment()) {
+                return;
             }
 
-            // Check for excess payment
+            // ENHANCED: Check for excess payment (including demo payments)
             let excessData = null;
-            if (totalPayment > requiredAmount && (paymentType === 'initial_payment' || paymentType === 'demo_payment')) {
-                excessData = await checkExcessPayment(totalPayment, requiredAmount, paymentType);
 
-                if (!excessData) {
-                    return; // Payment cancelled
+            if (paymentType === 'demo_payment' && demoType) {
+                const requiredAmount = calculateDemoFeeJS();
+
+                if (totalPayment > requiredAmount && requiredAmount > 0) {
+                    const excessAmount = totalPayment - requiredAmount;
+                    console.log(`💰 Demo excess detected: ₱${excessAmount.toFixed(2)} for ${demoType} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
+                    excessData = await showDemoExcessPaymentModal(totalPayment, requiredAmount, excessAmount, demoType);
+
+                    if (!excessData) {
+                        console.log(`❌ Demo payment cancelled due to excess handling | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+                        return; // User cancelled
+                    }
                 }
+            } else if (paymentType === 'initial_payment') {
+                // Handle initial payment excess (your existing code)
+                const requiredAmount = currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment
+                    ? parseFloat(currentPackage.custom_initial_payment)
+                    : parseFloat(currentProgram?.initial_fee || 0);
 
-                // Update payment amount based on excess handling
-                if (excessData.processedAmount !== totalPayment) {
-                    $('#totalPayment').val(excessData.processedAmount.toFixed(2));
-                    $('#cashToPay').val(excessData.processedAmount.toFixed(2));
+                if (totalPayment > requiredAmount && requiredAmount > 0) {
+                    const excessAmount = totalPayment - requiredAmount;
+                    excessData = await showExcessPaymentModal(totalPayment, requiredAmount, excessAmount, paymentType);
+
+                    if (!excessData) {
+                        return; // User cancelled
+                    }
                 }
-
-                // Add excess info to receipt
-                addExcessInfoToReceipt(excessData);
             }
 
-            // Rest of your existing validation code...
+            // Basic validation
             const studentId = $('input[name="student_id"]').val() || "";
             const programId = $('#programSelect').val() || "";
             const cash = parseFloat($('#cash').val()) || 0;
-            const cashToPay = parseFloat($('#cashToPay').val()) || 0;
 
-            // Basic validation (keep your existing validation)
-            if (!studentId || !programId || !paymentType || parseFloat($('#totalPayment').val()) <= 0) {
+            if (!studentId || !programId || !paymentType || totalPayment <= 0) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Validation Error',
@@ -2833,33 +3397,56 @@ if (isset($transactions) && count($transactions) > 0) {
                 return;
             }
 
-            // Create form data with excess payment info
+            // Show processing indicator
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalBtnText = submitBtn.html();
+            submitBtn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-2"></i>Processing...');
+
+            // Create form data with excess payment information
             const formData = new FormData();
             formData.append('student_id', studentId);
             formData.append('program_id', programId);
-            formData.append('learning_mode', learningMode);
+            formData.append('learning_mode', $('input[name="learning_mode"]:checked').val());
             formData.append('type_of_payment', paymentType);
             formData.append('package_id', $('#packageSelect').val() || 'Regular');
 
-            // Add excess payment data
+            // Add demo type for demo payments
+            if (paymentType === 'demo_payment' && demoType) {
+                formData.append('demo_type', demoType);
+            }
+
+            // Add excess payment data if present
             if (excessData) {
+                formData.append('has_excess_payment', 'true');
+                formData.append('excess_choice', excessData.choice);
                 formData.append('excess_amount', excessData.excessAmount.toString());
-                formData.append('excess_option', excessData.excessOption);
-                formData.append('excess_description', excessData.description);
                 formData.append('original_payment_amount', excessData.paymentAmount.toString());
+                formData.append('required_payment_amount', excessData.requiredAmount.toString());
+
+                // Add demo-specific data
+                if (paymentType === 'demo_payment') {
+                    formData.append('excess_demo_type', excessData.demoType);
+                    if (excessData.allocationDetails) {
+                        formData.append('excess_allocations', JSON.stringify(excessData.allocationDetails));
+                    }
+                }
+
+                console.log(`💰 Excess data prepared for submission:`, excessData);
+            } else {
+                formData.append('has_excess_payment', 'false');
             }
 
-            // Rest of your existing form data
+            // Add other form data
+            formData.append('selected_schedules', $('#hiddenSchedule').val() || '[]');
+            formData.append('sub_total', $('#subtotalHidden').val() || '0');
+            formData.append('final_total', $('#finalTotalHidden').val() || '0');
             formData.append('cash', cash.toString());
-            formData.append('total_payment', parseFloat($('#totalPayment').val()).toString());
-            formData.append('cash_to_pay', parseFloat($('#cashToPay').val()).toString());
+            formData.append('total_payment', totalPayment.toString());
+            formData.append('promo_applied', $('#promoAppliedHidden').val() || '0');
+            formData.append('program_details', $('#programDetailsHidden').val() || '{}');
+            formData.append('package_details', $('#packageDetailsHidden').val() || '{}');
 
-            // Add other existing fields...
-            if (paymentType === 'demo_payment') {
-                formData.append('demo_type', $('#demoSelect').val());
-            }
-
-            // Continue with your existing AJAX submission...
+            // Submit to backend
             $.ajax({
                 url: 'functions/ajax/process_enrollment.php',
                 type: 'POST',
@@ -2867,25 +3454,34 @@ if (isset($transactions) && count($transactions) > 0) {
                 processData: false,
                 contentType: false,
                 dataType: 'json',
+                timeout: 30000,
                 success: function (response) {
-                    if (response.success) {
-                        let successMessage = `Payment processed successfully!`;
+                    console.log(`✅ Payment response received:`, response);
 
-                        if (excessData && excessData.excessOption !== 'none') {
-                            successMessage += `\n\nExcess Payment: ₱${excessData.excessAmount.toLocaleString()}`;
-                            successMessage += `\nAction: ${excessData.description}`;
-                            if (excessData.changeAmount > 0) {
-                                successMessage += `\nChange Given: ₱${excessData.changeAmount.toLocaleString()}`;
-                            }
+                    if (response.success) {
+                        let successMessage = `Demo payment of ₱${totalPayment.toLocaleString()} for ${demoType.replace('demo', 'Demo ').replace(/(\d)/, '$1')} processed successfully!`;
+
+                        // Add excess payment information to success message
+                        if (response.excess_processing && excessData) {
+                            successMessage += `\n\n💰 Excess Payment Handled:`;
+                            successMessage += `\n• Choice: ${excessData.choice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+                            successMessage += `\n• Excess Amount: ₱${excessData.excessAmount.toLocaleString()}`;
+                            successMessage += `\n• Action: ${excessData.description}`;
+                        }
+
+                        // Add excess info to receipt if applicable
+                        if (excessData) {
+                            addExcessInfoToReceipt(excessData);
                         }
 
                         Swal.fire({
                             icon: 'success',
-                            title: 'Payment Successful!',
+                            title: 'Demo Payment Successful!',
                             text: successMessage,
                             confirmButtonText: 'Print Receipt',
                             showCancelButton: true,
-                            cancelButtonText: 'Continue'
+                            cancelButtonText: 'Continue',
+                            timer: 8000
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 printReceiptSection2();
@@ -2893,23 +3489,34 @@ if (isset($transactions) && count($transactions) > 0) {
                                 window.location.reload();
                             }
                         });
+
                     } else {
+                        console.error(`❌ Payment failed:`, response.message);
                         Swal.fire({
                             icon: 'error',
-                            title: 'Payment Failed',
-                            text: response.message || 'Failed to process payment. Please try again.'
+                            title: 'Demo Payment Failed',
+                            text: response.message || 'Failed to process demo payment. Please try again.',
+                            confirmButtonText: 'Try Again'
                         });
                     }
                 },
-                error: function () {
+                error: function (xhr, status, error) {
+                    console.error(`❌ AJAX error:`, error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Connection Error',
-                        text: 'Failed to connect to server. Please try again.'
+                        text: 'Failed to connect to server. Please check your connection and try again.',
+                        confirmButtonText: 'Retry'
                     });
+                },
+                complete: function () {
+                    // Re-enable submit button
+                    submitBtn.prop('disabled', false).html(originalBtnText);
                 }
             });
         });
+
+
         // ========================================================================================
         // ENHANCED SYSTEM INITIALIZATION WITH PROMO SELECTION SUPPORT
         // ========================================================================================
