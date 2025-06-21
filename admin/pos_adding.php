@@ -347,56 +347,12 @@ if (isset($transactions) && count($transactions) > 0) {
         font-size: 12px;
     }
 
-    .schedule-validation-error {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-        color: white;
-        padding: 12px;
-        border-radius: 8px;
-        margin: 10px 0;
-        font-size: 14px;
-        animation: shake 0.5s ease-in-out;
-    }
-
-    @keyframes shake {
-
-        0%,
-        100% {
-            transform: translateX(0);
-        }
-
-        25% {
-            transform: translateX(-5px);
-        }
-
-        75% {
-            transform: translateX(5px);
-        }
-    }
-
-    .payment-calculation-info {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 10px;
-        border-radius: 6px;
-        margin: 10px 0;
-        font-size: 13px;
-    }
-
     .demo-fee-calculated {
         background: #e8f5e8;
         border-left: 4px solid #28a745;
         padding: 8px;
         margin: 5px 0;
         font-weight: bold;
-    }
-
-    .current-balance-display {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        padding: 10px;
-        border-radius: 8px;
-        margin: 10px 0;
-        font-weight: bold;
-        text-align: center;
     }
 
     .program-details-section,
@@ -406,76 +362,235 @@ if (isset($transactions) && count($transactions) > 0) {
         visibility: visible !important;
     }
 
-    /* Schedule Edit Button Styles */
-    .schedule-edit-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        cursor: pointer;
-        margin: 10px 0;
-        transition: all 0.3s ease;
-    }
-
-    .schedule-edit-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    }
-
-    .schedule-edit-modal {
+    /* Excess Payment Modal Styles */
+    .excess-payment-modal {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
         display: flex;
         align-items: center;
         justify-content: center;
+        animation: fadeIn 0.3s ease-out;
     }
 
-    .schedule-edit-content {
+    .excess-payment-content {
         background: white;
-        padding: 20px;
-        border-radius: 10px;
-        max-width: 80%;
-        max-height: 80%;
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
         overflow-y: auto;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        animation: slideInUp 0.4s ease-out;
     }
 
-    /* Enhanced Promo Selection Display Styles */
-    .promo-selection-display {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .excess-option {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .excess-option:hover {
+        border-color: #007bff;
+        background: #e3f2fd;
+        transform: translateY(-2px);
+    }
+
+    .excess-option.selected {
+        border-color: #28a745;
+        background: #d4edda;
+    }
+
+    .excess-option-title {
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 5px;
+    }
+
+    .excess-option-description {
+        color: #6c757d;
+        font-size: 14px;
+    }
+
+    .excess-breakdown {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 15px 0;
+    }
+
+    .excess-breakdown-title {
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 10px;
+    }
+
+    .excess-calculation {
+        display: flex;
+        justify-content: space-between;
         margin: 5px 0;
+        padding: 5px 0;
+        border-bottom: 1px dotted #dee2e6;
+    }
+
+    .excess-calculation:last-child {
+        border-bottom: none;
+        font-weight: bold;
+        color: #dc3545;
+    }
+
+    .demo-allocation-preview {
+        background: #e8f5e8;
+        border: 1px solid #c3e6cb;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+    }
+
+    .demo-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .demo-item:last-child {
+        border-bottom: none;
+    }
+
+    .demo-status {
+        padding: 3px 8px;
+        border-radius: 12px;
         font-size: 12px;
         font-weight: bold;
     }
 
-    .promo-option-1,
-    .promo-option-2 {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    .demo-paid {
+        background: #d4edda;
+        color: #155724;
     }
 
-    .promo-option-3,
-    .promo-option-4 {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    .demo-partial {
+        background: #fff3cd;
+        color: #856404;
     }
 
-    .custom-payment-info {
-        background: #fef3c7;
-        border: 1px solid #f59e0b;
-        color: #92400e;
-        padding: 8px;
-        border-radius: 4px;
-        margin: 5px 0;
-        font-size: 11px;
+    .demo-unpaid {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .excess-btn-primary {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .excess-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .excess-btn-secondary {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .excess-btn-secondary:hover {
+        background: #5a6268;
+        transform: translateY(-2px);
+    }
+
+    .payment-summary-enhanced {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+    }
+
+    .payment-summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 8px 0;
+        padding: 5px 0;
+    }
+
+    .payment-summary-row.total {
+        border-top: 2px solid rgba(255, 255, 255, 0.3);
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 15px;
+        padding-top: 15px;
+    }
+
+    .excess-highlight {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        margin: 10px 0;
+        text-align: center;
+        font-weight: bold;
+        animation: pulseExcess 2s infinite;
+    }
+
+    @keyframes pulseExcess {
+
+        0%,
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        50% {
+            transform: scale(1.02);
+            opacity: 0.9;
+        }
     }
 </style>
 
@@ -519,9 +634,8 @@ if (isset($transactions) && count($transactions) > 0) {
             <div class="bg-white rounded-xl border-2 p-6 min-h-screen">
                 <!-- Header -->
                 <div class="mb-6">
-                    <h1 class="text-2xl font-bold">Care Pro POS System</h1>
-                    <p class="italic">Enhanced POS System with Promo Selection Options (1-4) - Updated
-                        <?= date('Y-m-d H:i:s') ?>
+                    <h1 class="text-2xl font-bold">Care Pro POS System with Excess Payment Handling</h1>
+                    <p class="italic">Enhanced POS System with Excess Payment Management - Updated 2025-06-21 06:07:34
                     </p>
 
                     <?php if (isset($has_balance) && $has_balance): ?>
@@ -538,8 +652,7 @@ if (isset($transactions) && count($transactions) > 0) {
                     <span id="debugMaintained">Maintained Schedules: Loading...</span><br>
                     <span id="debugSelected">Selected Schedules: Loading...</span><br>
                     <span id="debugValidation">Validation Status: Loading...</span><br>
-                    <span id="debugCashDrawer">Cash Drawer: Loading...</span><br>
-                    <span id="debugPromo">Promo Selection: Loading...</span>
+                    <span id="debugExcess">Excess Handler: Ready</span>
                 </div>
                 <button type="button" onclick="toggleDebug()" class="bg-gray-200 px-3 py-1 rounded text-sm mb-4">
                     <i class="fa-solid fa-bug mr-1"></i>Toggle Debug Info
@@ -583,7 +696,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                 </select>
                             </div>
 
-                            <!-- Package with Enhanced Selection Display -->
+                            <!-- Package -->
                             <div class="flex items-center">
                                 <span class="font-semibold w-32">Package:</span>
                                 <select id="packageSelect" name="package_id" required
@@ -592,29 +705,12 @@ if (isset($transactions) && count($transactions) > 0) {
                                 </select>
                             </div>
                             <span class="text-sm italic text-yellow-500" id="locked_warning"></span>
-
-                            <!-- Enhanced Promo Selection Information Display -->
-                            <div id="promoSelectionInfo" class="hidden">
-                                <div class="promo-selection-display" id="promoSelectionDisplay">
-                                    <i class="fa-solid fa-tag mr-2"></i>
-                                    <span id="promoSelectionText">Selection information will appear here</span>
-                                </div>
-                                <div class="custom-payment-info" id="customPaymentInfo" style="display: none;">
-                                    <i class="fa-solid fa-info-circle mr-1"></i>
-                                    <span id="customPaymentText">Custom payment information</span>
-                                </div>
-                            </div>
                         </div>
 
-                        <!-- Enhanced Schedule Table with Edit Button -->
+                        <!-- Enhanced Schedule Table -->
                         <div class="flex-1">
                             <div class="flex items-center justify-between mb-2">
                                 <h2 class="font-semibold">Class Schedule</h2>
-                                <?php if (!$open): ?>
-                                    <button type="button" id="editScheduleBtn" class="schedule-edit-btn">
-                                        <i class="fa-solid fa-edit mr-2"></i>Edit Schedule
-                                    </button>
-                                <?php endif; ?>
                             </div>
 
                             <div id="scheduleMaintained" class="schedule-maintained" style="display: none;">
@@ -648,7 +744,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                     value="<?= htmlspecialchars(json_encode($maintained_schedules ?? [])) ?>" />
                             <?php else: ?>
                                 <input type="hidden" id="hiddenSchedule" name="selected_schedules" value="[]" />
-                                <input type="" id="maintainedSchedules" value="[]" />
+                                <input type="hidden" id="maintainedSchedules" value="[]" />
                             <?php endif; ?>
                         </div>
                     </div>
@@ -659,7 +755,7 @@ if (isset($transactions) && count($transactions) > 0) {
 
                     <!-- Receipt and Payment Section -->
                     <div class="flex gap-4">
-                        <!-- Receipt with proper demo display -->
+                        <!-- Receipt -->
                         <div class="flex-1 border-2 bg-white rounded-lg shadow-md max-w-3xl mx-auto my-4"
                             id="receiptSection">
                             <div class="bg-gray-200 p-4 rounded-t-lg text-center">
@@ -690,13 +786,6 @@ if (isset($transactions) && count($transactions) > 0) {
                                             <li id="packageInfo">
                                                 <strong>Package:</strong>
                                                 <?= htmlspecialchars($row_promo['package_name'] ?? "Regular") ?>
-                                                <?php if (isset($row_promo['selection_type']) && $row_promo['selection_type'] > 0): ?>
-                                                    <span
-                                                        class="promo-selection-display promo-option-<?= $row_promo['selection_type'] ?>"
-                                                        style="display: inline-block; margin-left: 8px;">
-                                                        Option <?= $row_promo['selection_type'] ?>
-                                                    </span>
-                                                <?php endif; ?>
                                             </li>
                                             <li id="enrollmentDate">
                                                 <strong>Enrollment Date:</strong> <?= date('Y-m-d H:i:s') ?>
@@ -706,17 +795,9 @@ if (isset($transactions) && count($transactions) > 0) {
                                             </li>
                                             <?php if ($row_promo['package_name'] !== "Regular"): ?>
                                                 <li id="promoInfo" class="text-green-600 font-semibold">
-                                                    <?php
-                                                    $selection_type = intval($row_promo['selection_type'] ?? 1);
-                                                    if ($selection_type <= 2): ?>
-                                                        <strong>Promo Discount:</strong> ₱<?= number_format($PR ?? 0, 2) ?>
-                                                        <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
-                                                            applied</small>
-                                                    <?php else: ?>
-                                                        <strong>Custom Payment Option:</strong> <?= $row_promo['promo_type'] ?>
-                                                        <br><small>Required initial:
-                                                            ₱<?= number_format($row_promo['custom_initial_payment'] ?? 0, 2) ?></small>
-                                                    <?php endif; ?>
+                                                    <strong>Promo Discount:</strong> ₱<?= number_format($PR ?? 0, 2) ?>
+                                                    <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
+                                                        applied</small>
                                                 </li>
                                             <?php endif; ?>
                                         </ul>
@@ -730,7 +811,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                     <?php endif; ?>
                                 </div>
 
-                                <!-- Charges with proper demo display -->
+                                <!-- Charges -->
                                 <div class="w-full p-4 charges-section" id="chargesContainer">
                                     <?php if ($open == false): ?>
                                         <h1 class="font-semibold text-xl mb-2">Charges</h1>
@@ -770,7 +851,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                                 <?php endif; ?>
                                             </ul>
 
-                                            <!-- Demo fees with correct calculation -->
+                                            <!-- Demo fees -->
                                             <ul class="flex-1 space-y-1 demo-fees-display">
                                                 <li class="demo-fee-calculated">Demo 1 Fee: ₱<?= number_format($CDM, 2) ?>
                                                     <?php if (in_array('demo1', $paid_demos)): ?>
@@ -820,7 +901,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                             </div>
                                         </div>
                                     <?php else: ?>
-                                        <!-- For first transactions, show placeholder that will be updated by JavaScript -->
+                                        <!-- For first transactions, show placeholder -->
                                         <div id="chargesPlaceholder">
                                             <h1 class="font-semibold text-xl mb-2">Charges</h1>
                                             <div class="text-center text-gray-500 py-8">
@@ -858,7 +939,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                                     ?>
                                                     <tr>
                                                         <td class="border px-2 py-1">
-                                                            <?= isset($row_transaction['transaction_date']) ? date('Y-m-d', strtotime($row_transaction['transaction_date'])) : 'N/A' ?>
+                                                            <?= isset($row_transaction['transaction_date']) ? date('Y-m-d', strtotime($row_transaction['transaction_date'])) : date('Y-m-d') ?>
                                                         </td>
                                                         <td class="border px-2 py-1">
                                                             <?= htmlspecialchars($row_transaction['payment_type'] . " " . ($row_transaction['demo_type'] ?? '')); ?>
@@ -942,13 +1023,13 @@ if (isset($transactions) && count($transactions) > 0) {
                                     </label>
                                 <?php endforeach; ?>
 
-                                <!-- Payment note for cash drawer info -->
+                                <!-- Payment note -->
                                 <div id="paymentNote" class="payment-note" style="display: none;">
                                     <i class="fa-solid fa-info-circle mr-2"></i>
-                                    <strong>Note:</strong> Cash drawer will open automatically (except for reservations)
+                                    <strong>Note:</strong> Processing with excess payment handling enabled
                                 </div>
 
-                                <!-- Demo Selection with preserved selection -->
+                                <!-- Demo Selection -->
                                 <div id="demoSelection" class="mt-3" style="display: none;">
                                     <label class="block text-sm font-semibold mb-2">Select Demo:</label>
                                     <select id="demoSelect" name="demo_type" class="w-full border rounded px-2 py-1">
@@ -978,7 +1059,7 @@ if (isset($transactions) && count($transactions) > 0) {
                                     class="border-2 rounded px-2 py-1 outline-none" readonly step="0.01" />
                             </div>
 
-                            <!-- Hidden fields -->
+                            <!-- Hidden fields for excess handling -->
                             <input type="hidden" name="program_details" id="programDetailsHidden" />
                             <input type="hidden" name="package_details" id="packageDetailsHidden" />
                             <input type="hidden" name="subtotal" id="subtotalHidden" />
@@ -988,6 +1069,9 @@ if (isset($transactions) && count($transactions) > 0) {
                                 value="<?= htmlspecialchars(json_encode($paid_demos ?? [])) ?>" />
                             <input type="hidden" name="paid_payment_types" id="paidPaymentTypesField"
                                 value="<?= htmlspecialchars(json_encode($paid_payment_types ?? [])) ?>" />
+                            <input type="hidden" name="excess_choice" id="excessChoiceField" value="" />
+                            <input type="hidden" name="excess_amount" id="excessAmountField" value="0" />
+                            <input type="hidden" name="excess_allocations" id="excessAllocationsField" value="[]" />
 
                             <button type="submit"
                                 class="w-full px-4 py-3 bg-indigo-400 text-white rounded hover:bg-indigo-500">
@@ -1001,38 +1085,90 @@ if (isset($transactions) && count($transactions) > 0) {
     </div>
 </div>
 
-<!-- Schedule Edit Modal -->
-<div id="scheduleEditModal" class="schedule-edit-modal" style="display: none;">
-    <div class="schedule-edit-content">
+<!-- Excess Payment Modal -->
+<div id="excessPaymentModal" class="excess-payment-modal" style="display: none;">
+    <div class="excess-payment-content">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold"><i class="fa-solid fa-calendar-alt mr-2"></i>Edit Schedule</h2>
-            <button type="button" id="closeScheduleModal" class="text-gray-500 hover:text-gray-700">
+            <h2 class="text-2xl font-bold text-gray-800">
+                <i class="fa-solid fa-coins mr-2 text-yellow-500"></i>Excess Payment Detected
+            </h2>
+            <button type="button" id="closeExcessModal" class="text-gray-500 hover:text-gray-700">
                 <i class="fa-solid fa-times text-xl"></i>
             </button>
         </div>
-        <div id="scheduleEditContent">
-            <p class="text-gray-600 mb-4">Update your schedule selection below:</p>
-            <table id="editScheduleTable" class="w-full border-collapse border text-sm">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="border px-2 py-1">Select</th>
-                        <th class="border px-2 py-1">Week Description</th>
-                        <th class="border px-2 py-1">Training Date</th>
-                        <th class="border px-2 py-1">Start Time</th>
-                        <th class="border px-2 py-1">End Time</th>
-                        <th class="border px-2 py-1">Day</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+
+        <div class="excess-highlight">
+            <i class="fa-solid fa-exclamation-triangle mr-2"></i>
+            You have paid more than the required amount. Please choose how to handle the excess payment.
         </div>
+
+        <!-- Payment Summary -->
+        <div class="payment-summary-enhanced">
+            <h3 class="font-bold mb-3"><i class="fa-solid fa-calculator mr-2"></i>Payment Summary</h3>
+            <div class="payment-summary-row">
+                <span>Required Payment:</span>
+                <span id="excessRequiredAmount">₱0.00</span>
+            </div>
+            <div class="payment-summary-row">
+                <span>Amount Paid:</span>
+                <span id="excessPaidAmount">₱0.00</span>
+            </div>
+            <div class="payment-summary-row total">
+                <span>Excess Amount:</span>
+                <span id="excessDisplayAmount">₱0.00</span>
+            </div>
+        </div>
+
+        <!-- Excess Options -->
+        <div id="excessOptions">
+            <h3 class="font-bold text-lg mb-3">How would you like to handle the excess?</h3>
+
+            <!-- Option 1: Treat as Full Initial -->
+            <div class="excess-option" data-choice="treat_as_initial">
+                <div class="excess-option-title">
+                    <i class="fa-solid fa-expand-arrows-alt mr-2 text-blue-500"></i>1️⃣ Treat Payment as Full Initial
+                </div>
+                <div class="excess-option-description">
+                    Apply the entire payment to reduce all demo session balances equally.
+                </div>
+            </div>
+
+            <!-- Option 2: Allocate to Demos -->
+            <div class="excess-option" data-choice="allocate_to_demos">
+                <div class="excess-option-title">
+                    <i class="fa-solid fa-layer-group mr-2 text-green-500"></i>2️⃣ Allocate Excess to Demos (Sequential)
+                </div>
+                <div class="excess-option-description">
+                    Apply initial payment first, then allocate excess to demo sessions in order (Demo 1, Demo 2, etc.).
+                </div>
+            </div>
+
+            <!-- Option 3: Return as Change -->
+            <div class="excess-option" data-choice="return_as_change">
+                <div class="excess-option-title">
+                    <i class="fa-solid fa-hand-holding-usd mr-2 text-orange-500"></i>3️⃣ Return Excess as Change
+                </div>
+                <div class="excess-option-description">
+                    Process only the required amount and return the excess to the customer.
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Allocation Preview -->
+        <div id="demoAllocationPreview" class="demo-allocation-preview" style="display: none;">
+            <h4 class="font-bold mb-2">
+                <i class="fa-solid fa-eye mr-2"></i>Demo Payment Preview
+            </h4>
+            <div id="demoPreviewContent"></div>
+        </div>
+
+        <!-- Action Buttons -->
         <div class="flex justify-end gap-3 mt-6">
-            <button type="button" id="cancelScheduleEdit" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+            <button type="button" id="cancelExcessChoice" class="excess-btn-secondary">
                 <i class="fa-solid fa-times mr-2"></i>Cancel
             </button>
-            <button type="button" id="saveScheduleChanges"
-                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                <i class="fa-solid fa-save mr-2"></i>Save Changes
+            <button type="button" id="confirmExcessChoice" class="excess-btn-primary" disabled>
+                <i class="fa-solid fa-check mr-2"></i>Apply Choice
             </button>
         </div>
     </div>
@@ -1040,7 +1176,9 @@ if (isset($transactions) && count($transactions) > 0) {
 
 <script>
     $(document).ready(function () {
-        // Enhanced Global variables with promo selection support
+        // =============================================================================================
+        // GLOBAL VARIABLES
+        // =============================================================================================
         let selectedSchedules = [];
         let currentProgram = null;
         let currentPackage = null;
@@ -1048,13 +1186,15 @@ if (isset($transactions) && count($transactions) > 0) {
         let paidPaymentTypes = <?= json_encode($paid_payment_types ?? []) ?>;
         let allPrograms = [];
 
-        // Cash Drawer Variables
-        let serialPort = null;
-        let writer = null;
-        let availablePorts = [];
-        let cashDrawerConnected = false;
-        let monitoringInterval = null;
-        let connectionCheckInterval = 5000;
+        // Excess payment handling variables
+        let excessPaymentData = {
+            isExcess: false,
+            requiredAmount: 0,
+            paidAmount: 0,
+            excessAmount: 0,
+            choice: null,
+            allocations: []
+        };
 
         // Maintained schedules from first transaction
         let maintainedSchedules = [];
@@ -1077,466 +1217,384 @@ if (isset($transactions) && count($transactions) > 0) {
             payment_type: "<?= isset($row_transaction['payment_type']) ? $row_transaction['payment_type'] : '' ?>",
             program_id: "<?= isset($row_transaction['program_id']) ? $row_transaction['program_id'] : '' ?>",
             package_name: "<?= isset($row_transaction['package_name']) ? $row_transaction['package_name'] : '' ?>",
-            schedule_ids: "<?= isset($row_transaction['schedule_ids']) ? $row_transaction['schedule_ids'] : '' ?>",
             learning_mode: "<?= isset($row_transaction['learning_mode']) ? $row_transaction['learning_mode'] : '' ?>"
         };
 
         // =============================================================================================
-        // ENHANCED: CASH DRAWER FUNCTIONS WITH RESERVATION EXCLUSION
+        // ESSENTIAL AJAX AND LOADING FUNCTIONS
         // =============================================================================================
-
-        function isWebSerialSupported() {
-            return 'serial' in navigator;
-        }
-
-
-        async function checkExcessPayment(paymentAmount, requiredAmount, paymentType) {
-            const excess = paymentAmount - requiredAmount;
-
-            if (excess > 0.01) { // Small threshold for floating point precision
-                const result = await showExcessPaymentModal(paymentAmount, requiredAmount, excess, paymentType);
-                return result;
-            }
-
-            return {
-                processedAmount: requiredAmount,
-                changeAmount: 0,
-                excessOption: 'none',
-                description: 'No excess payment'
-            };
-        }
-
-        function showExcessPaymentModal(paymentAmount, requiredAmount, excessAmount, paymentType) {
-            let modalContent = `
-                <div style="text-align: left; padding: 15px;">
-                    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 5px; margin-bottom: 15px;">
-                        <h4 style="margin: 0 0 8px 0; color: #856404;">
-                            <i class="fa-solid fa-exclamation-triangle"></i> Excess Payment Detected
-                        </h4>
-                        <div style="font-size: 13px;">
-                            <strong>Required:</strong> ₱${requiredAmount.toLocaleString()}<br>
-                            <strong>Paid:</strong> ₱${paymentAmount.toLocaleString()}<br>
-                            <strong style="color: #d63031;">Excess:</strong> ₱${excessAmount.toLocaleString()}
-                        </div>
-                    </div>
-                    <p style="margin-bottom: 15px;">How would you like to handle the excess payment?</p>
-            `;
-
-            if (paymentType === 'initial_payment') {
-                modalContent += `
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button class="excess-option-btn" data-option="treat_as_full" style="padding: 10px; border: 2px solid #28a745; background: #d4edda; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>1️⃣ Treat as Full Initial Payment</strong><br>
-                            <small>Reduce all demo balances equally</small>
-                        </button>
-                        <button class="excess-option-btn" data-option="allocate_to_demos" style="padding: 10px; border: 2px solid #007bff; background: #d1ecf1; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>2️⃣ Allocate Excess to Demos</strong><br>
-                            <small>Apply excess to demos in order (Demo 1, 2, 3, 4)</small>
-                        </button>
-                        <button class="excess-option-btn" data-option="return_as_change" style="padding: 10px; border: 2px solid #ffc107; background: #fff3cd; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>3️⃣ Return as Change</strong><br>
-                            <small>Process only required amount, return ₱${excessAmount.toLocaleString()}</small>
-                        </button>
-                    </div>
-                `;
-            } else if (paymentType === 'demo_payment') {
-                modalContent += `
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button class="excess-option-btn" data-option="add_to_next_demo" style="padding: 10px; border: 2px solid #28a745; background: #d4edda; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>💳 Add to Next Demo</strong><br>
-                            <small>Apply ₱${excessAmount.toLocaleString()} to next unpaid demo</small>
-                        </button>
-                        <button class="excess-option-btn" data-option="credit_to_account" style="padding: 10px; border: 2px solid #007bff; background: #d1ecf1; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>💰 Credit to Account</strong><br>
-                            <small>Save ₱${excessAmount.toLocaleString()} for future payments</small>
-                        </button>
-                        <button class="excess-option-btn" data-option="return_as_change" style="padding: 10px; border: 2px solid #ffc107; background: #fff3cd; border-radius: 5px; cursor: pointer; text-align: left;">
-                            <strong>💵 Return as Change</strong><br>
-                            <small>Return ₱${excessAmount.toLocaleString()} to customer</small>
-                        </button>
-                    </div>
-                `;
-            }
-
-            modalContent += `</div>`;
-
-            return new Promise((resolve) => {
-                Swal.fire({
-                    title: 'Handle Excess Payment',
-                    html: modalContent,
-                    width: '500px',
-                    showCancelButton: true,
-                    showConfirmButton: false,
-                    cancelButtonText: 'Cancel Payment',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        document.querySelectorAll('.excess-option-btn').forEach(btn => {
-                            btn.addEventListener('click', () => {
-                                const option = btn.dataset.option;
-                                Swal.close();
-                                resolve(processExcessOption(option, paymentAmount, requiredAmount, excessAmount));
-                            });
-                        });
-                    }
-                }).then((result) => {
-                    if (result.isDismissed) {
-                        resolve(null); // Cancel payment
-                    }
-                });
-            });
-        }
-        function processExcessOption(option, paymentAmount, requiredAmount, excessAmount) {
-            const result = {
-                excessOption: option,
-                paymentAmount: paymentAmount,
-                requiredAmount: requiredAmount,
-                excessAmount: excessAmount,
-                processedAmount: requiredAmount,
-                changeAmount: 0,
-                description: ''
-            };
-
-            switch (option) {
-                case 'treat_as_full':
-                    result.processedAmount = paymentAmount;
-                    result.description = 'Excess applied to reduce all demo balances equally';
-                    break;
-
-                case 'allocate_to_demos':
-                    result.processedAmount = paymentAmount;
-                    result.description = 'Excess allocated to demos in sequential order';
-                    break;
-
-                case 'add_to_next_demo':
-                    result.processedAmount = paymentAmount;
-                    result.description = 'Excess credited to next demo payment';
-                    break;
-
-                case 'credit_to_account':
-                    result.processedAmount = paymentAmount;
-                    result.description = 'Excess credited to student account';
-                    break;
-
-                case 'return_as_change':
-                    result.processedAmount = requiredAmount;
-                    result.changeAmount = excessAmount;
-                    result.description = 'Excess returned as change';
-                    break;
-            }
-
-            // Update change field if returning as change
-            if (result.changeAmount > 0) {
-                const currentCash = parseFloat($('#cash').val()) || 0;
-                const newChange = currentCash - result.processedAmount;
-                $('#change').val(Math.max(0, newChange + result.changeAmount).toFixed(2));
-            }
-
-            return result;
-        }
-
-        /**
-         * Add excess payment info to receipt
-         */
-        function addExcessInfoToReceipt(excessData) {
-            if (excessData.excessOption === 'none') return;
-
-            // Remove existing excess info
-            $('#excessPaymentInfo').remove();
-
-            const excessInfoHtml = `
-                <div id="excessPaymentInfo" style="background: #e8f5e8; border: 1px solid #28a745; border-radius: 5px; padding: 10px; margin: 10px 0; font-size: 12px;">
-                    <div style="font-weight: bold; color: #155724; margin-bottom: 5px;">
-                        <i class="fa-solid fa-info-circle"></i> Excess Payment Handling
-                    </div>
-                    <div><strong>Payment:</strong> ₱${excessData.paymentAmount.toLocaleString()} | <strong>Required:</strong> ₱${excessData.requiredAmount.toLocaleString()} | <strong>Excess:</strong> ₱${excessData.excessAmount.toLocaleString()}</div>
-                    <div style="margin-top: 5px;"><strong>Action:</strong> ${excessData.description}</div>
-                    ${excessData.changeAmount > 0 ? `<div style="color: #d63031;"><strong>Change Given:</strong> ₱${excessData.changeAmount.toLocaleString()}</div>` : ''}
-                    <div style="font-size: 10px; color: #6c757d; margin-top: 5px;">Processed: ${new Date().toLocaleString()} by Scraper001</div>
-                </div>
-            `;
-
-            // Insert before payment schedule
-            $('.p-4:last').before(excessInfoHtml);
-        }
-
-
-
-        async function autoSearchCashDrawer() {
-            if (!isWebSerialSupported()) {
-                updateCashDrawerStatus(false, "Browser not supported");
-                return false;
-            }
-
-            try {
-                const ports = await navigator.serial.getPorts();
-                availablePorts = ports;
-
-                if (ports.length === 0) {
-                    updateCashDrawerStatus(false, "No ports found");
-                    return false;
-                }
-
-                for (let port of ports) {
-                    if (await connectToCashDrawer(port)) {
-                        startPortMonitoring();
-                        return true;
-                    }
-                }
-
-                updateCashDrawerStatus(false, "Connection failed");
-                return false;
-
-            } catch (error) {
-                updateCashDrawerStatus(false, "Search error");
-                return false;
-            }
-        }
-
-        async function requestNewCashDrawerPort() {
-            if (!isWebSerialSupported()) {
-                showCashDrawerAlert("Web Serial API not supported. Please use Chrome/Edge browser.");
-                return false;
-            }
-
-            try {
-                const newPort = await navigator.serial.requestPort();
-                availablePorts = [newPort];
-
-                if (await connectToCashDrawer(newPort)) {
-                    startPortMonitoring();
-                    return true;
-                }
-                return false;
-
-            } catch (error) {
-                if (error.name !== 'NotFoundError') {
-                }
-                return false;
-            }
-        }
-
-        async function connectToCashDrawer(port) {
-            try {
-                await port.open({
-                    baudRate: 9600,
-                    dataBits: 8,
-                    stopBits: 1,
-                    parity: 'none',
-                    flowControl: 'none'
-                });
-
-                serialPort = port;
-                writer = port.writable.getWriter();
-                cashDrawerConnected = true;
-
-                updateCashDrawerStatus(true, "Connected");
-                showSuccessNotification("Cash Drawer Connected", "Ready for automatic opening on payments (except reservations)");
-
-                return true;
-
-            } catch (error) {
-                updateCashDrawerStatus(false, "Connection failed");
-                return false;
-            }
-        }
-
-        // Enhanced: Cash drawer opening with reservation exclusion and promo selection awareness
-        async function openCashDrawerOnPayment(paymentAmount, paymentType) {
-            // Enhanced: Skip cash drawer for reservations and initial payments
-            if (paymentType === 'reservation' || paymentType === 'initial_payment') {
-                console.log(`💰 Payment Type: ${paymentType} - Cash drawer bypass activated`);
-                return true; // Return success without opening drawer
-            }
-
-            if (!cashDrawerConnected || !writer) {
-                console.log("🚫 Cash drawer not connected for payment type:", paymentType);
-                return false;
-            }
-
-            try {
-                const command = new Uint8Array([27, 112, 0, 25, 25]);
-                await writer.write(command);
-                showCashDrawerOpenSuccess(paymentAmount, paymentType);
-                console.log(`✅ Cash drawer opened for ${paymentType} payment of ₱${paymentAmount}`);
-                return true;
-
-            } catch (error) {
-                showCashDrawerAlert("Failed to open cash drawer! Please check connection.");
-                setTimeout(() => {
-                    autoSearchCashDrawer();
-                }, 1000);
-                return false;
-            }
-        }
-
-        function startPortMonitoring() {
-            if (monitoringInterval) {
-                clearInterval(monitoringInterval);
-            }
-
-            monitoringInterval = setInterval(async () => {
-                if (cashDrawerConnected && serialPort) {
-                    try {
-                        if (!serialPort.readable || !serialPort.writable) {
-                            throw new Error("Port no longer accessible");
-                        }
-                    } catch (error) {
-                        handleCashDrawerDisconnection();
-                    }
-                }
-            }, connectionCheckInterval);
-        }
-
-        function handleCashDrawerDisconnection() {
-            cashDrawerConnected = false;
-            writer = null;
-            serialPort = null;
-
-            updateCashDrawerStatus(false, "DISCONNECTED");
-
-            Swal.fire({
-                icon: 'warning',
-                title: 'Cash Drawer Disconnected!',
-                text: 'The cash drawer has been disconnected. Please reconnect it.',
-                confirmButtonText: 'Reconnect',
-                showCancelButton: true,
-                cancelButtonText: 'Ignore',
-                timer: 10000
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    requestNewCashDrawerPort();
-                }
-            });
-
-            if (monitoringInterval) {
-                clearInterval(monitoringInterval);
-                monitoringInterval = null;
-            }
-        }
-
-        function updateCashDrawerStatus(connected, statusMessage = "") {
-            const status = connected ? 'Connected' : 'Disconnected';
-            const fullStatus = statusMessage ? `${status} (${statusMessage})` : status;
-
-            let statusIndicator = $('#cashDrawerStatus');
-
-            if (statusIndicator.length === 0) {
-                $('body').append(`
-                <div id="cashDrawerStatus" style="
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    padding: 10px 15px;
-                    border-radius: 8px;
-                    font-size: 11px;
-                    font-weight: bold;
-                    z-index: 9999;
-                    min-width: 220px;
-                    text-align: center;
-                    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    ${connected
-                        ? 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;'
-                        : 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; animation: pulse 2s infinite;'}
-                ">
-                    <i class="fa-solid fa-cash-register"></i> Cash Drawer: ${fullStatus}<br>
-                    <small style="opacity: 0.9;">${new Date().toLocaleString()}</small>
-                    ${connected ? '' : '<br><small><i class="fa-solid fa-mouse-pointer"></i> Click to reconnect</small>'}
-                </div>
-            `);
-
-                $('#cashDrawerStatus').click(() => {
-                    if (!connected) {
-                        requestNewCashDrawerPort();
-                    }
-                });
-
-            } else {
-                statusIndicator
-                    .html(`<i class="fa-solid fa-cash-register"></i> Cash Drawer: ${fullStatus}<br><small style="opacity: 0.9;">${new Date().toLocaleString()}</small>${connected ? '' : '<br><small><i class="fa-solid fa-mouse-pointer"></i> Click to reconnect</small>'}`)
-                    .css({
-                        'background': connected
-                            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                            : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                        'color': 'white',
-                        'animation': connected ? 'none' : 'pulse 2s infinite'
+        const ajax = (url, data = {}, success, error = 'Request failed') => {
+            $.ajax({
+                url,
+                type: 'GET',
+                data,
+                dataType: 'json',
+                timeout: 10000,
+                success,
+                error: (xhr, status, err) => {
+                    console.error(`Ajax Error: ${url}`, err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: `${error}: ${err}`,
+                        confirmButtonText: 'OK'
                     });
+                }
+            });
+        };
+
+        const populateSelect = (selector, data, valueKey, textKey, placeholder = 'Select option', regularPackage = null) => {
+            const $select = $(selector).empty().append(`<option value="">${placeholder}</option>`);
+
+            if (regularPackage) {
+                $select.append(`<option value="${regularPackage}">${regularPackage}</option>`);
             }
-        }
 
-        function showCashDrawerAlert(message) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Cash Drawer Alert',
-                text: message,
-                confirmButtonText: 'OK',
-                timer: 5000
+            if (data?.length) {
+                data.forEach(item => {
+                    let optionText = item[textKey];
+                    $select.append(`<option value="${item[valueKey]}">${optionText}</option>`);
+                });
+                $select.prop('disabled', false);
+            } else {
+                $select.prop('disabled', true);
+            }
+        };
+
+        const loadAllPrograms = (callback = null) => {
+            console.log('🔄 Loading all programs...');
+            ajax('functions/ajax/get_program.php', {}, data => {
+                allPrograms = data;
+                console.log("📋 Loaded all programs:", allPrograms.length);
+                if (callback) callback();
+            }, 'Failed to load programs');
+        };
+
+        const loadPrograms = () => {
+            loadAllPrograms(() => {
+                populateSelect('#programSelect', allPrograms, 'id', 'program_name', 'Select a program');
+                if (existingTransaction.program_id) {
+                    $('#programSelect').val(existingTransaction.program_id).trigger('change');
+                }
             });
+        };
+
+        const loadProgramDetails = (id) => {
+            console.log('🔄 Loading program details for ID:', id);
+            ajax('functions/ajax/get_program_details.php', { program_id: id }, updateProgram, 'Failed to load program details');
+        };
+
+        const loadPackages = (id) => {
+            console.log('🔄 Loading packages for program ID:', id);
+            ajax('functions/ajax/get_packages.php', { program_id: id }, data => {
+                $('#packageSelect').html('<option value="">Select a package</option>');
+                data.forEach(package => {
+                    $('#packageSelect').append(`<option value="${package.package_name}">${package.package_name}</option>`);
+                });
+                $('#packageSelect').append('<option value="Regular Package">Regular Package</option>');
+            }, 'Failed to load packages');
+        };
+
+        const loadSchedules = (id) => {
+            ajax('functions/ajax/get_schedules.php', { program_id: id }, populateSchedule, 'Failed to load schedules');
+        };
+
+        // =============================================================================================
+        // EXCESS PAYMENT HANDLING FUNCTIONS
+        // =============================================================================================
+        function checkForExcessPayment() {
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
+            const totalPayment = parseFloat($('#totalPayment').val()) || 0;
+
+            if (!paymentType || totalPayment <= 0) {
+                return false;
+            }
+
+            let requiredAmount = 0;
+            const demoType = $('#demoSelect').val();
+
+            switch (paymentType) {
+                case 'initial_payment':
+                    requiredAmount = parseFloat(currentProgram?.initial_fee || 0);
+                    break;
+                case 'demo_payment':
+                    if (demoType) {
+                        requiredAmount = calculateDemoFeeJS();
+                    }
+                    break;
+                case 'full_payment':
+                    requiredAmount = currentBalance > 0 ? currentBalance : parseFloat($('#finalTotalHidden').val()) || 0;
+                    break;
+                case 'reservation':
+                    requiredAmount = parseFloat(currentProgram?.reservation_fee || 0);
+                    break;
+                default:
+                    return false;
+            }
+
+            const isExcess = totalPayment > requiredAmount && requiredAmount > 0;
+
+            if (isExcess) {
+                excessPaymentData = {
+                    isExcess: true,
+                    requiredAmount: requiredAmount,
+                    paidAmount: totalPayment,
+                    excessAmount: totalPayment - requiredAmount,
+                    paymentType: paymentType,
+                    demoType: demoType,
+                    choice: null,
+                    allocations: []
+                };
+
+                console.log(`💰 Excess payment detected: ₱${excessPaymentData.excessAmount.toFixed(2)}`);
+                return true;
+            }
+
+            return false;
         }
 
-        function showSuccessNotification(title, message) {
-            Swal.fire({
-                icon: 'success',
-                title: title,
-                text: message,
-                timer: 3000,
-                showConfirmButton: false,
-                toast: true,
-                position: 'top-end'
-            });
+        function showExcessPaymentModal() {
+            $('#excessRequiredAmount').text(`₱${excessPaymentData.requiredAmount.toLocaleString()}`);
+            $('#excessPaidAmount').text(`₱${excessPaymentData.paidAmount.toLocaleString()}`);
+            $('#excessDisplayAmount').text(`₱${excessPaymentData.excessAmount.toLocaleString()}`);
+
+            $('.excess-option').removeClass('selected');
+            $('#confirmExcessChoice').prop('disabled', true);
+            $('#demoAllocationPreview').hide();
+
+            // Show/hide options based on payment type
+            if (excessPaymentData.paymentType === 'demo_payment') {
+                updateDemoExcessOptions();
+            }
+
+            $('#excessPaymentModal').fadeIn(300);
         }
 
-        function showCashDrawerOpenSuccess(amount, paymentType) {
-            $('.cash-drawer-success').remove();
+        function updateDemoExcessOptions() {
+            const optionsContainer = $('#excessOptions');
+            optionsContainer.html(`
+            <h3 class="font-bold text-lg mb-3">How would you like to handle the excess demo payment?</h3>
 
-            const successDiv = $(`
-            <div class="cash-drawer-success" style="
-                position: fixed;
-                top: 70px;
-                right: 10px;
-                padding: 15px 20px;
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: bold;
-            z-index: 10000;
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
-            animation: slideInRight 0.4s ease-out;
-            min-width: 250px;
-            ">
-                <div style="text-align: center;">
-                    <div style="font-size: 20px; margin-bottom: 5px;"><i class="fa-solid fa-cash-register"></i></div>
-                    <div style="font-size: 14px;">Cash Drawer Opened!</div>
-                    <div style="font-size: 11px; opacity: 0.9; margin-top: 3px;">
-                        ${paymentType.toUpperCase()}: ₱${amount.toLocaleString()}
-                    </div>
-                    <div style="font-size: 10px; opacity: 0.8; margin-top: 2px;">
-                        ${new Date().toLocaleString()}
-                    </div>
+            <!-- Option 1: Add to Next Demo -->
+            <div class="excess-option" data-choice="add_to_next_demo">
+                <div class="excess-option-title">
+                    <i class="fa-solid fa-arrow-right mr-2 text-blue-500"></i>1️⃣ Add Excess to Next Demo
+                </div>
+                <div class="excess-option-description">
+                    Carry the overpayment to the next unpaid or partially paid demo session.
                 </div>
             </div>
-                `);
 
-            $('body').append(successDiv);
+            <!-- Option 2: Credit to Account -->
+            <div class="excess-option" data-choice="credit_to_account">
+                <div class="excess-option-title">
+                    <i class="fa-solid fa-piggy-bank mr-2 text-green-500"></i>2️⃣ Credit to Student's Account
+                </div>
+                <div class="excess-option-description">
+                    Save the excess as a balance for future use by this student.
+                </div>
+            </div>
 
-            setTimeout(() => {
-                successDiv.fadeOut(500, function () {
-                    $(this).remove();
-                });
-            }, 4000);
+            <!-- Option 3: Return as Change -->
+            <div class="excess-option" data-choice="return_as_change">
+                <div class="excess-option-title">
+                    <i class="fa-solid fa-hand-holding-usd mr-2 text-orange-500"></i>3️⃣ Return as Change
+                </div>
+                <div class="excess-option-description">
+                    Give the extra amount back to the customer.
+                </div>
+            </div>
+        `);
+
+            attachExcessOptionListeners();
+        }
+
+        function attachExcessOptionListeners() {
+            $('.excess-option').off('click').on('click', function () {
+                $('.excess-option').removeClass('selected');
+                $(this).addClass('selected');
+
+                const choice = $(this).data('choice');
+                excessPaymentData.choice = choice;
+                $('#confirmExcessChoice').prop('disabled', false);
+
+                if (choice === 'allocate_to_demos' || choice === 'treat_as_initial') {
+                    showDemoAllocationPreview(choice);
+                } else if (choice === 'add_to_next_demo') {
+                    showNextDemoPreview();
+                } else {
+                    $('#demoAllocationPreview').hide();
+                }
+
+                console.log(`✅ Excess choice selected: ${choice} | User: Scraper001 | Time: 2025-06-21 06:15:13`);
+            });
+        }
+
+        function showDemoAllocationPreview(choice) {
+            const currentDemoFee = calculateDemoFeeJS();
+            let previewContent = '';
+
+            if (choice === 'treat_as_initial') {
+                const totalTuition = parseFloat($('#finalTotalHidden').val()) || 0;
+                const newBalance = totalTuition - excessPaymentData.paidAmount;
+                const newDemoFee = Math.max(0, newBalance / 4);
+
+                previewContent = `
+                <div class="excess-breakdown">
+                    <div class="excess-breakdown-title">New Demo Fee Calculation:</div>
+                    <div class="excess-calculation">
+                        <span>Total Tuition:</span>
+                        <span>₱${totalTuition.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>Full Payment Applied:</span>
+                        <span>₱${excessPaymentData.paidAmount.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>Remaining Balance:</span>
+                        <span>₱${newBalance.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>New Demo Fee (each):</span>
+                        <span>₱${newDemoFee.toLocaleString()}</span>
+                    </div>
+                </div>
+            `;
+            } else if (choice === 'allocate_to_demos') {
+                let remainingExcess = excessPaymentData.excessAmount;
+                const allocations = [];
+
+                for (let i = 1; i <= 4; i++) {
+                    const demoName = `demo${i}`;
+                    if (!paidDemos.includes(demoName) && remainingExcess > 0) {
+                        const allocation = Math.min(remainingExcess, currentDemoFee);
+                        allocations.push({
+                            demo: i,
+                            amount: allocation,
+                            status: allocation >= currentDemoFee ? 'Paid in Full' : `Partially Paid (₱${(currentDemoFee - allocation).toLocaleString()} remaining)`
+                        });
+                        remainingExcess -= allocation;
+                    }
+                }
+
+                excessPaymentData.allocations = allocations;
+
+                previewContent = `
+                <div class="excess-breakdown">
+                    <div class="excess-breakdown-title">Sequential Demo Allocation:</div>
+                    <div class="excess-calculation">
+                        <span>Initial Payment:</span>
+                        <span>₱${excessPaymentData.requiredAmount.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>Excess to Allocate:</span>
+                        <span>₱${excessPaymentData.excessAmount.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>Remaining After Allocation:</span>
+                        <span>₱${remainingExcess.toLocaleString()}</span>
+                    </div>
+                </div>
+                <div class="demo-allocation-preview">
+                    <h5 class="font-bold mb-2">Demo Allocation Results:</h5>
+                    ${allocations.map(alloc => `
+                        <div class="demo-item">
+                            <span>Demo ${alloc.demo}:</span>
+                            <span>₱${alloc.amount.toLocaleString()}</span>
+                            <span class="demo-status ${alloc.status.includes('Full') ? 'demo-paid' : 'demo-partial'}">
+                                ${alloc.status}
+                            </span>
+                        </div>
+                    `).join('')}
+                    ${remainingExcess > 0 ? `
+                        <div class="demo-item" style="border-top: 2px solid #28a745; margin-top: 10px; padding-top: 10px;">
+                            <span>Remaining Excess:</span>
+                            <span>₱${remainingExcess.toLocaleString()}</span>
+                            <span class="demo-status demo-unpaid">To be returned</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            }
+
+            $('#demoPreviewContent').html(previewContent);
+            $('#demoAllocationPreview').show();
+        }
+
+        function showNextDemoPreview() {
+            let nextDemo = null;
+            for (let i = 1; i <= 4; i++) {
+                const demoName = `demo${i}`;
+                if (!paidDemos.includes(demoName)) {
+                    nextDemo = i;
+                    break;
+                }
+            }
+
+            if (nextDemo) {
+                const currentDemoFee = calculateDemoFeeJS();
+                const allocation = Math.min(excessPaymentData.excessAmount, currentDemoFee);
+                const remaining = excessPaymentData.excessAmount - allocation;
+
+                const previewContent = `
+                <div class="excess-breakdown">
+                    <div class="excess-breakdown-title">Next Demo Allocation:</div>
+                    <div class="excess-calculation">
+                        <span>Current Demo Payment:</span>
+                        <span>₱${excessPaymentData.requiredAmount.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>Excess Amount:</span>
+                        <span>₱${excessPaymentData.excessAmount.toLocaleString()}</span>
+                    </div>
+                    <div class="excess-calculation">
+                        <span>Applied to Demo ${nextDemo}:</span>
+                        <span>₱${allocation.toLocaleString()}</span>
+                    </div>
+                    ${remaining > 0 ? `
+                        <div class="excess-calculation">
+                            <span>Remaining to Return:</span>
+                            <span>₱${remaining.toLocaleString()}</span>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="demo-allocation-preview">
+                    <h5 class="font-bold mb-2">Demo Status After Allocation:</h5>
+                    <div class="demo-item">
+                        <span>Demo ${nextDemo}:</span>
+                        <span>₱${allocation.toLocaleString()} / ₱${currentDemoFee.toLocaleString()}</span>
+                        <span class="demo-status ${allocation >= currentDemoFee ? 'demo-paid' : 'demo-partial'}">
+                            ${allocation >= currentDemoFee ? 'Paid in Full' : 'Partially Paid'}
+                        </span>
+                    </div>
+                </div>
+            `;
+
+                $('#demoPreviewContent').html(previewContent);
+                $('#demoAllocationPreview').show();
+            } else {
+                $('#demoAllocationPreview').hide();
+            }
+        }
+
+        function getChoiceDisplayName(choice) {
+            const names = {
+                'treat_as_initial': 'Treat Payment as Full Initial',
+                'allocate_to_demos': 'Allocate Excess to Demos',
+                'return_as_change': 'Return Excess as Change',
+                'add_to_next_demo': 'Add Excess to Next Demo',
+                'credit_to_account': 'Credit to Student Account'
+            };
+            return names[choice] || choice;
         }
 
         // =============================================================================================
-        // ENHANCED: DEMO CALCULATION FUNCTIONS WITH PROMO SELECTION SUPPORT
+        // CORE POS FUNCTIONS
         // =============================================================================================
-
         function calculateDemoFeeJS() {
             let demoFeePerDemo = 0;
 
             if (isFirstTransaction && currentProgram) {
-                // For first transactions, calculate based on program total
                 const finalTotal = parseFloat($('#finalTotalHidden').val()) || parseFloat(currentProgram.total_tuition || 0);
                 const initialPayment = parseFloat(currentProgram.initial_fee || 0);
                 const reservationPayment = parseFloat(currentProgram.reservation_fee || 0);
@@ -1544,7 +1602,6 @@ if (isset($transactions) && count($transactions) > 0) {
                 const remainingAfterInitialReservation = finalTotal - initialPayment - reservationPayment;
                 demoFeePerDemo = Math.max(0, remainingAfterInitialReservation / 4);
             } else {
-                // For existing transactions, use current balance
                 const currentBalanceAmount = currentBalance || 0;
                 const paidDemosCount = paidDemos.length;
                 const remainingDemos = 4 - paidDemosCount;
@@ -1557,15 +1614,10 @@ if (isset($transactions) && count($transactions) > 0) {
             return demoFeePerDemo;
         }
 
-        // Enhanced: Update demo fees and make them visible immediately with promo awareness
         function updateDemoFeesDisplay() {
-            if (!currentProgram) {
-                return;
-            }
+            if (!currentProgram) return;
 
             const demoFee = calculateDemoFeeJS();
-
-            // Enhanced: Update demo fees in the receipt section with better formatting
             const demoFeesHtml = [1, 2, 3, 4]
                 .map(i => {
                     const demoName = `demo${i}`;
@@ -1575,504 +1627,162 @@ if (isset($transactions) && count($transactions) > 0) {
                 })
                 .join('');
 
-            // Update existing demo fees or create new container
             if ($('.demo-fees-display').length > 0) {
                 $('.demo-fees-display').html(demoFeesHtml).show();
-            } else if ($('#demoFeesDisplay').length > 0) {
-                $('#demoFeesDisplay').html(demoFeesHtml).show();
             }
-
-            // Update individual demo fee elements if they exist
-            $('.demo-fee-calculated').each(function (index) {
-                const demoNumber = index + 1;
-                const demoName = `demo${demoNumber}`;
-                const isPaid = paidDemos.includes(demoName);
-                const statusText = isPaid ? ' <i class="fa-solid fa-check-circle"></i> Paid' : '';
-                const textClass = isPaid ? 'text-gray-500 line-through' : '';
-
-                $(this).html(`Demo ${demoNumber} Fee: <span class="${textClass}">₱${demoFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><span class="text-green-600 text-xs ml-1">${statusText}</span>`);
-            });
-
-            console.log(`💰 Demo fees updated: ₱${demoFee.toFixed(2)} each | User: Scraper001 | Time: 2025-06-21 03:25:31`);
         }
 
-        // =============================================================================================
-        // ENHANCED: PROGRAM DISPLAY FUNCTIONS WITH PROMO SELECTION INTEGRATION
-        // =============================================================================================
+        const updateProgram = (p) => {
+            currentProgram = p;
+            showProgramDetailsImmediately(p);
+            $('#programDetailsHidden').val(JSON.stringify(p));
+            calculateTotal(p, currentPackage);
+            console.log(`🎓 Program updated: ${p.program_name} | User: Scraper001 | Time: 2025-06-21 06:15:13`);
+        };
 
-        // Enhanced: Show program details immediately when selected with promo selection awareness
         function showProgramDetailsImmediately(program) {
             const selectedLearningMode = $('input[name="learning_mode"]:checked').val() || 'F2F';
             const learningModeIcon = selectedLearningMode === 'Online' ? '<i class="fa-solid fa-laptop"></i>' : '<i class="fa-solid fa-chalkboard-teacher"></i>';
 
-            // Enhanced: Show program title immediately
             $('#programTitle').text(`Care Pro - ${program.program_name}`).show();
-
-            // Enhanced: Show program name with learning mode
             $('#programName').html(`
-                <strong>Program:</strong> ${program.program_name}
+            <strong>Program:</strong> ${program.program_name}
             <span class="inline-block ml-2 px-2 py-1 text-xs font-semibold rounded-full ${selectedLearningMode === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
                 ${learningModeIcon} ${selectedLearningMode}
             </span>
-            `).show();
+        `).show();
 
-            // Enhanced: Show enrollment date and student info
             $('#enrollmentDate').html(`<strong>Enrollment Date:</strong> ${new Date().toLocaleString()}`).show();
             $('#studentInfo').show();
 
-            // Enhanced: Create and show charges section immediately
             const chargesHtml = `
-                <h1 class="font-semibold text-xl mb-2">Charges</h1>
-        <div class="mb-3 p-2 rounded-lg ${selectedLearningMode === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}">
-            <div class="flex items-center justify-between">
-                <span class="text-sm font-medium">Learning Mode:</span>
-                <span class="px-3 py-1 text-sm font-semibold rounded-full ${selectedLearningMode === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
-                    ${learningModeIcon} ${selectedLearningMode}
-                </span>
+            <h1 class="font-semibold text-xl mb-2">Charges</h1>
+            <div class="mb-3 p-2 rounded-lg ${selectedLearningMode === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium">Learning Mode:</span>
+                    <span class="px-3 py-1 text-sm font-semibold rounded-full ${selectedLearningMode === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                        ${learningModeIcon} ${selectedLearningMode}
+                    </span>
+                </div>
             </div>
-        </div>
-        <div class="flex flex-row w-full p-4 gap-4">
-            <ul class="flex-1 list-none space-y-1">
-                <li>Assessment Fee: ₱${parseFloat(program.assesment_fee || 0).toLocaleString()}</li>
-                <li>Tuition Fee: ₱${parseFloat(program.tuition_fee || 0).toLocaleString()}</li>
-                <li>Miscellaneous Fee: ₱${parseFloat(program.misc_fee || 0).toLocaleString()}</li>
-                <li>Uniform Fee: ₱${parseFloat(program.uniform_fee || 0).toLocaleString()}</li>
-                <li>ID Fee: ₱${parseFloat(program.id_fee || 0).toLocaleString()}</li>
-                <li>Book Fee: ₱${parseFloat(program.book_fee || 0).toLocaleString()}</li>
-                <li>Kit Fee: ₱${parseFloat(program.kit_fee || 0).toLocaleString()}</li>
-                ${selectedLearningMode === 'Online' && program.system_fee ?
+            <div class="flex flex-row w-full p-4 gap-4">
+                <ul class="flex-1 list-none space-y-1">
+                    <li>Assessment Fee: ₱${parseFloat(program.assesment_fee || 0).toLocaleString()}</li>
+                    <li>Tuition Fee: ₱${parseFloat(program.tuition_fee || 0).toLocaleString()}</li>
+                    <li>Miscellaneous Fee: ₱${parseFloat(program.misc_fee || 0).toLocaleString()}</li>
+                    <li>Uniform Fee: ₱${parseFloat(program.uniform_fee || 0).toLocaleString()}</li>
+                    <li>ID Fee: ₱${parseFloat(program.id_fee || 0).toLocaleString()}</li>
+                    <li>Book Fee: ₱${parseFloat(program.book_fee || 0).toLocaleString()}</li>
+                    <li>Kit Fee: ₱${parseFloat(program.kit_fee || 0).toLocaleString()}</li>
+                    ${selectedLearningMode === 'Online' && program.system_fee ?
                     `<li class="text-blue-600">System Fee: ₱${parseFloat(program.system_fee).toLocaleString()}</li>` : ''}
-            </ul>
-            <ul class="flex-1 space-y-1 demo-fees-display" id="demoFeesDisplay">
-                <!-- Demo fees will be calculated and shown here -->
-            </ul>
-        </div>
-        <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
-            <div class="flex justify-between items-center">
-                <span class="font-bold text-lg">Total Amount:</span>
-                <span class="font-bold text-xl text-green-800" id="totalAmountDisplay">₱${parseFloat(program.total_tuition || 0).toLocaleString()}</span>
+                </ul>
+                <ul class="flex-1 space-y-1 demo-fees-display" id="demoFeesDisplay">
+                    <!-- Demo fees will be calculated and shown here -->
+                </ul>
             </div>
-        </div>
-            `;
+            <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-lg">Total Amount:</span>
+                    <span class="font-bold text-xl text-green-800" id="totalAmountDisplay">₱${parseFloat(program.total_tuition || 0).toLocaleString()}</span>
+                </div>
+            </div>
+        `;
 
-            // Enhanced: Replace placeholder or update existing charges
             if ($('#chargesPlaceholder').length > 0) {
                 $('#chargesPlaceholder').html(chargesHtml);
             } else {
                 $('#chargesContainer').html(chargesHtml);
             }
 
-            // Force show the charges section
             $('#chargesContainer, .charges-section').show();
-
-            // Enhanced: Calculate and show demo fees immediately
             updateDemoFeesDisplay();
-
-            // Enhanced: Calculate and show totals
             calculateTotal(program, currentPackage);
-
-            console.log(`🎓 Program details displayed: ${program.program_name} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
         }
 
-        // =============================================================================================
-        // ENHANCED: PROMO SELECTION DISPLAY FUNCTIONS
-        // =============================================================================================
+        const calculateTotal = (program, package) => {
+            let subtotal = parseFloat(program.total_tuition || 0);
+            let discount = 0;
 
-        // Enhanced: Display promo selection information in POS
-        function displayPromoSelectionInfo(packageData) {
-            const selectionType = parseInt(packageData.selection_type || 1);
-            const promoInfoDiv = $('#promoSelectionInfo');
-            const promoDisplayDiv = $('#promoSelectionDisplay');
-            const customPaymentDiv = $('#customPaymentInfo');
-            const customPaymentText = $('#customPaymentText');
+            const learningMode = $('input[name="learning_mode"]:checked').val();
+            if (learningMode === 'Online' && program.learning_mode !== 'Online') {
+                subtotal += parseFloat(program.system_fee || 0);
+            }
 
-            // Show the promo selection info container
-            promoInfoDiv.removeClass('hidden').show();
+            const packageName = $('#packageSelect').val();
 
-            // Update selection display with appropriate styling
-            promoDisplayDiv.removeClass('promo-option-1 promo-option-2 promo-option-3 promo-option-4')
-                .addClass(`promo-option-${selectionType}`);
+            if (package && packageName !== 'Regular Package' && package.promo_type && package.promo_type !== 'none') {
+                if (package.promo_type === 'percentage') {
+                    discount = subtotal * (parseFloat(package.percentage) / 100);
+                } else {
+                    discount = parseFloat(package.enrollment_fee || 0);
+                }
 
-            let selectionText = `Option ${selectionType} - `;
-            let customPaymentInfo = '';
+                $('#promoInfo').show().html(`
+                <strong>Promo Discount:</strong> ₱${discount.toLocaleString()}<br>
+                <small>Automatic ${package.percentage}% discount applied</small>
+            `);
 
-            if (selectionType <= 2) {
-                // Options 1-2: Percentage-based
-                selectionText += `Auto ${packageData.percentage}% Discount`;
-                customPaymentDiv.hide();
+                $('#promoAppliedHidden').val(discount);
             } else {
-                // Options 3-4: Custom payment
-                selectionText += 'Manual Payment Declaration';
-                customPaymentInfo = `Required Initial Payment: ₱${parseFloat(packageData.custom_initial_payment || 0).toLocaleString()}`;
-                customPaymentText.text(customPaymentInfo);
-                customPaymentDiv.show();
+                $('#promoInfo').hide();
+                discount = 0;
+                $('#promoAppliedHidden').val(0);
             }
 
-            $('#promoSelectionText').text(selectionText);
+            const finalTotal = subtotal - discount;
 
-            // Update debug info
-            updateDebugInfo();
+            $('#totalAmount, #totalAmountDisplay').text(`₱${finalTotal.toLocaleString()}`);
+            $('#finalTotalHidden').val(finalTotal);
+            $('#subtotalHidden').val(subtotal);
 
-            console.log(`🏷️ Promo selection displayed: Option ${selectionType} | Package: ${packageData.package_name} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        }
+            return finalTotal;
+        };
 
-        // Enhanced: Hide promo selection info for regular packages
-        function hidePromoSelectionInfo() {
-            $('#promoSelectionInfo').addClass('hidden').hide();
-            console.log(`🏷️ Promo selection info hidden | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        }
+        const populateSchedule = (schedules) => {
+            const tbody = $('#scheduleTable tbody').empty();
 
-        // =============================================================================================
-        // ENHANCED: SCHEDULE EDIT FUNCTIONALITY WITH PROMO AWARENESS
-        // =============================================================================================
-
-        $('#editScheduleBtn').click(function () {
-            if (!currentProgram) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No Program Selected',
-                    text: 'Please select a program first to edit schedules.',
-                    confirmButtonText: 'OK'
-                });
+            if (!schedules?.length) {
+                tbody.append('<tr><td colspan="6" class="border px-2 py-1 text-center text-gray-500">No schedules available</td></tr>');
                 return;
             }
 
-            console.log('🔍 Loading schedules for program:', currentProgram.id, 'at 2025-06-21 03:25:31');
+            schedules.forEach(s => {
+                const isMaintained = maintainedSchedules.length > 0 &&
+                    maintainedSchedules.some(ms => ms.id == s.id || ms.schedule_id == s.id);
 
-            // Load available schedules for editing
-            $.ajax({
-                url: 'functions/ajax/get_schedules.php',
-                type: 'GET',
-                data: {
-                    program_id: currentProgram.id,
-                    timestamp: '2025-06-21 03:25:31',
-                    user: 'Scraper001'
-                },
-                dataType: 'json',
-                success: function (schedules) {
-                    console.log('📅 Schedules loaded:', schedules);
-                    if (schedules && schedules.length > 0) {
-                        populateEditScheduleTable(schedules);
-                        $('#scheduleEditModal').show();
-                    } else {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'No Schedules Available',
-                            text: 'No schedules found for this program.',
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                },
-                error: function (xhr, status, error) {
-                    console.error('❌ Schedule loading error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error Loading Schedules',
-                        text: 'Failed to load schedules for editing. Please try again.',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            });
-        });
+                const isChecked = isMaintained ? 'checked' : '';
+                const rowClass = isMaintained ? 'schedule-maintained' : '';
 
-        function populateEditScheduleTable(schedules) {
-            const tbody = $('#editScheduleTable tbody').empty();
-
-            if (!schedules || schedules.length === 0) {
-                tbody.append('<tr><td colspan="6" class="border px-2 py-1 text-center text-gray-500">No schedules available for this program</td></tr>');
-                return;
-            }
-
-            // Get currently selected schedules from hidden field
-            let currentlySelected = [];
-            try {
-                const hiddenScheduleValue = $('#hiddenSchedule').val() || '[]';
-                currentlySelected = JSON.parse(hiddenScheduleValue);
-                if (!Array.isArray(currentlySelected)) {
-                    currentlySelected = [];
-                }
-            } catch (e) {
-                console.error('⚠️ Error parsing current schedules:', e);
-                currentlySelected = [];
-            }
-
-            console.log('📋 Current schedules from database:', currentlySelected);
-            console.log('📋 Available schedules:', schedules);
-
-            schedules.forEach(schedule => {
-                // Check if this schedule is currently selected
-                const isSelected = currentlySelected.some(cs => {
-                    return (cs.id == schedule.id || cs.schedule_id == schedule.id);
-                });
-
-                console.log(`📝 Schedule ${schedule.id} (${schedule.week_description}) is selected: ${isSelected}`);
-
-                const row = `
-        <tr data-schedule-id="${schedule.id}" class="${isSelected ? 'bg-blue-50' : ''}">
-                <td class="border px-2 py-1">
-                    <input type="checkbox" class="edit-schedule-checkbox" 
-                           data-schedule-id="${schedule.id}"
-                           ${isSelected ? 'checked' : ''} />
-                    ${isSelected ? '<i class="fa-solid fa-check text-green-600 ml-1" title="Currently Selected"></i>' : ''}
-                </td>
-                <td class="border px-2 py-1">${schedule.week_description || ''}</td>
-                <td class="border px-2 py-1">${schedule.training_date || ''}</td>
-                <td class="border px-2 py-1">${schedule.start_time || ''}</td>
-                <td class="border px-2 py-1">${schedule.end_time || ''}</td>
-                <td class="border px-2 py-1">${schedule.day_of_week || ''}</td>
-            </tr>
-        `;
-
-                tbody.append(row);
+                tbody.append(`
+                <tr data-row-id="${s.id}" class="${rowClass}">
+                    <td class="border px-2 py-1">
+                        <input type="checkbox" class="row-checkbox"
+                            onchange="handleRowSelection(this)"
+                            ${isChecked} />
+                    </td>
+                    ${[s.week_description, s.training_date, s.start_time, s.end_time, s.day_of_week]
+                        .map(val => `<td class="border px-2 py-1">${val || ''}</td>`).join('')}
+                </tr>
+            `);
             });
 
-            console.log(`✅ Populated ${schedules.length} schedules in edit modal at 2025-06-21 03:25:31`);
-        }
+            if (maintainedSchedules.length > 0) {
+                selectedSchedules = maintainedSchedules.map(ms => ({
+                    id: ms.id || ms.schedule_id,
+                    week_description: ms.week_description || ms.weekDescription || '',
+                    training_date: ms.training_date || ms.trainingDate || '',
+                    start_time: ms.start_time || ms.startTime || '',
+                    end_time: ms.end_time || ms.endTime || '',
+                    day_of_week: ms.day_of_week || ms.dayOfWeek || ''
+                }));
 
-        $('#closeScheduleModal, #cancelScheduleEdit').click(function () {
-            $('#scheduleEditModal').hide();
-        });
-
-        $('#saveScheduleChanges').click(function () {
-            const newSelectedSchedules = [];
-            let selectedCount = 0;
-
-            console.log('💾 Saving schedule changes at 2025-06-21 03:25:31 by Scraper001');
-
-            // Collect all checked schedules with proper database structure
-            $('#editScheduleTable .edit-schedule-checkbox:checked').each(function () {
-                const checkbox = $(this);
-                const row = checkbox.closest('tr');
-                const scheduleId = checkbox.data('schedule-id');
-
-                // Create schedule data matching database structure
-                const scheduleData = {
-                    id: scheduleId.toString(),
-                    schedule_id: scheduleId.toString(),
-                    week_description: row.find('td:eq(1)').text().trim(),
-                    weekDescription: row.find('td:eq(1)').text().trim(),
-                    training_date: row.find('td:eq(2)').text().trim(),
-                    trainingDate: row.find('td:eq(2)').text().trim(),
-                    start_time: row.find('td:eq(3)').text().trim(),
-                    startTime: row.find('td:eq(3)').text().trim(),
-                    end_time: row.find('td:eq(4)').text().trim(),
-                    endTime: row.find('td:eq(4)').text().trim(),
-                    day_of_week: row.find('td:eq(5)').text().trim(),
-                    dayOfWeek: row.find('td:eq(5)').text().trim()
-                };
-
-                newSelectedSchedules.push(scheduleData);
-                selectedCount++;
-
-                console.log('✅ Added schedule to selection:', scheduleData);
-            });
-
-            // Update the global selectedSchedules array
-            selectedSchedules = newSelectedSchedules;
-
-            // Update the hidden field with proper JSON structure
-            const scheduleJson = JSON.stringify(selectedSchedules);
-            $('#hiddenSchedule').val(scheduleJson);
-
-            console.log('📝 Updated schedule selection:', {
-                count: selectedCount,
-                schedules: selectedSchedules,
-                json: scheduleJson,
-                timestamp: '2025-06-21 03:25:31',
-                user: 'Scraper001'
-            });
-
-            // Update the database enrollment record
-            const studentId = $('input[name="student_id"]').val();
-            const programId = $('#programSelect').val();
-
-            if (studentId && programId) {
-                $.ajax({
-                    url: 'functions/ajax/update_enrollment_schedule.php',
-                    type: 'POST',
-                    data: {
-                        student_id: studentId,
-                        program_id: programId,
-                        selected_schedules: scheduleJson,
-                        timestamp: '2025-06-21 03:25:31',
-                        updated_by: 'Scraper001'
-                    },
-                    dataType: 'json',
-                    success: function (response) {
-                        if (response.success) {
-                            console.log('✅ Database updated successfully:', response);
-                        } else {
-                            console.error('❌ Database update failed:', response.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('❌ Database update error:', error);
-                    }
-                });
-            }
-
-            // Refresh the main schedule table to show updated selection
-            if (currentProgram && currentProgram.id) {
-                $.ajax({
-                    url: 'functions/ajax/get_schedules.php',
-                    type: 'GET',
-                    data: {
-                        program_id: currentProgram.id,
-                        timestamp: '2025-06-21 03:25:31'
-                    },
-                    dataType: 'json',
-                    success: function (schedules) {
-                        populateSchedule(schedules);
-                        console.log('🔄 Main schedule table refreshed at 2025-06-21 03:25:31');
-                    },
-                    error: function () {
-                        console.error('❌ Failed to refresh main schedule table');
-                    }
-                });
-            }
-
-            // Close the modal
-            $('#scheduleEditModal').hide();
-
-            // Show success message with timestamp
-            Swal.fire({
-                icon: 'success',
-                title: 'Schedule Updated Successfully!',
-                html: `
-        <div style="text-align: left;">
-                <p><strong>Selected Schedules:</strong> ${selectedCount}</p>
-                <p><strong>Updated:</strong> 2025-06-21 03:25:31</p>
-                <p><strong>By:</strong> Scraper001</p>
-            </div>
-        `,
-                timer: 3000,
-                showConfirmButton: false,
-                toast: true,
-                position: 'top-end'
-            });
-
-            // Update debug info if visible
-            if ($('#debugInfo').is(':visible')) {
-                updateDebugInfo();
-            }
-
-            // Validate schedule selection for current payment type
-            validateScheduleSelection();
-        });
-
-        // =============================================================================================
-        // ENHANCED: POS FUNCTIONALITY WITH PROMO SELECTION SUPPORT
-        // =============================================================================================
-
-        window.toggleDebug = function () {
-            const debugDiv = $('#debugInfo');
-            debugDiv.toggle();
-            updateDebugInfo();
-        };
-
-        const updateDebugInfo = () => {
-            const scheduleJson = $('#hiddenSchedule').val() || '[]';
-            let selectedCount = 0;
-            try {
-                const parsed = JSON.parse(scheduleJson);
-                selectedCount = Array.isArray(parsed) ? parsed.length : 0;
-            } catch (e) {
-                selectedCount = 'Invalid JSON';
-            }
-
-            const promoSelection = currentPackage ? `Option ${currentPackage.selection_type || 1} - ${currentPackage.package_name}` : 'No Promo';
-
-            $('#debugMaintained').text(`Maintained Schedules: ${maintainedSchedules.length} items`);
-            $('#debugSelected').text(`Selected Schedules: ${selectedCount} items`);
-            $('#debugValidation').text(`Validation Status: ${validateScheduleSelection() ? 'PASS' : 'FAIL'}`);
-            $('#debugCashDrawer').text(`Cash Drawer: ${cashDrawerConnected ? 'Connected' : 'Disconnected'}`);
-            $('#debugPromo').text(`Promo Selection: ${promoSelection}`);
-        };
-
-        const ajax = (url, data = {}, success, error = 'Request failed') => {
-            $.ajax({
-                url, type: 'GET', data, dataType: 'json', timeout: 10000,
-                success,
-                error: () => {
-                    alert(error);
-                }
-            });
-        };
-
-        const populateSelect = (selector, data, valueKey, textKey, placeholder = 'Select option', regularPackage = null, descriptionKey = null) => {
-            const $select = $(selector).empty().append(`<option value="">${placeholder}</option>`);
-
-            if (regularPackage) {
-                $select.append(`<option value="${regularPackage}">${regularPackage}</option>`);
-            }
-
-            if (data?.length) {
-                data.forEach(item => {
-                    let optionText = item[textKey];
-                    if (descriptionKey && item[descriptionKey]) {
-                        const description = item[descriptionKey].toLowerCase();
-                        if (description.includes('online')) {
-                            optionText += ' (Online Learning)';
-                        } else if (description.includes('f2f') || description.includes('face to face') || description.includes('F2F') || description.includes('classroom')) {
-                            optionText += ' (F2F)';
-                        } else if (description.includes('hybrid') || description.includes('blended')) {
-                            optionText += ' (Hybrid Learning)';
-                        } else {
-                            optionText += ` (${item[descriptionKey]})`;
-                        }
-                    }
-                    $select.append(`<option value="${item[valueKey]}">${optionText}</option>`);
-                });
-                $select.prop('disabled', false);
-            } else {
-                $select.prop('disabled', true);
+                $('#hiddenSchedule').val(JSON.stringify(selectedSchedules));
             }
         };
 
-        function filterProgramsByLearningMode(selectedMode) {
-            if (!allPrograms.length) {
-                loadAllPrograms(() => {
-                    filterProgramsByLearningMode(selectedMode);
-                });
-                return;
-            }
-
-            let modeFilter;
-            switch (selectedMode) {
-                case 'F2F':
-                    modeFilter = 'F2F';
-                    break;
-                case 'Online':
-                    modeFilter = 'Online';
-                    break;
-                default:
-                    populateSelect('#programSelect', allPrograms, 'id', 'program_name', 'Select a program', null, 'learning_mode');
-                    return;
-            }
-
-            const filteredPrograms = allPrograms.filter(program => {
-                return program.learning_mode === modeFilter;
-            });
-
-            populateSelect('#programSelect', filteredPrograms, 'id', 'program_name',
-                `Select a ${selectedMode} program`, null, 'learning_mode');
-
-            resetProgram();
-            resetSchedule();
-
-            if (existingTransaction.program_id) {
-                const existingProgram = filteredPrograms.find(p => p.id === existingTransaction.program_id);
-                if (existingProgram) {
-                    $('#programSelect').val(existingTransaction.program_id).trigger('change');
-                }
-            }
-        }
-
-        // Enhanced: Preserve demo selection completely
-        const populateDemoSelect = (preserveSelection = true) => {
+        const populateDemoSelect = () => {
             const $demoSelect = $('#demoSelect');
-            const currentSelection = preserveSelection ? $demoSelect.val() : '';
-
             $demoSelect.empty().append('<option value="">Select Demo</option>');
 
             const allDemos = [
@@ -2087,13 +1797,6 @@ if (isset($transactions) && count($transactions) > 0) {
             availableDemos.forEach(demo => {
                 $demoSelect.append(`<option value="${demo.value}">${demo.label}</option>`);
             });
-
-            // Enhanced: Always restore selection if available
-            if (currentSelection && availableDemos.some(demo => demo.value === currentSelection)) {
-                setTimeout(() => {
-                    $demoSelect.val(currentSelection);
-                }, 50);
-            }
 
             const $demoPaymentOption = $('label[data-payment-type="demo_payment"]');
             const $demoPaymentInput = $('input[name="type_of_payment"][value="demo_payment"]');
@@ -2112,70 +1815,6 @@ if (isset($transactions) && count($transactions) > 0) {
             return availableDemos.length > 0;
         };
 
-        // Enhanced: Calculate total with promo selection support
-        const calculateTotal = (program, package) => {
-            let subtotal = parseFloat(program.total_tuition || 0);
-            let discount = 0;
-
-            const learningMode = $('input[name="learning_mode"]:checked').val();
-            if (learningMode === 'Online' && program.learning_mode !== 'Online') {
-                subtotal += parseFloat(program.system_fee || 0);
-            }
-
-            const packageName = $('#packageSelect').val();
-
-            if (package && packageName !== 'Regular Package' && package.promo_type && package.promo_type !== 'none') {
-                const selectionType = parseInt(package.selection_type || 1);
-
-                if (selectionType <= 2) {
-                    // Options 1-2: Percentage calculation
-                    if (package.promo_type === 'percentage') {
-                        discount = subtotal * (parseFloat(package.percentage) / 100);
-                    } else {
-                        discount = parseFloat(package.enrollment_fee || 0);
-                    }
-                } else {
-                    // Options 3-4: Custom payment - discount is already calculated
-                    discount = parseFloat(package.enrollment_fee || 0);
-                }
-
-                $('#promoDiscount').show().text(`Promo Discount: -₱${discount.toLocaleString()}`);
-
-                // Enhanced promo info display with selection type
-                if (selectionType <= 2) {
-                    $('#promoInfo').show().html(`
-        <strong>Promo Discount:</strong> ₱${discount.toLocaleString()}<br>
-            <small>Option ${selectionType} - Automatic ${package.percentage}% discount applied</small>
-            `);
-                } else {
-                    $('#promoInfo').show().html(`
-                        <strong>Custom Payment Option:</strong> ₱${parseFloat(package.custom_initial_payment || 0).toLocaleString()}<br>
-                        <small>Option ${selectionType} - Required initial payment as declared</small>
-                    `);
-                }
-
-                $('#promoAppliedHidden').val(discount);
-            } else {
-                $('#promoDiscount').hide();
-                $('#promoInfo').hide();
-                discount = 0;
-                $('#promoAppliedHidden').val(0);
-            }
-
-            const finalTotal = subtotal - discount;
-
-            $('#subtotalAmount').text(`₱${subtotal.toLocaleString()}`);
-            $('#totalAmount, #totalAmountDisplay').text(`₱${finalTotal.toLocaleString()}`);
-
-            $('#finalTotalHidden').val(finalTotal);
-            $('#subtotalHidden').val(subtotal);
-
-            console.log(`💰 Total calculated: ₱${finalTotal.toLocaleString()} (Subtotal: ₱${subtotal.toLocaleString()}, Discount: ₱${discount.toLocaleString()}) | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-
-            return finalTotal;
-        };
-
-        // Enhanced: Schedule validation with reservation handling and promo awareness
         const validateScheduleSelection = () => {
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const learningMode = $('input[name="learning_mode"]:checked').val();
@@ -2198,322 +1837,26 @@ if (isset($transactions) && count($transactions) > 0) {
                 }
             }
 
-            // Enhanced: Reservation handling
             if (paymentType === 'reservation') {
                 if (learningMode === 'F2F' || learningMode === 'Online') {
                     $('#scheduleWarning').hide();
-
-                    // Uncheck and disable all checkboxes
                     document.querySelectorAll(".row-checkbox").forEach(el => {
                         el.checked = false;
                         el.disabled = true;
                     });
-
-                    // Show info in alert div
                     const alertDiv = document.getElementById('alert');
                     if (alertDiv) {
                         alertDiv.innerText = 'Reservation mode: Schedules not required for F2F/Online learning';
-                        document.getElementById("hiddenSchedule").value = "[]"
+                        document.getElementById("hiddenSchedule").value = "[]";
                         alertDiv.style.display = 'block';
                     }
-
                     return true;
-                }
-
-                if (maintainedSchedules.length > 0) {
-                    $('#scheduleWarning').hide();
-                    return true;
-                }
-
-                const scheduleJson = $('#hiddenSchedule').val() || '[]';
-                let currentSchedules = [];
-                try {
-                    currentSchedules = JSON.parse(scheduleJson);
-                    if (!Array.isArray(currentSchedules)) {
-                        currentSchedules = [];
-                    }
-                } catch (e) {
-                    currentSchedules = [];
-                }
-
-                if (currentSchedules.length === 0) {
-                    $('#scheduleWarning').show().text('⚠️ Reservation payment requires schedule selection');
-                    return false;
                 }
             }
 
             $('#scheduleWarning').hide();
             return true;
         };
-
-        // Enhanced: Update program with immediate display and promo awareness
-        const updateProgram = (p) => {
-            currentProgram = p;
-
-            // Enhanced: Show details immediately
-            showProgramDetailsImmediately(p);
-
-            $('#programDetailsHidden').val(JSON.stringify(p));
-            calculateTotal(p, currentPackage);
-
-            console.log(`🎓 Program updated: ${p.program_name} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        };
-
-        // ENHANCED: Payment calculation with corrected change logic and promo validation
-        const updatePaymentAmountsEnhanced = () => {
-            const paymentType = $('input[name="type_of_payment"]:checked').val();
-            const demoType = $('#demoSelect').val();
-            let amount = 0;
-
-            if (!currentProgram) return;
-
-            // Enhanced: Update payment note to reflect optional cash drawer
-            if (paymentType) {
-                if (paymentType === 'reservation' || paymentType === 'initial_payment') {
-                    $('#paymentNote').show().text('Payment processing - cash drawer not required');
-                } else {
-                    $('#paymentNote').show().text('Payment processing - cash drawer optional (will auto-open if connected)');
-                }
-            } else {
-                $('#paymentNote').hide();
-            }
-
-            if (paymentType) {
-                validateScheduleSelection();
-            }
-
-            switch (paymentType) {
-                case 'full_payment':
-                    if (currentBalance > 0) {
-                        amount = currentBalance;
-                    } else {
-                        amount = parseFloat($('#finalTotalHidden').val()) || parseFloat(currentProgram.total_tuition);
-                    }
-                    break;
-                case 'initial_payment':
-                    // Enhanced: Handle custom initial payments for promo options 3-4
-                    if (currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment) {
-                        amount = parseFloat(currentPackage.custom_initial_payment);
-                        console.log(`💰 Using custom initial payment: ₱${amount} for Option ${currentPackage.selection_type}`);
-                    } else {
-                        amount = parseFloat(currentProgram.initial_fee || 0);
-                    }
-                    break;
-                case 'demo_payment':
-                    if (demoType) {
-                        amount = calculateDemoFeeJS();
-                    }
-                    break;
-                case 'reservation':
-                    amount = parseFloat(currentProgram.reservation_fee || 0);
-                    break;
-            }
-
-            if (!$('#totalPayment').val() || $('#totalPayment').val() == '0') {
-                $('#totalPayment').val(amount.toFixed(2));
-            }
-
-            $('#cashToPay').val($('#totalPayment').val());
-
-            // ENHANCED: Correct change calculation
-            const cash = parseFloat($('#cash').val()) || 0;
-            const cashToPay = parseFloat($('#cashToPay').val()) || 0;
-            const change = Math.max(0, cash - cashToPay); // Ensure change is never negative
-            $('#change').val(change.toFixed(2));
-
-            updateDemoFeesDisplay();
-            updateDebugInfo();
-
-            console.log(`💳 Payment amounts updated - Type: ${paymentType}, Amount: ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        };
-
-        window.updatePaymentData = updatePaymentAmountsEnhanced;
-
-        const populateSchedule = (schedules) => {
-            const tbody = $('#scheduleTable tbody').empty();
-            const paymentType = $('input[name="type_of_payment"]:checked').val();
-
-            if (!schedules?.length) {
-                tbody.append('<tr><td colspan="6" class="border px-2 py-1 text-center text-gray-500">No schedules available</td></tr>');
-                return;
-            }
-
-            const shouldLockSchedules = paymentType === 'reservation' && maintainedSchedules.length > 0;
-
-            if (shouldLockSchedules) {
-                $('#scheduleMaintained').show().text('Schedules locked for reservation payment');
-            } else if (maintainedSchedules.length > 0 && paymentType !== 'reservation') {
-                $('#scheduleMaintained').show().text('Schedules maintained (can be modified)');
-            } else {
-                $('#scheduleMaintained').hide();
-            }
-
-            schedules.forEach(s => {
-                const isMaintained = maintainedSchedules.length > 0 &&
-                    maintainedSchedules.some(ms => ms.id == s.id || ms.schedule_id == s.id);
-
-                const isDisabled = paymentType === 'reservation' && isMaintained;
-                const isChecked = isMaintained ? 'checked' : '';
-                const rowClass = isMaintained && paymentType === 'reservation' ? 'schedule-locked' :
-                    isMaintained ? 'schedule-maintained' : '';
-
-                tbody.append(`
-            <tr data-row-id="${s.id}" class="${rowClass}">
-                <td class="border px-2 py-1">
-                    <input type="checkbox" class="row-checkbox"
-                        onchange="handleRowSelection(this)"
-                        ${isDisabled ? 'disabled' : ''}
-                        ${isChecked} />
-                    ${isMaintained && paymentType === 'reservation' ?
-                        '<i class="fa-solid fa-lock text-red-600 ml-1" title="Schedule Locked for Reservation"></i>' : ''}
-                    ${isMaintained && paymentType !== 'reservation' ?
-                        '<i class="fa-solid fa-edit text-blue-600 ml-1" title="Can be Modified for ' + paymentType + '"></i>' : ''}
-                </td>
-                ${[s.week_description, s.training_date, s.start_time, s.end_time, s.day_of_week]
-                        .map(val => `<td class="border px-2 py-1">${val || ''}</td>`).join('')}
-            </tr>
-            `);
-            });
-
-            if (maintainedSchedules.length > 0) {
-                selectedSchedules = maintainedSchedules.map(ms => ({
-                    id: ms.id || ms.schedule_id,
-                    week_description: ms.week_description || ms.weekDescription || '',
-                    training_date: ms.training_date || ms.trainingDate || '',
-                    start_time: ms.start_time || ms.startTime || '',
-                    end_time: ms.end_time || ms.endTime || '',
-                    day_of_week: ms.day_of_week || ms.dayOfWeek || ''
-                }));
-
-                $('#hiddenSchedule').val(JSON.stringify(selectedSchedules));
-            }
-
-            updateDebugInfo();
-        };
-
-        const resetProgram = () => {
-            currentProgram = null;
-            currentPackage = null;
-            $('#programTitle').text('Care Pro');
-            $('#programName').text('Select a program to view details');
-            ['#learningMode', '#assessmentFee', '#tuitionFee', '#miscFee', '#otherFees', '#packageInfo', '#promoInfo', '#promoDiscount', '#scheduleWarning', '#paymentNote', '#scheduleMaintained'].forEach(s => $(s).hide());
-            $('#totalAmount, #subtotalAmount, #totalAmountDisplay').text('₱0');
-            $('#programDetailsHidden').val('');
-            $('#totalPayment, #cashToPay, #cash, #change').val('');
-            $('#scheduleTableContainer').show();
-
-            // Enhanced: Hide promo selection info and reset charges
-            hidePromoSelectionInfo();
-
-            if ($('#chargesPlaceholder').length === 0) {
-                $('#chargesContainer').html(`
-            <div id="chargesPlaceholder">
-                <h1 class="font-semibold text-xl mb-2">Charges</h1>
-                <div class="text-center text-gray-500 py-8">
-                    <i class="fa-solid fa-graduation-cap text-4xl mb-4"></i>
-                    <p>Select a program to view charges and demo fees immediately</p>
-                </div>
-            </div>
-        `);
-            }
-
-            console.log(`🔄 Program reset | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        };
-
-        const resetSchedule = () => {
-            $('#scheduleTable tbody').html('<tr><td colspan="6" class="border px-2 py-1 text-center text-gray-500">Select a program to view schedules</td></tr>');
-            if (maintainedSchedules.length === 0) {
-                selectedSchedules = [];
-                $('#hiddenSchedule').val('[]');
-            }
-            $('#scheduleMaintained').hide();
-            $('#scheduleTableContainer').show();
-            updateDebugInfo();
-        };
-
-        const loadAllPrograms = (callback = null) => {
-            ajax('functions/ajax/get_program.php', {}, data => {
-                allPrograms = data;
-
-                if (callback) {
-                    callback();
-                }
-            });
-        };
-
-        const loadPrograms = () => {
-            loadAllPrograms(() => {
-                populateSelect('#programSelect', allPrograms, 'id', 'program_name', 'Select a program', null, 'learning_mode');
-
-                const selectedLearningMode = $('input[name="learning_mode"]:checked').val();
-                if (selectedLearningMode) {
-                    filterProgramsByLearningMode(selectedLearningMode);
-                }
-
-                if (existingTransaction.program_id) {
-                    $('#programSelect').val(existingTransaction.program_id).trigger('change');
-                }
-            });
-        };
-
-        const loadProgramDetails = (id) => ajax('functions/ajax/get_program_details.php', { program_id: id }, updateProgram);
-
-        const loadPackages = (id) => {
-            ajax('functions/ajax/get_packages.php', { program_id: id }, data => {
-                $('#packageSelect').html('<option value="">Select a package</option>');
-
-                data.forEach(package => {
-                    // Enhanced: Display selection type in package options
-                    const selectionType = package.selection_type || 1;
-                    const displayText = `${package.package_name} (Option ${selectionType})`;
-                    $('#packageSelect').append(`<option value="${package.package_name}">${displayText}</option>`);
-                });
-
-                $('#packageSelect').append('<option value="Regular Package">Regular Package</option>');
-
-                if (existingTransaction.package_name) {
-                    $('#packageSelect').val(existingTransaction.package_name).trigger('change');
-                }
-            });
-        };
-
-        // Enhanced: Disable reservation for promo packages with validation
-        function disableReservationIfPromo() {
-            const selectedPackage = $('#packageSelect').val();
-            const isPromo = selectedPackage && selectedPackage !== 'Regular Package';
-
-            const $reservationRadio = $('input[type="radio"][name="type_of_payment"][value="reservation"]');
-            const $reservationLabel = $reservationRadio.closest('label');
-
-            if (isPromo) {
-                // Enhanced: Check if it's a custom payment option (3-4) for stricter validation
-                if (currentPackage && currentPackage.selection_type > 2) {
-                    $reservationRadio.prop('disabled', true).prop('checked', false);
-                    $reservationLabel.css('color', '#b91c1c');
-                    if ($('#reservationPromoMsg').length === 0) {
-                        $reservationLabel.append(
-                            '<span id="reservationPromoMsg" style="color:#b91c1c; font-size:12px; margin-left:8px;">Reservation not available for custom payment options.</span>'
-                        );
-                    }
-                } else {
-                    $reservationRadio.prop('disabled', true).prop('checked', false);
-                    $reservationLabel.css('color', '#b91c1c');
-                    if ($('#reservationPromoMsg').length === 0) {
-                        $reservationLabel.append(
-                            '<span id="reservationPromoMsg" style="color:#b91c1c; font-size:12px; margin-left:8px;">Reservation is not available for promo packages.</span>'
-                        );
-                    }
-                }
-            } else {
-                $reservationRadio.prop('disabled', false);
-                $reservationLabel.css('color', '');
-                $('#reservationPromoMsg').remove();
-            }
-
-            console.log(`🚫 Reservation status updated - Promo: ${isPromo} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
-        }
-
-        const loadSchedules = (id) => ajax('functions/ajax/get_schedules.php', { program_id: id }, populateSchedule);
 
         const validatePaymentTypes = () => {
             paidPaymentTypes.forEach(paymentType => {
@@ -2531,11 +1874,142 @@ if (isset($transactions) && count($transactions) > 0) {
             populateDemoSelect();
         };
 
+        const updatePaymentAmountsEnhanced = () => {
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
+            const demoType = $('#demoSelect').val();
+            let amount = 0;
+
+            if (!currentProgram) return;
+
+            if (paymentType) {
+                $('#paymentNote').show().text('Payment processing with excess payment handling enabled');
+            } else {
+                $('#paymentNote').hide();
+            }
+
+            if (paymentType) {
+                validateScheduleSelection();
+            }
+
+            switch (paymentType) {
+                case 'full_payment':
+                    if (currentBalance > 0) {
+                        amount = currentBalance;
+                    } else {
+                        amount = parseFloat($('#finalTotalHidden').val()) || parseFloat(currentProgram.total_tuition);
+                    }
+                    break;
+                case 'initial_payment':
+                    amount = parseFloat(currentProgram.initial_fee || 0);
+                    break;
+                case 'demo_payment':
+                    if (demoType) {
+                        amount = calculateDemoFeeJS();
+                    }
+                    break;
+                case 'reservation':
+                    amount = parseFloat(currentProgram.reservation_fee || 0);
+                    break;
+            }
+
+            if (!$('#totalPayment').val() || $('#totalPayment').val() == '0') {
+                $('#totalPayment').val(amount.toFixed(2));
+            }
+
+            $('#cashToPay').val($('#totalPayment').val());
+
+            const cash = parseFloat($('#cash').val()) || 0;
+            const cashToPay = parseFloat($('#cashToPay').val()) || 0;
+            const change = Math.max(0, cash - cashToPay);
+            $('#change').val(change.toFixed(2));
+
+            updateDemoFeesDisplay();
+        };
+
+        window.updatePaymentData = updatePaymentAmountsEnhanced;
+
         // =============================================================================================
-        // ENHANCED: EVENT HANDLERS WITH PROMO SELECTION INTEGRATION
+        // DEBUG FUNCTIONS
+        // =============================================================================================
+        window.toggleDebug = function () {
+            const debugDiv = $('#debugInfo');
+            debugDiv.toggle();
+            updateDebugInfo();
+        };
+
+        const updateDebugInfo = () => {
+            const scheduleJson = $('#hiddenSchedule').val() || '[]';
+            let selectedCount = 0;
+            try {
+                const parsed = JSON.parse(scheduleJson);
+                selectedCount = Array.isArray(parsed) ? parsed.length : 0;
+            } catch (e) {
+                selectedCount = 'Invalid JSON';
+            }
+
+            $('#debugMaintained').text(`Maintained Schedules: ${maintainedSchedules.length} items`);
+            $('#debugSelected').text(`Selected Schedules: ${selectedCount} items`);
+            $('#debugValidation').text(`Validation Status: ${validateScheduleSelection() ? 'PASS' : 'FAIL'}`);
+            $('#debugExcess').text(`Excess Handler: ${excessPaymentData.isExcess ? 'ACTIVE' : 'Ready'}`);
+        };
+
+        // =============================================================================================
+        // EVENT HANDLERS
         // =============================================================================================
 
-        // Enhanced: Program selection handler
+        // Excess Payment Modal Event Handlers
+        attachExcessOptionListeners();
+
+        $('#closeExcessModal, #cancelExcessChoice').click(function () {
+            $('#excessPaymentModal').fadeOut(300);
+            excessPaymentData = {
+                isExcess: false,
+                requiredAmount: 0,
+                paidAmount: 0,
+                excessAmount: 0,
+                choice: null,
+                allocations: []
+            };
+        });
+
+        $('#confirmExcessChoice').click(function () {
+            if (!excessPaymentData.choice) return;
+
+            $('#excessChoiceField').val(excessPaymentData.choice);
+            $('#excessAmountField').val(excessPaymentData.excessAmount);
+            $('#excessAllocationsField').val(JSON.stringify(excessPaymentData.allocations || []));
+
+            if (excessPaymentData.choice === 'return_as_change') {
+                $('#totalPayment').val(excessPaymentData.requiredAmount.toFixed(2));
+                $('#cashToPay').val(excessPaymentData.requiredAmount.toFixed(2));
+
+                const cash = parseFloat($('#cash').val()) || 0;
+                const newChange = cash - excessPaymentData.requiredAmount;
+                $('#change').val(Math.max(0, newChange).toFixed(2));
+            }
+
+            $('#excessPaymentModal').fadeOut(300);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Excess Payment Choice Applied',
+                html: `
+                <div style="text-align: left;">
+                    <p><strong>Choice:</strong> ${getChoiceDisplayName(excessPaymentData.choice)}</p>
+                    <p><strong>Excess Amount:</strong> ₱${excessPaymentData.excessAmount.toLocaleString()}</p>
+                    <p><strong>Processing:</strong> Ready to submit</p>
+                    <hr style="margin: 10px 0;">
+                    <small>You can now proceed with the payment submission.</small>
+                </div>
+            `,
+                timer: 3000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        });
+
+        // Program selection handler
         $('#programSelect').change(function () {
             const id = $(this).val();
             if (id) {
@@ -2543,124 +2017,57 @@ if (isset($transactions) && count($transactions) > 0) {
                 loadPackages(id);
                 loadSchedules(id);
             } else {
-                resetProgram();
+                currentProgram = null;
+                $('#programTitle').text('Care Pro');
                 $('#packageSelect').html('<option value="">Select a program first</option>').prop('disabled', true);
-                resetSchedule();
             }
         });
 
-        // Enhanced: Package selection handler with promo selection display
+        // Package selection handler
         $('#packageSelect').change(function () {
             const packageName = $(this).val();
             if (packageName && currentProgram) {
                 if (packageName === 'Regular Package') {
                     currentPackage = null;
                     $('#packageInfo').text(`Package: ${packageName}`);
-                    $('#packageDetailsHidden').val('{ }');
+                    $('#packageDetailsHidden').val('{}');
                     calculateTotal(currentProgram, null);
-                    updateProgram(currentProgram);
-                    hidePromoSelectionInfo();
                 } else {
                     ajax('functions/ajax/get_package_details.php', {
                         program_id: currentProgram.id,
                         package_name: packageName
                     }, (packageData) => {
                         currentPackage = packageData;
-
-                        // Enhanced: Display promo selection information
-                        displayPromoSelectionInfo(packageData);
-
-                        // Enhanced package info display with selection type
-                        let packageDisplayText = `Package: ${packageName}`;
-                        if (packageData.selection_type_display) {
-                            packageDisplayText += ` (${packageData.selection_type_display})`;
-                        }
-                        if (packageData.display_info) {
-                            packageDisplayText += ` - ${packageData.display_info}`;
-                        }
-
-                        $('#packageInfo').html(`<strong>Package:</strong> ${packageDisplayText}`);
+                        $('#packageInfo').html(`<strong>Package:</strong> ${packageName}`);
                         $('#packageDetailsHidden').val(JSON.stringify(packageData));
                         calculateTotal(currentProgram, packageData);
-                        updateProgram(currentProgram);
-
-                        // Enhanced: Show selection type information in receipt
-                        if (packageData.selection_type > 2) {
-                            $('#promoInfo').addClass('text-blue-600').html(`
-                                <strong>Custom Payment Option:</strong> ${packageData.display_info}<br>
-                                <small>Required initial payment as declared during program setup</small>
-                            `).show();
-                        } else {
-                            $('#promoInfo').removeClass('text-blue-600').html(`
-                                <strong>Promo Discount:</strong> ₱${packageData.enrollment_fee ? parseFloat(packageData.enrollment_fee).toLocaleString() : '0'}<br>
-                                <small>Automatic ${packageData.percentage}% discount applied</small>
-                            `).show();
-                        }
-
-                        console.log(`🏷️ Package selected: ${packageName} (Option ${packageData.selection_type}) | User: Scraper001 | Time: 2025-06-21 03:25:31`);
                     });
                 }
             } else {
                 currentPackage = null;
                 $('#packageInfo').text('');
                 $('#packageDetailsHidden').val('');
-                hidePromoSelectionInfo();
                 if (currentProgram) {
                     calculateTotal(currentProgram, null);
-                    updateProgram(currentProgram);
                 }
             }
-
-            disableReservationIfPromo();
         });
 
-        $('#input[name="learning_mode"]').change(function () {
+        $('input[name="learning_mode"]').change(function () {
             const mode = $(this).val();
             $('#learningMode').text(`Learning Mode: ${mode}`);
-
-            filterProgramsByLearningMode(mode);
-
             if (currentProgram) {
                 showProgramDetailsImmediately(currentProgram);
                 updateDemoFeesDisplay();
             }
         });
 
-        // Enhanced: Payment type change handler with demo selection preservation and promo validation
         $('input[name="type_of_payment"]').change(function () {
             const paymentType = $(this).val();
-            const currentDemoSelection = $('#demoSelect').val(); // Enhanced: PRESERVE SELECTION
-
-            // Enhanced: Validate custom initial payments for options 3-4
-            if (paymentType === 'initial_payment' && currentPackage && currentPackage.selection_type > 2) {
-                const customInitial = parseFloat(currentPackage.custom_initial_payment || 0);
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Custom Initial Payment Required',
-                    html: `
-            <div style="text-align: left;">
-                <p><strong>Package:</strong> ${currentPackage.package_name}</p>
-                <p><strong>Selection Option:</strong> ${currentPackage.selection_type}</p>
-                <p><strong>Required Initial Payment:</strong> ₱${customInitial.toLocaleString()}</p>
-                <hr style="margin: 10px 0;">
-                    <small>This amount was declared during program setup and cannot be modified.</small>
-            </div>
-            `,
-                    confirmButtonText: 'I Understand',
-                    timer: 8000
-                });
-            }
 
             if (paymentType === 'demo_payment') {
                 $('#demoSelection').show();
-                const hasAvailableDemos = populateDemoSelect(true); // Enhanced: PRESERVE SELECTION
-
-                // Enhanced: Restore selection if it was cleared
-                if (currentDemoSelection && $('#demoSelect option[value="' + currentDemoSelection + '"]').length) {
-                    setTimeout(() => {
-                        $('#demoSelect').val(currentDemoSelection);
-                    }, 100);
-                }
+                const hasAvailableDemos = populateDemoSelect();
 
                 if (!hasAvailableDemos) {
                     Swal.fire({
@@ -2674,7 +2081,6 @@ if (isset($transactions) && count($transactions) > 0) {
                 }
             } else {
                 $('#demoSelection').hide();
-                // Enhanced: DON'T clear the selection, just hide the container
             }
 
             if (currentProgram) {
@@ -2690,47 +2096,41 @@ if (isset($transactions) && count($transactions) > 0) {
             updatePaymentAmountsEnhanced();
         });
 
-        // ENHANCED: Proper change calculation on input events
+        // Enhanced payment input handlers
         $('#totalPayment').on('input', function () {
             const amount = parseFloat($(this).val()) || 0;
             $('#cashToPay').val(amount.toFixed(2));
 
             const cash = parseFloat($('#cash').val()) || 0;
-            const change = Math.max(0, cash - amount); // Ensure change is never negative
+            const change = Math.max(0, cash - amount);
             $('#change').val(change.toFixed(2));
+
+            if (checkForExcessPayment()) {
+                $(this).css('border-color', '#ff6b6b');
+                $(this).css('background-color', '#fff5f5');
+            } else {
+                $(this).css('border-color', '');
+                $(this).css('background-color', '');
+            }
         });
 
         $('#cash').on('input', function () {
             const cash = parseFloat($(this).val()) || 0;
             const cashToPay = parseFloat($('#cashToPay').val()) || 0;
-            const change = Math.max(0, cash - cashToPay); // Ensure change is never negative
+            const change = Math.max(0, cash - cashToPay);
             $('#change').val(change.toFixed(2));
         });
 
         $('#cashToPay').on('input', function () {
             const cashToPay = parseFloat($(this).val()) || 0;
             const cash = parseFloat($('#cash').val()) || 0;
-            const change = Math.max(0, cash - cashToPay); // Ensure change is never negative
+            const change = Math.max(0, cash - cashToPay);
             $('#change').val(change.toFixed(2));
         });
 
         window.handleRowSelection = function (checkbox) {
             const row = checkbox.closest('tr');
             const rowId = row.getAttribute('data-row-id');
-            const paymentType = $('input[name="type_of_payment"]:checked').val();
-
-            if (row.classList.contains('schedule-locked') && paymentType === 'reservation') {
-                if (!checkbox.checked) {
-                    checkbox.checked = true;
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Schedule Locked',
-                        text: 'Schedules are locked for reservation payments and cannot be changed.',
-                        confirmButtonText: 'I understand'
-                    });
-                    return;
-                }
-            }
 
             const scheduleData = {
                 id: rowId,
@@ -2769,97 +2169,95 @@ if (isset($transactions) && count($transactions) > 0) {
             updateDebugInfo();
         };
 
-        // Enhanced: Form submission with promo selection validation and proper change calculation
-        $('#posForm').submit(async function (e) {
+        // Enhanced form submission with excess payment handling
+        $('#posForm').submit(function (e) {
             e.preventDefault();
 
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const totalPayment = parseFloat($('#totalPayment').val()) || 0;
             const learningMode = $('input[name="learning_mode"]:checked').val();
 
-            // Calculate required amount based on payment type
-            let requiredAmount = 0;
-            switch (paymentType) {
-                case 'initial_payment':
-                    if (currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment) {
-                        requiredAmount = parseFloat(currentPackage.custom_initial_payment);
-                    } else {
-                        requiredAmount = parseFloat(currentProgram.initial_fee || 0);
-                    }
-                    break;
-                case 'demo_payment':
-                    requiredAmount = calculateDemoFeeJS();
-                    break;
-                case 'reservation':
-                    requiredAmount = parseFloat(currentProgram.reservation_fee || 0);
-                    break;
-                case 'full_payment':
-                    requiredAmount = currentBalance > 0 ? currentBalance : parseFloat($('#finalTotalHidden').val()) || 0;
-                    break;
+            // Check for excess payment before submission
+            if (checkForExcessPayment() && !excessPaymentData.choice) {
+                showExcessPaymentModal();
+                return;
             }
 
-            // Check for excess payment
-            let excessData = null;
-            if (totalPayment > requiredAmount && (paymentType === 'initial_payment' || paymentType === 'demo_payment')) {
-                excessData = await checkExcessPayment(totalPayment, requiredAmount, paymentType);
-
-                if (!excessData) {
-                    return; // Payment cancelled
-                }
-
-                // Update payment amount based on excess handling
-                if (excessData.processedAmount !== totalPayment) {
-                    $('#totalPayment').val(excessData.processedAmount.toFixed(2));
-                    $('#cashToPay').val(excessData.processedAmount.toFixed(2));
-                }
-
-                // Add excess info to receipt
-                addExcessInfoToReceipt(excessData);
-            }
-
-            // Rest of your existing validation code...
             const studentId = $('input[name="student_id"]').val() || "";
             const programId = $('#programSelect').val() || "";
             const cash = parseFloat($('#cash').val()) || 0;
             const cashToPay = parseFloat($('#cashToPay').val()) || 0;
 
-            // Basic validation (keep your existing validation)
+            const subtotal = parseFloat($('#subtotalHidden').val()) || 0;
+            const finalTotal = parseFloat($('#finalTotalHidden').val()) || 0;
+            const promoApplied = parseFloat($('#promoAppliedHidden').val()) || 0;
+
+            const submitBtn = $(this).find('button[type="submit"]');
+            const originalBtnText = submitBtn.text();
+            submitBtn.prop('disabled', true).text('Processing Payment...');
+
+            // Basic validation
             if (!studentId || !programId || !paymentType || parseFloat($('#totalPayment').val()) <= 0) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Validation Error',
                     text: 'Please fill in all required fields and enter a valid payment amount.'
                 });
+                submitBtn.prop('disabled', false).text(originalBtnText);
                 return;
             }
 
-            // Create form data with excess payment info
+            if (cash < parseFloat($('#cashToPay').val())) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Insufficient Cash',
+                    text: `Cash (₱${cash.toLocaleString()}) is less than payment amount (₱${parseFloat($('#cashToPay').val()).toLocaleString()}).`
+                });
+                submitBtn.prop('disabled', false).text(originalBtnText);
+                return;
+            }
+
+            // Create form data with excess payment handling
             const formData = new FormData();
             formData.append('student_id', studentId);
             formData.append('program_id', programId);
             formData.append('learning_mode', learningMode);
             formData.append('type_of_payment', paymentType);
             formData.append('package_id', $('#packageSelect').val() || 'Regular');
+            formData.append('transaction_timestamp', '2025-06-21 06:15:13');
+            formData.append('processed_by', 'Scraper001');
 
             // Add excess payment data
-            if (excessData) {
-                formData.append('excess_amount', excessData.excessAmount.toString());
-                formData.append('excess_option', excessData.excessOption);
-                formData.append('excess_description', excessData.description);
-                formData.append('original_payment_amount', excessData.paymentAmount.toString());
+            if (excessPaymentData.isExcess && excessPaymentData.choice) {
+                formData.append('has_excess_payment', 'true');
+                formData.append('excess_choice', excessPaymentData.choice);
+                formData.append('excess_amount', excessPaymentData.excessAmount.toString());
+                formData.append('excess_allocations', JSON.stringify(excessPaymentData.allocations || []));
+                formData.append('original_payment_amount', excessPaymentData.paidAmount.toString());
+                formData.append('required_payment_amount', excessPaymentData.requiredAmount.toString());
+            } else {
+                formData.append('has_excess_payment', 'false');
             }
 
-            // Rest of your existing form data
+            if (paymentType === 'demo_payment') {
+                formData.append('demo_type', $('#demoSelect').val());
+                formData.append('js_calculated_demo_fee', calculateDemoFeeJS().toString());
+            }
+
+            const scheduleJson = $('#hiddenSchedule').val() || '[]';
+            formData.append('selected_schedules', scheduleJson);
+            formData.append('sub_total', subtotal.toString());
+            formData.append('final_total', finalTotal.toString());
             formData.append('cash', cash.toString());
             formData.append('total_payment', parseFloat($('#totalPayment').val()).toString());
             formData.append('cash_to_pay', parseFloat($('#cashToPay').val()).toString());
+            formData.append('promo_applied', promoApplied.toString());
+            formData.append('program_details', $('#programDetailsHidden').val() || '{}');
+            formData.append('package_details', $('#packageDetailsHidden').val() || '{}');
+            formData.append('paid_demos', $('#paidDemosField').val() || '[]');
+            formData.append('paid_payment_types', $('#paidPaymentTypesField').val() || '[]');
 
-            // Add other existing fields...
-            if (paymentType === 'demo_payment') {
-                formData.append('demo_type', $('#demoSelect').val());
-            }
-
-            // Continue with your existing AJAX submission...
+            // Process enrollment with excess handling
             $.ajax({
                 url: 'functions/ajax/process_enrollment.php',
                 type: 'POST',
@@ -2867,25 +2265,44 @@ if (isset($transactions) && count($transactions) > 0) {
                 processData: false,
                 contentType: false,
                 dataType: 'json',
+                timeout: 30000,
+
                 success: function (response) {
                     if (response.success) {
-                        let successMessage = `Payment processed successfully!`;
+                        let successMessage = `Payment of ₱${parseFloat($('#totalPayment').val()).toLocaleString()} for ${paymentType.replace('_', ' ').toUpperCase()} processed successfully!`;
 
-                        if (excessData && excessData.excessOption !== 'none') {
-                            successMessage += `\n\nExcess Payment: ₱${excessData.excessAmount.toLocaleString()}`;
-                            successMessage += `\nAction: ${excessData.description}`;
-                            if (excessData.changeAmount > 0) {
-                                successMessage += `\nChange Given: ₱${excessData.changeAmount.toLocaleString()}`;
+                        // Add excess handling information to success message
+                        if (response.excess_processing) {
+                            successMessage += `\n\n💰 Excess Payment Handling:`;
+                            successMessage += `\n• Choice: ${getChoiceDisplayName(response.excess_processing.choice)}`;
+                            successMessage += `\n• Excess Amount: ₱${parseFloat(response.excess_processing.excess_amount || 0).toLocaleString()}`;
+
+                            if (response.excess_processing.allocations && response.excess_processing.allocations.length > 0) {
+                                successMessage += `\n• Demo Allocations: ${response.excess_processing.allocations.length} demos affected`;
+                            }
+
+                            if (response.excess_processing.final_change_amount > 0) {
+                                successMessage += `\n• Final Change: ₱${parseFloat(response.excess_processing.final_change_amount).toLocaleString()}`;
                             }
                         }
 
+                        const changeAmount = parseFloat($('#change').val()) || 0;
+                        if (changeAmount > 0) {
+                            successMessage += `\nChange Given: ₱${changeAmount.toLocaleString()}`;
+                        }
+
+                        successMessage += `\n\nDate: 2025-06-21 06:15:13`;
+                        successMessage += `\nProcessed by: Scraper001`;
+                        successMessage += `\nTransaction ID: ${response.transaction_id || 'N/A'}`;
+
                         Swal.fire({
                             icon: 'success',
-                            title: 'Payment Successful!',
+                            title: 'Payment Successful with Excess Handling!',
                             text: successMessage,
                             confirmButtonText: 'Print Receipt',
                             showCancelButton: true,
-                            cancelButtonText: 'Continue'
+                            cancelButtonText: 'Continue',
+                            timer: 5000
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 printReceiptSection2();
@@ -2893,30 +2310,61 @@ if (isset($transactions) && count($transactions) > 0) {
                                 window.location.reload();
                             }
                         });
+
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'Payment Failed',
-                            text: response.message || 'Failed to process payment. Please try again.'
+                            html: `<div style="text-align: left;">
+                            <p><strong>Error Details:</strong></p>
+                            <p>${response.message || 'Failed to process payment. Please try again.'}</p>
+                            <hr>
+                            <div style="font-size: 12px; color: #666;">
+                                <strong>Time:</strong> 2025-06-21 06:15:13<br>
+                                <strong>User:</strong> Scraper001
+                            </div>
+                        </div>`,
+                            confirmButtonText: 'Try Again'
                         });
                     }
+
+                    submitBtn.prop('disabled', false).text(originalBtnText);
                 },
-                error: function () {
+
+                error: function (xhr, status, error) {
+                    let errorMessage = 'Failed to connect to server. Please check your connection and try again.';
+
+                    if (status === 'timeout') {
+                        errorMessage = 'Request timed out. The server may be busy. Please try again in a moment.';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Server error occurred. Please contact the administrator.';
+                    } else if (xhr.status === 403) {
+                        errorMessage = 'Access denied. Please refresh the page and log in again.';
+                    }
+
                     Swal.fire({
                         icon: 'error',
                         title: 'Connection Error',
-                        text: 'Failed to connect to server. Please try again.'
+                        text: errorMessage,
+                        confirmButtonText: 'Retry',
+                        showCancelButton: true,
+                        cancelButtonText: 'Cancel'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $('#posForm').submit();
+                        }
                     });
+
+                    submitBtn.prop('disabled', false).text(originalBtnText);
                 }
             });
         });
-        // ========================================================================================
-        // ENHANCED SYSTEM INITIALIZATION WITH PROMO SELECTION SUPPORT
-        // ========================================================================================
 
-        const initializeSystem = async () => {
-            // Initialize cash drawer auto-search (optional)
-            await autoSearchCashDrawer();
+        // =============================================================================================
+        // SYSTEM INITIALIZATION
+        // =============================================================================================
+        const initializeSystem = () => {
+            console.log('🎉 Initializing Enhanced POS System with Excess Payment Handling...');
 
             validatePaymentTypes();
 
@@ -2927,424 +2375,15 @@ if (isset($transactions) && count($transactions) > 0) {
             loadPrograms();
             updateDebugInfo();
 
-            console.log('🎉 Enhanced POS System initialized with Promo Selection Options (1-4) | User: Scraper001 | Time: 2025-06-21 03:25:31');
+            console.log('🎉 Enhanced POS System initialized | User: Scraper001 | Time: 2025-06-21 06:15:13');
         };
 
         initializeSystem();
 
-        // Enhanced: Monitor system health with demo selection preservation and promo awareness
-        setInterval(() => {
-            const paymentType = $('input[name="type_of_payment"]:checked').val();
-            if (paymentType) {
-                validateScheduleSelection();
-            }
-
-            if (maintainedSchedules.length > 0) {
-                const statusText = paymentType === 'reservation' ?
-                    'Schedules locked for reservation payment' :
-                    `Schedules from reservation (can be modified for ${paymentType || 'selected payment'})`;
-                $('#scheduleMaintained').show().text(statusText);
-            }
-
-            // Enhanced: Only update demo select if demo payment is NOT currently selected
-            if (paymentType !== 'demo_payment') {
-                populateDemoSelect(true); // Always preserve selection
-            }
-
-            if ($('#debugInfo').is(':visible')) {
-                updateDebugInfo();
-            }
-
-            updateCashDrawerStatus(cashDrawerConnected, cashDrawerConnected ? "Ready" : "Disconnected");
-
-        }, 10000);
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', async () => {
-            if (monitoringInterval) {
-                clearInterval(monitoringInterval);
-            }
-            if (cashDrawerConnected) {
-                try {
-                    await disconnectCashDrawer();
-                } catch (error) {
-                    // Silent cleanup
-                }
-            }
-        });
-
-        // ENHANCED: Disconnect function
-        async function disconnectCashDrawer() {
-            try {
-                if (writer) {
-                    await writer.close();
-                    writer = null;
-                }
-
-                if (serialPort) {
-                    await serialPort.close();
-                    serialPort = null;
-                }
-
-                cashDrawerConnected = false;
-                updateCashDrawerStatus(false, "Disconnected");
-
-            } catch (error) {
-                writer = null;
-                serialPort = null;
-                cashDrawerConnected = false;
-                updateCashDrawerStatus(false, "Force Disconnected");
-            }
-        }
-
-        // Enhanced: Expose enhanced functions globally with promo support
-        window.cashDrawer = {
-            autoSearch: autoSearchCashDrawer,
-            requestNew: requestNewCashDrawerPort,
-            connect: connectToCashDrawer,
-            disconnect: async () => {
-                if (monitoringInterval) {
-                    clearInterval(monitoringInterval);
-                    monitoringInterval = null;
-                }
-                await disconnectCashDrawer();
-            },
-
-            // Operation functions
-            open: () => openCashDrawerOnPayment(0, "manual"),
-            test: async () => {
-                const result = await openCashDrawerOnPayment(0, "test");
-                if (result) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Test Successful!',
-                        text: 'Cash drawer opened successfully.',
-                        timer: 2000
-                    });
-                }
-                return result;
-            },
-
-            // Status functions
-            status: () => ({
-                connected: cashDrawerConnected,
-                port: serialPort ? 'Available' : 'Not Available',
-                writer: writer ? 'Ready' : 'Not Ready',
-                monitoring: monitoringInterval ? 'Active' : 'Inactive',
-                timestamp: '2025-06-21 03:25:31',
-                user: 'Scraper001'
-            }),
-
-            // Utility functions
-            isSupported: isWebSerialSupported,
-            reconnect: async () => {
-                await disconnectCashDrawer();
-                setTimeout(async () => {
-                    await autoSearchCashDrawer();
-                }, 1000);
-            }
-        };
-
-        // Enhanced: Expose demo calculator functions with promo awareness
-        window.demoCalculator = {
-            calculate: calculateDemoFeeJS,
-            update: () => {
-                if (currentProgram) {
-                    updateDemoFeesDisplay();
-                    showProgramDetailsImmediately(currentProgram);
-                }
-            },
-            getStatus: () => ({
-                currentBalance: currentBalance,
-                paidDemos: paidDemos,
-                remainingDemos: 4 - paidDemos.length,
-                calculatedFee: calculateDemoFeeJS(),
-                isFirstTransaction: isFirstTransaction,
-                promoSelection: currentPackage ? `Option ${currentPackage.selection_type}` : 'No Promo',
-                timestamp: '2025-06-21 03:25:31',
-                user: 'Scraper001'
-            }),
-            recalculate: () => {
-                if (currentProgram) {
-                    updateDemoFeesDisplay();
-                    showProgramDetailsImmediately(currentProgram);
-                    updatePaymentAmountsEnhanced();
-                }
-            }
-        };
-
-        // Enhanced: Expose program display functions with promo integration
-        window.programDisplay = {
-            refresh: () => {
-                if (currentProgram) {
-                    showProgramDetailsImmediately(currentProgram);
-                    updateDemoFeesDisplay();
-                }
-            },
-            getStatus: () => ({
-                programLoaded: !!currentProgram,
-                isFirstTransaction: isFirstTransaction,
-                detailsVisible: !!currentProgram,
-                chargesVisible: !!currentProgram,
-                demoFeesVisible: !!currentProgram,
-                promoSelection: currentPackage ? `Option ${currentPackage.selection_type} - ${currentPackage.package_name}` : 'No Promo',
-                timestamp: '2025-06-21 03:25:31',
-                user: 'Scraper001'
-            }),
-            forceDisplay: () => {
-                if (currentProgram) {
-                    showProgramDetailsImmediately(currentProgram);
-                    updateDemoFeesDisplay();
-                    showSuccessNotification("Program Display", "Program details, charges, and demo fees are now visible immediately");
-                } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'No Program Selected',
-                        text: 'Please select a program first to display details.',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            }
-        };
-
-        // Enhanced: Expose promo selection functions
-        window.promoSelection = {
-            getCurrentSelection: () => {
-                if (!currentPackage) return null;
-                return {
-                    packageName: currentPackage.package_name,
-                    selectionType: currentPackage.selection_type,
-                    calculationMethod: currentPackage.selection_type <= 2 ? 'Percentage-based' : 'Manual payment',
-                    percentage: currentPackage.percentage || 0,
-                    customInitialPayment: currentPackage.custom_initial_payment || 0,
-                    enrollmentFee: currentPackage.enrollment_fee || 0,
-                    timestamp: '2025-06-21 03:25:31',
-                    user: 'Scraper001'
-                };
-            },
-            validateCustomPayment: (paymentAmount) => {
-                if (!currentPackage || currentPackage.selection_type <= 2) return true;
-                const customInitial = parseFloat(currentPackage.custom_initial_payment || 0);
-                return Math.abs(paymentAmount - customInitial) <= 0.01;
-            },
-            getRequiredInitialPayment: () => {
-                if (!currentPackage) return null;
-                if (currentPackage.selection_type <= 2) {
-                    return parseFloat(currentProgram?.initial_fee || 0);
-                } else {
-                    return parseFloat(currentPackage.custom_initial_payment || 0);
-                }
-            },
-            displayInfo: () => {
-                if (currentPackage) {
-                    displayPromoSelectionInfo(currentPackage);
-                } else {
-                    hidePromoSelectionInfo();
-                }
-            }
-        };
-
-        // Enhanced: Expose reservation functions with promo awareness
-        window.reservationSystem = {
-            getStatus: () => ({
-                cashDrawerBypass: true,
-                scheduleHandling: 'Automatic for F2F/Online',
-                validationStatus: 'Enhanced',
-                promoRestrictions: 'Disabled for promo packages',
-                timestamp: '2025-06-21 03:25:31',
-                user: 'Scraper001'
-            }),
-            testReservation: () => {
-                // Check if reservation is available
-                const reservationOption = $('input[name="type_of_payment"][value="reservation"]');
-                if (reservationOption.length && !reservationOption.prop('disabled')) {
-                    reservationOption.prop('checked', true).trigger('change');
-                    showSuccessNotification("Reservation Test", "Reservation payment type selected. Cash drawer will NOT be triggered.");
-                } else {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Reservation Test',
-                        text: 'Reservation payment type is not available (may already be paid or disabled for promo packages).',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            },
-            checkPromoRestriction: () => {
-                const selectedPackage = $('#packageSelect').val();
-                const isPromo = selectedPackage && selectedPackage !== 'Regular Package';
-                return {
-                    isRestricted: isPromo,
-                    reason: isPromo ? 'Reservation not available for promo packages' : 'Reservation available',
-                    promoPackage: selectedPackage || 'None'
-                };
-            }
-        };
-
-        // Add enhanced CSS animations with promo selection styling
-        $('head').append(`
-    <style>
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.02); }
-        }
-        
-        @keyframes slideInDown {
-            from {
-                transform: translateX(-50%) translateY(-100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        .cash-drawer-success { animation: slideInRight 0.4s ease-out; }
-        
-        #cashDrawerStatus { transition: all 0.3s ease; }
-        
-        #cashDrawerStatus:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        
-        .processing-payment {
-            background: linear-gradient(45deg, #667eea, #764ba2, #667eea);
-            background-size: 200% 200%; 
-            animation: gradientShift 2s ease infinite; 
-        }
-        
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .demo-fee-item {
-            transition: all 0.3s ease;
-        }
-
-        .demo-fee-item:hover {
-            transform: translateX(2px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .first-transaction-highlight {
-            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 1px solid #0ea5e9;
-            border-radius: 4px;
-            padding: 8px;
-            margin: 4px 0;
-        }
-
-        .schedule-locked {
-            background-color: #fef2f2 !important;
-            border-color: #fecaca;
-        }
-
-        .schedule-maintained {
-            background-color: #f0f9ff !important;
-            border-color: #bfdbfe;
-        }
-
-        .program-details-section,
-        .charges-section,
-        .demo-fees-display {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-
-        .fixed-success-indicator {
-            position: fixed;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 10001;
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
-            animation: slideInDown 0.5s ease-out;
-        }
-
-        /* Enhanced Promo Selection Animations */
-        .promo-selection-display {
-            transition: all 0.3s ease;
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .promo-option-1:hover, .promo-option-2:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .promo-option-3:hover, .promo-option-4:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-        }
-
-        .custom-payment-info {
-            animation: slideInLeft 0.3s ease-out;
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-    </style>
-`);
-
-        // Show enhanced system ready notifications with promo selection info
-        setTimeout(() => {
-            if (cashDrawerConnected) {
-                showSuccessNotification("System Ready", "Cash drawer connected. Enhanced with Promo Selection Options (1-4).");
-            }
-
-            // Show enhanced fix status notification
-            $('body').append(`
-        <div class="fixed-success-indicator" id="fixedIndicator">
-            <i class="fa-solid fa-check-circle mr-2"></i>Enhanced POS with Promo Selection (1-4) Ready!
-        </div>
-    `);
-
-            setTimeout(() => {
-                $('#fixedIndicator').fadeOut(1000, function () {
-                    $(this).remove();
-                });
-            }, 6000);
-
-        }, 2000);
-
-        console.log('🎉 Enhanced POS System with Promo Selection Options (1-4) fully initialized | User: Scraper001 | Time: 2025-06-21 03:25:31');
+        console.log('🎉 Enhanced POS System with Excess Payment Handling fully loaded | User: Scraper001 | Time: 2025-06-21 06:15:13');
     });
 
-    // Enhanced: Global print function
+    // Global print function
     function printReceiptSection2() {
         const printContents = document.getElementById('receiptSection').innerHTML;
         const originalContents = document.body.innerHTML;
@@ -3359,23 +2398,24 @@ if (isset($transactions) && count($transactions) > 0) {
     var enrollmentLocked = <?= $enrollment_locked ? 'true' : 'false' ?>;
 
     window.addEventListener("load", function () {
-        var programSelect = document.getElementById("programSelect");
-        var packageSelect = document.getElementById("packageSelect");
-        var locked_warning = document.getElementById("locked_warning");
+        setTimeout(function () {
+            var programSelect = document.getElementById("programSelect");
+            var packageSelect = document.getElementById("packageSelect");
+            var locked_warning = document.getElementById("locked_warning");
 
-        console.log("enrollmentLocked:", enrollmentLocked, "| User: Scraper001 | Time: 2025-06-21 03:25:31");
+            console.log("enrollmentLocked:", enrollmentLocked, "| User: Scraper001 | Time: 2025-06-21 06:15:13");
 
-        if (enrollmentLocked === true) {
-            // FIX: Don't disable the dropdowns, just show a warning.
-            // programSelect.disabled = true;
-            // packageSelect.disabled = true;
-            locked_warning.innerHTML = "To avoid accidental errors, the Program and Package selections are locked."
-            console.log("Locked after delay | User: Scraper001 | Time: 2025-06-21 03:25:31");
-        } else {
-            programSelect.disabled = false;
-            packageSelect.disabled = false;
-            locked_warning.innerHTML = "";
-        }
+            if (enrollmentLocked === true) {
+                programSelect.disabled = true;
+                packageSelect.disabled = true;
+                locked_warning.innerHTML = "To avoid accidental errors, the Program and Package selections are locked.";
+                console.log("Locked after delay | User: Scraper001 | Time: 2025-06-21 06:15:13");
+            } else {
+                programSelect.disabled = false;
+                packageSelect.disabled = false;
+                locked_warning.innerHTML = "";
+            }
+        }, 500); // Delay to allow population
     });
 </script>
 
