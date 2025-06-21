@@ -1,8 +1,8 @@
 <?php
 /**
- * Fixed Process Enrollment with Proper Excess Payment Validation
- * CarePro POS System - Validation-First Approach
- * User: Scraper001 | Time: 2025-06-21 09:47:17
+ * Fixed Process Enrollment with Corrected Excess Payment Handling
+ * CarePro POS System - Simplified Implementation
+ * User: Scraper001 | Time: 2025-06-21 09:41:13
  */
 
 include '../../../connection/connection.php';
@@ -34,62 +34,51 @@ function debug_log($message, $data = null)
 }
 
 /**
- * VALIDATION: Check if excess allocation is allowed
- */
-function validateExcessAllocation($payment_type, $excess_choice, $excess_amount)
-{
-    $validation_errors = [];
-
-    if ($payment_type === 'initial_payment') {
-        if (in_array($excess_choice, ['treat_as_full', 'allocate_to_demos'])) {
-            $validation_errors[] = "ERROR: Cannot allocate initial payment excess to demo allocation. System limitation prevents this operation.";
-        }
-    }
-
-    if ($payment_type === 'demo_payment') {
-        if (in_array($excess_choice, ['add_to_next_demo', 'credit_to_account'])) {
-            $validation_errors[] = "ERROR: Cannot allocate demo excess to another demo. System limitation prevents this operation.";
-        }
-    }
-
-    return [
-        'valid' => empty($validation_errors),
-        'errors' => $validation_errors,
-        'suggested_action' => empty($validation_errors) ? null : 'Please choose to return excess as change or adjust payment amount.'
-    ];
-}
-
-/**
- * SIMPLIFIED: Excess Payment Handler - Only Allows Valid Options
+ * SIMPLIFIED: Excess Payment Handler - Returns Change Only
+ * Note: Real allocation to database would require complex balance recalculation
  */
 function handleExcessPayment($excess_option, $original_amount, $required_amount, $excess_amount, $payment_type)
 {
-    // First validate if the option is allowed
-    $validation = validateExcessAllocation($payment_type, $excess_option, $excess_amount);
-
-    if (!$validation['valid']) {
-        return [
-            'success' => false,
-            'errors' => $validation['errors'],
-            'suggested_action' => $validation['suggested_action']
-        ];
-    }
-
     $result = [
-        'success' => true,
         'processed_amount' => $required_amount,
         'change_amount' => $excess_amount,
-        'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change.",
+        'description' => '',
         'allocation_notes' => []
     ];
 
-    // Only 'return_as_change' is allowed based on your validation
-    if ($excess_option === 'return_as_change') {
-        $result['description'] = "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change (user selected).";
-    } else {
-        // All other options are blocked and converted to return_as_change
-        $result['description'] = "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change (allocation blocked by system validation).";
-        $result['allocation_notes'] = ["User requested: " . $excess_option . " but system validation prevented allocation"];
+    switch ($excess_option) {
+        case 'treat_as_full':
+        case 'allocate_to_demos':
+            // For initial payment excess - return as change due to complexity
+            $result = [
+                'processed_amount' => $required_amount,
+                'change_amount' => $excess_amount,
+                'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change. Note: Allocation selected but returned for system stability.",
+                'allocation_notes' => ["User requested allocation but system returned change for data integrity"]
+            ];
+            break;
+
+        case 'add_to_next_demo':
+        case 'credit_to_account':
+            // For demo payment excess - return as change due to complexity
+            $result = [
+                'processed_amount' => $required_amount,
+                'change_amount' => $excess_amount,
+                'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change. Note: Allocation requested but returned for system stability.",
+                'allocation_notes' => ["User requested demo allocation but system returned change for data integrity"]
+            ];
+            break;
+
+        case 'return_as_change':
+        default:
+            // Return the Excess as Change
+            $result = [
+                'processed_amount' => $required_amount,
+                'change_amount' => $excess_amount,
+                'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change.",
+                'allocation_notes' => []
+            ];
+            break;
     }
 
     return $result;
@@ -150,11 +139,11 @@ function checkProgramEndDate($conn, $program_id)
 }
 
 /**
- * ENHANCED: Schedule validation function - Required for full payments
+ * ADDED: Schedule validation function
  */
 function validateScheduleSelection($payment_type, $selected_schedules, $conn, $student_id, $program_id)
 {
-    // VALIDATION: Full payment and initial payment require schedule selection
+    // Full payment and initial payment require schedule selection
     if (in_array($payment_type, ['full_payment', 'initial_payment'])) {
         $schedules_data = json_decode($selected_schedules, true);
 
@@ -176,14 +165,14 @@ function validateScheduleSelection($payment_type, $selected_schedules, $conn, $s
             if (!$maintained_result || empty($maintained_result['selected_schedules'])) {
                 return [
                     'valid' => false,
-                    'message' => "VALIDATION ERROR: We can't process " . str_replace('_', ' ', $payment_type) . " if we have no selected schedule. Please select a schedule first."
+                    'message' => "Schedule selection is required for " . str_replace('_', ' ', $payment_type) . " payments"
                 ];
             }
 
             debug_log("✅ Using maintained schedules for " . $payment_type);
             return [
                 'valid' => true,
-                'message' => "Using maintained schedules from previous transaction",
+                'message' => "Using maintained schedules",
                 'schedules' => $maintained_result['selected_schedules']
             ];
         }
@@ -192,7 +181,7 @@ function validateScheduleSelection($payment_type, $selected_schedules, $conn, $s
     return ['valid' => true, 'message' => 'Schedule validation passed'];
 }
 
-$current_time = '2025-06-21 09:47:17';
+$current_time = '2025-06-21 09:41:13';
 
 try {
     // Get POST data
@@ -204,7 +193,7 @@ try {
     $demo_type = $_POST['demo_type'] ?? null;
     $selected_schedules = $_POST['selected_schedules'] ?? null;
 
-    // Get excess payment data
+    // FIXED: Simplified excess payment handling
     $has_excess_payment = isset($_POST['has_excess_payment']) && $_POST['has_excess_payment'] === 'true';
     $excess_choice = $_POST['excess_choice'] ?? null;
     $excess_amount = safe_float($_POST['excess_amount'] ?? 0);
@@ -216,22 +205,13 @@ try {
         'choice' => $excess_choice,
         'excess_amount' => $excess_amount,
         'original_payment' => $original_payment_amount,
-        'required_payment' => $required_payment_amount,
-        'payment_type' => $payment_type
+        'required_payment' => $required_payment_amount
     ]);
-
-    // VALIDATION: Check excess allocation before processing
-    if ($has_excess_payment && $excess_choice) {
-        $excess_validation = validateExcessAllocation($payment_type, $excess_choice, $excess_amount);
-        if (!$excess_validation['valid']) {
-            throw new Exception(implode(' ', $excess_validation['errors']) . ' ' . $excess_validation['suggested_action']);
-        }
-    }
 
     // Real-time program end date validation
     $program_info = checkProgramEndDate($conn, $program_id);
 
-    // VALIDATION: Enhanced schedule validation
+    // ADDED: Enhanced schedule validation
     $schedule_validation = validateScheduleSelection($payment_type, $selected_schedules, $conn, $student_id, $program_id);
     if (!$schedule_validation['valid']) {
         throw new Exception($schedule_validation['message']);
@@ -304,7 +284,7 @@ try {
         $selected_schedules = $existing_selected_schedules;
     }
 
-    // VALIDATION-FIRST: Process excess payment with validation
+    // FIXED: Simplified excess payment processing
     $excess_processing_result = null;
     $final_payment_amount = $payment_amount;
     $final_change_amount = max(0, $cash - $payment_amount);
@@ -318,12 +298,10 @@ try {
             $payment_type
         );
 
-        if (!$excess_processing_result['success']) {
-            throw new Exception(implode(' ', $excess_processing_result['errors']) . ' ' . ($excess_processing_result['suggested_action'] ?? ''));
+        if ($excess_processing_result) {
+            $final_payment_amount = $excess_processing_result['processed_amount'];
+            $final_change_amount = max(0, ($cash - $final_payment_amount) + $excess_processing_result['change_amount']);
         }
-
-        $final_payment_amount = $excess_processing_result['processed_amount'];
-        $final_change_amount = max(0, ($cash - $final_payment_amount) + $excess_processing_result['change_amount']);
     }
 
     $balance = $final_total - $final_payment_amount;
@@ -352,14 +330,14 @@ try {
     // Create description with excess payment info
     $description = "Payment processed - " . ucfirst(str_replace('_', ' ', $payment_type));
     if ($excess_processing_result) {
-        $description .= " (Excess: " . $excess_processing_result['description'] . ")";
+        $description .= " (Excess handled: " . $excess_processing_result['description'] . ")";
     }
 
     // Start transaction
     $conn->begin_transaction();
 
     try {
-        // Program end date validation with blocking
+        // ENHANCED: Program end date validation with blocking
         if ($program_info['status'] === 'ENDED') {
             throw new Exception($program_info['message']);
         }
@@ -411,14 +389,15 @@ try {
 
         $transaction_id = $stmt->insert_id;
 
-        // Log excess payment validation/handling
+        // ENHANCED: Log excess payment information if applicable
         if ($excess_processing_result) {
-            debug_log("💰 Excess payment validation applied", [
+            // Log the excess handling for audit purposes
+            debug_log("💰 Excess payment handled", [
                 'transaction_id' => $transaction_id,
-                'choice_requested' => $excess_choice,
-                'validation_result' => 'Excess returned as change due to system validation',
+                'choice' => $excess_choice,
+                'excess_amount' => $excess_amount,
                 'description' => $excess_processing_result['description'],
-                'allocation_notes' => $excess_processing_result['allocation_notes'] ?? []
+                'allocation_notes' => $excess_processing_result['allocation_notes']
             ]);
         }
 
@@ -456,14 +435,13 @@ try {
 
         $conn->commit();
 
-        debug_log("✅ Transaction completed with validation", [
+        debug_log("✅ Transaction completed successfully", [
             'transaction_id' => $transaction_id,
             'student_id' => $student_id,
             'payment_type' => $payment_type,
             'amount' => $final_payment_amount,
             'balance' => $balance,
-            'excess_validation' => $excess_choice ?? 'none',
-            'schedule_validation' => $schedule_validation['message']
+            'excess_handled' => $excess_choice ?? 'none'
         ]);
 
         // Prepare response
@@ -481,7 +459,7 @@ try {
         }
 
         if ($excess_processing_result) {
-            $response_message .= ' with excess payment validation applied';
+            $response_message .= ' with excess payment handling (' . $excess_choice . ')';
         }
 
         $response = [
@@ -510,16 +488,15 @@ try {
             'processed_by' => 'Scraper001'
         ];
 
-        // Add validation information to response
+        // Add excess processing information to response
         if ($excess_processing_result) {
             $response['excess_processing'] = [
                 'success' => true,
-                'validation_applied' => true,
-                'choice_requested' => $excess_choice,
+                'choice' => $excess_choice,
+                'excess_amount' => $excess_amount,
                 'final_change_amount' => $excess_processing_result['change_amount'],
                 'processing_notes' => [$excess_processing_result['description']],
-                'allocation_notes' => $excess_processing_result['allocation_notes'] ?? [],
-                'validation_message' => 'System validation prevented allocation and returned excess as change',
+                'allocation_notes' => $excess_processing_result['allocation_notes'],
                 'processed_at' => $current_time,
                 'processed_by' => 'Scraper001'
             ];
@@ -533,12 +510,11 @@ try {
     }
 
 } catch (Exception $e) {
-    debug_log("❌ Enrollment processing error with validation", $e->getMessage());
+    debug_log("❌ Enrollment processing error", $e->getMessage());
 
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage(),
-        'validation_error' => true,
         'timestamp' => $current_time,
         'processed_by' => 'Scraper001'
     ]);
