@@ -1,0 +1,141 @@
+<?php include "../connection/connection.php";
+include "includes/header.php";
+$conn = con();
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_user'])) {
+    $username = trim($_POST['username']);
+    $email = trim($_POST['email']);
+    $password = trim($_POST['password']);
+
+    // Hash the password for security
+    $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+
+    if (!empty($username) && !empty($email) && !empty($password)) {
+        $stmt = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $username, $email, $hashed_password);
+
+        if ($stmt->execute()) {
+            echo "<script>
+                Swal.fire('Success!', 'User added successfully!', 'success');
+            </script>";
+
+            date_default_timezone_set('Asia/Manila');
+            $date_created2 = date('Y-m-d H:i:s');
+            $conn->query("INSERT INTO `logs`(`user_id`, `activity`, `dnt`) VALUES ('" . $_SESSION['user_id'] . "','Added User: $username', '$date_created2' )");
+
+
+
+        } else {
+            echo "<script>
+                Swal.fire('Error', 'Something went wrong while adding the user.', 'error');
+            </script>";
+        }
+
+        $stmt->close();
+    } else {
+        echo "<script>
+            Swal.fire('Error', 'Please fill in all fields.', 'error');
+        </script>";
+    }
+}
+
+
+
+
+
+
+
+
+?>
+
+
+
+
+<div class="flex h-screen overflow-hidden flex-row">
+    <!-- Sidebar -->
+    <div id="sidebar"
+        class="bg-white shadow-lg transition-all duration-300 w-[20%] flex flex-col z-10 md:flex hidden fixed min-h-screen">
+        <!-- Logo -->
+        <div class="px-6 py-5 flex items-center border-b border-gray-100">
+            <h1 class="text-xl font-bold text-primary flex items-center">
+                <i class='bx bx-plus-medical text-2xl mr-2'></i>
+                <span class="text"> CarePro</span>
+            </h1>
+        </div>
+
+        <?php include "includes/navbar.php" ?>
+    </div>
+
+    <!-- Main Content -->
+    <div id="content" class="flex-1 flex flex-col w-[80%] md:ml-[20%] ml-0 transition-all duration-300">
+        <!-- Top Navigation -->
+        <header class="bg-white shadow-sm">
+            <div class="flex items-center justify-between px-6 py-4">
+                <div class="flex items-center">
+                    <button id="toggleSidebar"
+                        class="md:hidden flex text-gray-500 hover:text-primary focus:outline-none mr-4">
+                        <i class='bx bx-menu text-2xl'></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-500 hover:text-primary focus:outline-none cursor-pointer"
+                        data-bs-toggle="modal" data-bs-target="#announcementModal">
+                        <i class="fa-solid fa-bullhorn mr-1"></i>
+                        New Announcement
+                    </button>
+
+                    <button class="text-gray-500 hover:text-primary focus:outline-none cursor-pointer"
+                        data-bs-toggle="modal" data-bs-target="#viewAnnouncementsModal">
+                        <i class="fa-solid fa-envelope mr-1"></i>
+                        View Announcements
+                    </button>
+
+                    <button class="text-gray-500 hover:text-primary focus:outline-none cursor-pointer" id="logout"
+                        data-swal-template="#my-template">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto no-scrollbar p-2 ">
+
+            <!-- Add Announcement Form -->
+            <!-- Add User Form -->
+            <div class="bg-white rounded-lg shadow-md p-5 mb-4">
+                <h2 class="text-lg font-semibold text-gray-700 mb-4">Add User</h2>
+                <form action="" method="POST" class="space-y-4">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                        <input type="text" name="username" required
+                            class="mt-1 p-2 w-full border border-gray-300 rounded-md focus:ring focus:ring-blue-200">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" name="email" required
+                            class="mt-1 p-2 w-full border border-gray-300 rounded-md focus:ring focus:ring-blue-200">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" name="password" required
+                            class="mt-1 p-2 w-full border border-gray-300 rounded-md focus:ring focus:ring-blue-200">
+                    </div>
+                    <button type="submit" name="add_user"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
+                        Add User
+                    </button>
+                </form>
+            </div>
+
+
+        </main>
+        <?php include "includes/footer.php" ?>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Include Bootstrap for modals -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

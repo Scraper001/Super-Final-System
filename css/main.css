@@ -1,0 +1,405 @@
+    /* Enhanced Schedule Editing Styles */
+.schedule-edit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.schedule-edit-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.update-schedule-btn {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.update-schedule-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    background: linear-gradient(135deg, #0056b3 0%, #003d82 100%);
+}
+
+.update-schedule-btn:active {
+    transform: translateY(0);
+}
+
+.schedule-table-modal {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-table-modal th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.schedule-table-modal td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.schedule-table-modal tr:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s ease;
+}
+
+.modal-schedule-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: #007bff;
+    cursor: pointer;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-save:hover {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    transform: translateY(-1px);
+}
+
+.btn-cancel {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+    transform: translateY(-1px);
+}
+
+/* Enhanced change display */
+.change-display-fixed {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    margin: 2px 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.payment-amount-due {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    margin: 2px 0;
+    text-align: center;
+}
+
+.cash-received-display {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #212529;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    margin: 2px 0;
+    text-align: center;
+}
+
+/* Success indicators */
+.fixed-success-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    font-weight: bold;
+    z-index: 10001;
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Enhanced table styling */
+.enhanced-payment-table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.enhanced-payment-table th {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.enhanced-payment-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.enhanced-payment-table tr:hover {
+    background-color: #e3f2fd;
+    transition: background-color 0.2s ease;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .schedule-edit-content {
+        width: 95%;
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .update-schedule-btn {
+        padding: 10px 16px;
+        font-size: 12px;
+    }
+    
+    .modal-buttons {
+        flex-direction: column;
+    }
+    
+    .modal-buttons button {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+}
+
+/* Loading states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+    
+    
+    .btn-success {
+        background-color: #10b981;
+        /* green-500 */
+        color: white;
+        font-weight: 600;
+        /* font-semibold */
+        padding: 0.5rem 1rem;
+        /* py-2 px-4 */
+        border-radius: 0.25rem;
+        /* rounded */
+        transition: background-color 0.2s ease-in-out;
+        /* transition duration-200 */
+    }
+
+    .btn-success:hover {
+        background-color: #059669;
+        /* green-600 */
+    }
+
+    .error-message {
+        color: #ef4444;
+        /* text-red-500 */
+        font-size: 0.875rem;
+        /* text-sm */
+        margin-top: 0.25rem;
+        /* mt-1 */
+        display: block;
+    }
+
+    .success-message {
+        color: #10b981;
+        /* text-green-500 */
+        font-size: 0.875rem;
+        /* text-sm */
+        margin-top: 0.25rem;
+        /* mt-1 */
+        display: block;
+    }
+
+    .btn-danger {
+        background-color: #ef4444;
+        /* bg-red-500 */
+        color: white;
+        font-size: 0.75rem;
+        /* text-xs */
+        padding: 0.25rem 0.5rem;
+        /* py-1 px-2 */
+        border-radius: 0.25rem;
+        /* rounded */
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .btn-danger:hover {
+        background-color: #dc2626;
+        /* red-600 */
+    }
+
+
+/* Base styles for all buttons */
+button[class^="btn-"] {
+  display: inline-block;
+  padding: 12px 24px;
+
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.1s cubic-bezier(0.215, 0.610, 0.355, 1);
+
+}
+
+
+a[class^="btn-"] {
+  display: inline-block;
+  padding: 12px 24px;
+
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.1s cubic-bezier(0.215, 0.610, 0.355, 1);
+
+}
+
+/* Success button (green) */
+.btn-success {
+  background: #218838;
+}
+
+
+
+/* Warning button (yellow/orange) */
+.btn-warning {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+}
+
+
+
+/* Info button (blue) */
+.btn-info {
+  background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+
+
+/* Danger button (red) */
+.btn-danger {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+
+
+
+  .form-input:focus {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+      outline: none;
+    }
+    .form-select:focus {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+      outline: none;
+    }
+    .fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }

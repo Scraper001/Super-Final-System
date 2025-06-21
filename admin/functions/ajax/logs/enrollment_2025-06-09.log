@@ -1,0 +1,236 @@
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🚀 ENROLLMENT SCRIPT STARTED: {
+    "script_version": "2.0_enhanced",
+    "timestamp": "2025-06-08 16:45:13",
+    "current_user": "Scraper001",
+    "request_method": "POST",
+    "content_type": "multipart\/form-data; boundary=----WebKitFormBoundaryasGjq78U1b1qXA7l",
+    "post_data_available": true,
+    "post_data_keys": [
+        "student_id",
+        "program_id",
+        "learning_mode",
+        "type_of_payment",
+        "package_id",
+        "transaction_timestamp",
+        "processed_by",
+        "selected_schedules",
+        "sub_total",
+        "final_total",
+        "cash",
+        "total_payment",
+        "cash_to_pay",
+        "promo_applied",
+        "program_details",
+        "package_details",
+        "paid_demos",
+        "paid_payment_types"
+    ],
+    "connection_status": "Connected",
+    "php_version": "8.0.30",
+    "memory_usage": 2097152,
+    "program_table": "program (verified table name)"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 📋 INPUT PARAMETERS VALIDATED AND EXTRACTED: {
+    "student_id": 20250535,
+    "program_id": 30,
+    "learning_mode": "F2F",
+    "payment_type": "initial_payment",
+    "package_name": "1",
+    "demo_type": null,
+    "has_schedules": true,
+    "validation_passed": true
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🔍 STARTING PROGRAM END DATE VALIDATION: {
+    "program_id": 30,
+    "validation_time": "2025-06-08 16:45:13",
+    "user": "Scraper001",
+    "validation_version": "2.0_enhanced"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🔍 CHECKING PROGRAM END DATE: {
+    "program_id": 30,
+    "current_time": "2025-06-08 16:45:13",
+    "current_user": "Scraper001",
+    "function_version": "2.0_enhanced"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ❌ CRITICAL: Failed to prepare program check query: {
+    "error": "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'current_date,\r\n                DATEDIFF(end_date, CURDATE()) as days_until_en...' at line 6",
+    "errno": 1064
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ❌ EXCEPTION in checkProgramEndDate: {
+    "error_message": "Database error: Unable to prepare program validation query",
+    "program_id": 30,
+    "function": "checkProgramEndDate"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ⚠️ PROGRAM END DATE VALIDATION: NON-BLOCKING ERROR: {
+    "error_message": "Database error: Unable to prepare program validation query",
+    "program_id": 30,
+    "action": "Continuing with fallback values"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 📅 VALIDATING SCHEDULE SELECTION: {
+    "payment_type": "initial_payment",
+    "schedules_provided": true
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ✅ SCHEDULE VALIDATION PASSED: {
+    "schedule_count": 1,
+    "schedules": [
+        {
+            "id": "89",
+            "schedule_id": "89",
+            "week_description": "Week 1",
+            "weekDescription": "Week 1",
+            "training_date": "2025-06-08",
+            "trainingDate": "2025-06-08",
+            "start_time": "00:24",
+            "startTime": "00:24",
+            "end_time": "00:24",
+            "endTime": "00:24",
+            "day_of_week": "Weekend 1",
+            "dayOfWeek": "Weekend 1"
+        }
+    ]
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 💰 FINANCIAL DATA PROCESSED: {
+    "sub_total_raw": "24000",
+    "final_total_raw": "23040",
+    "cash_raw": "3000",
+    "promo_applied_raw": "960",
+    "subtotal_processed": 24000,
+    "final_total_processed": 23040,
+    "cash_processed": 3000,
+    "promo_discount_processed": 960,
+    "data_processing_version": "2.0_enhanced"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🔍 CHECKING FOR EXISTING BALANCES IN OTHER PROGRAMS: {
+    "student_id": 20250535,
+    "current_program_id": 30
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ✅ BALANCE CHECK PASSED: No unpaid balances in other programs: {
+    "student_id": 20250535,
+    "checked_against_program": 30
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🔍 CHECKING FOR EXISTING ENROLLMENT IN CURRENT PROGRAM: {
+    "student_id": 20250535,
+    "program_id": 30
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ✅ NO EXISTING ENROLLMENT FOUND: Proceeding with new enrollment: {
+    "student_id": 20250535,
+    "program_id": 30
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🆕 STARTING NEW ENROLLMENT PROCESS: {
+    "student_id": 20250535,
+    "program_id": 30,
+    "payment_type": "initial_payment",
+    "learning_mode": "F2F"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 📋 ADDITIONAL DETAILS PARSED: {
+    "program_details_provided": true,
+    "package_details_provided": true,
+    "program_details": {
+        "id": 30,
+        "program_name": "asdasdasd",
+        "end_date": "2026-06-08",
+        "learning_mode": "F2F",
+        "assesment_fee": 3000,
+        "tuition_fee": 3000,
+        "misc_fee": 3000,
+        "ojt_fee": 3000,
+        "system_fee": 0,
+        "uniform_fee": 3000,
+        "id_fee": 3000,
+        "book_fee": 3000,
+        "kit_fee": 3000,
+        "grad_fee": 0,
+        "total_tuition": 24000,
+        "demo1_fee_hidden": 4500,
+        "demo2_fee_hidden": 4500,
+        "demo3_fee_hidden": 4500,
+        "demo4_fee_hidden": 4500,
+        "reservation_fee": 3000,
+        "initial_fee": 3000
+    },
+    "package_details": {
+        "id": 67,
+        "program_id": "30",
+        "package_name": "1",
+        "enrollment_fee": 960,
+        "percentage": 4,
+        "promo_type": "asd"
+    }
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 💰 CALCULATING PAYMENT AMOUNT: {
+    "payment_type": "initial_payment",
+    "total_amount": 23040,
+    "cash_received": 3000
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 💰 Initial payment calculated: {
+    "payment_amount": 3000,
+    "cash_received": 3000
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 💰 FINANCIAL CALCULATIONS COMPLETED: {
+    "payment_type": "initial_payment",
+    "total_amount": 23040,
+    "payment_amount": 3000,
+    "cash_received": 3000,
+    "change_amount": 0,
+    "remaining_balance": 20040,
+    "calculation_valid": true
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 📝 TRANSACTION DETAILS PREPARED: {
+    "enrollment_status": "Enrolled",
+    "system_fee": 0,
+    "description": "Initial enrollment - Initial payment",
+    "program_end_note": ""
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 💾 INSERTING POS TRANSACTION: {
+    "student_id": 20250535,
+    "program_id": 30,
+    "payment_amount": 3000,
+    "balance": 20040
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ✅ POS TRANSACTION CREATED SUCCESSFULLY: {
+    "transaction_id": 143,
+    "student_id": 20250535,
+    "program_id": 30,
+    "payment_amount": 3000,
+    "balance": 20040,
+    "enrollment_status": "Enrolled"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 💾 INSERTING STUDENT ENROLLMENT: {
+    "student_id": 20250535,
+    "program_id": 30,
+    "pos_transaction_id": 143,
+    "enrollment_status": "Enrolled"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ✅ STUDENT ENROLLMENT CREATED SUCCESSFULLY: {
+    "student_id": 20250535,
+    "program_id": 30,
+    "enrollment_status": "Enrolled",
+    "pos_transaction_id": 143
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🔄 UPDATING STUDENT STATUS: {
+    "student_id": 20250535,
+    "new_status": "Enrolled"
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] ✅ STUDENT STATUS UPDATED SUCCESSFULLY: {
+    "student_id": 20250535,
+    "enrollment_status": "Enrolled",
+    "affected_rows": 1
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🎉 TRANSACTION COMMITTED SUCCESSFULLY: {
+    "transaction_id": 143,
+    "student_id": 20250535,
+    "program_id": 30,
+    "enrollment_status": "Enrolled",
+    "payment_amount": 3000,
+    "remaining_balance": 20040,
+    "program_end_check": "PASSED",
+    "program_status": "ACTIVE",
+    "timestamp": "2025-06-08 16:45:13",
+    "processed_by": "Scraper001",
+    "success": true
+}
+[2025-06-09 00:41:42] [DEBUG] [Scraper001] 🔚 SCRIPT EXECUTION COMPLETED: {
+    "final_timestamp": "2025-06-08 16:45:13",
+    "memory_peak_usage": 2097152,
+    "execution_completed": true
+}
