@@ -25,6 +25,19 @@ try {
 
     if ($result && $result->num_rows > 0) {
         $package = $result->fetch_assoc();
+
+        // Add selection type handling for display in POS
+        $selection_type = intval($package['selection_type'] ?? 1);
+        $package['selection_type_display'] = "Option " . $selection_type;
+
+        if ($selection_type <= 2) {
+            $package['calculation_method'] = 'Percentage-based';
+            $package['display_info'] = "Automatic " . $package['percentage'] . "% discount";
+        } else {
+            $package['calculation_method'] = 'Manual payment';
+            $package['display_info'] = "Required initial: ₱" . number_format($package['custom_initial_payment'] ?? 0, 2);
+        }
+
         echo json_encode($package);
     } else {
         echo json_encode(['error' => 'Package not found']);

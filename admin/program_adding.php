@@ -64,12 +64,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         $prepare->execute();
 
-
-
-
-
-
-
         $program_id = $conn->insert_id;
 
         if (isset($_POST['schedule']) && is_array($_POST['schedule'])) {
@@ -132,14 +126,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $enrollment_fee = !empty($promo_details['enrollment_fee']) ? floatval($promo_details['enrollment_fee']) : 0;
             $percentage = !empty($promo_details['percentage']) ? floatval($promo_details['percentage']) : 0;
             $promo_type = !empty($promo_details['promo_type']) ? trim($promo_details['promo_type']) : null;
+            $selection_type = !empty($promo_details['selection_type']) ? intval($promo_details['selection_type']) : 1;
+            $custom_initial_payment = !empty($promo_details['custom_initial_payment']) ? floatval($promo_details['custom_initial_payment']) : null;
 
             // Debug: Log the processed values
-            error_log("Processed values - Package: $package_name, Enrollment: $enrollment_fee, Percentage: $percentage, Type: $promo_type");
+            error_log("Processed values - Package: $package_name, Enrollment: $enrollment_fee, Percentage: $percentage, Type: $promo_type, Selection: $selection_type");
 
-            // Validate required fields
-            if (!$package_name || $enrollment_fee <= 0 || $percentage <= 0 || !$promo_type) {
-                error_log("Skipping promo $index - Invalid data: Package=$package_name, Fee=$enrollment_fee, Percentage=$percentage, Type=$promo_type");
+            // Validate required fields based on selection type
+            if (!$package_name || !$promo_type || $selection_type < 1 || $selection_type > 4) {
+                error_log("Skipping promo $index - Invalid data: Package=$package_name, Type=$promo_type, Selection=$selection_type");
                 continue;
+            }
+
+            // Validate based on selection type
+            if ($selection_type <= 2) {
+                // Options 1-2: Percentage calculation
+                if ($enrollment_fee <= 0 || $percentage <= 0) {
+                    error_log("Skipping promo $index - Invalid percentage data: Fee=$enrollment_fee, Percentage=$percentage");
+                    continue;
+                }
+            } else {
+                // Options 3-4: Custom initial payment
+                if (!$custom_initial_payment || $custom_initial_payment <= 0) {
+                    error_log("Skipping promo $index - Invalid custom payment: Payment=$custom_initial_payment");
+                    continue;
+                }
             }
 
             // Check if this promo already exists
@@ -152,8 +163,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             // Insert only if promo does not exist
             if ($count == 0) {
-                $stmt = $conn->prepare("INSERT INTO `promo` (`program_id`, `package_name`, `enrollment_fee`, `percentage`, `promo_type`) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param("isdds", $program_id, $package_name, $enrollment_fee, $percentage, $promo_type);
+                $stmt = $conn->prepare("INSERT INTO `promo` (`program_id`, `package_name`, `enrollment_fee`, `percentage`, `promo_type`, `selection_type`, `custom_initial_payment`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("isddsis", $program_id, $package_name, $enrollment_fee, $percentage, $promo_type, $selection_type, $custom_initial_payment);
 
                 if ($stmt->execute()) {
                     error_log("Successfully inserted promo: $package_name");
@@ -464,20 +475,70 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                 <div class="w-[40%] border-dashed py-4 px-2">
                                     <span class="font-semibold italic">Promo Details</span>
                                     <div class="flex flex-col mt-4 w-full border-2 py-2 border-dashed p-2 space-y-4">
+
+                                        <!-- Selection Type -->
+                                        <div class="flex flex-col items-start justify-between w-full">
+                                            <span class="font-medium mb-2">Promo Selection (1-4)</span>
+                                            <div class="grid grid-cols-2 gap-2 w-full">
+                                                <label
+                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                    id="selection1">
+                                                    <input type="radio" name="promo_selection" value="1" class="mr-2"
+                                                        checked>
+                                                    <span class="text-sm">1 - Auto %</span>
+                                                </label>
+                                                <label
+                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                    id="selection2">
+                                                    <input type="radio" name="promo_selection" value="2" class="mr-2">
+                                                    <span class="text-sm">2 - Auto %</span>
+                                                </label>
+                                                <label
+                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                    id="selection3">
+                                                    <input type="radio" name="promo_selection" value="3" class="mr-2">
+                                                    <span class="text-sm">3 - Manual</span>
+                                                </label>
+                                                <label
+                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                    id="selection4">
+                                                    <input type="radio" name="promo_selection" value="4" class="mr-2">
+                                                    <span class="text-sm">4 - Manual</span>
+                                                </label>
+                                            </div>
+
+                                            <!-- Specification Text -->
+                                            <div class="mt-2 p-2 bg-blue-50 rounded text-xs">
+                                                <p><strong>Options 1-2:</strong> Percentage calculation will be applied
+                                                    automatically</p>
+                                                <p><strong>Options 3-4:</strong> You need to calculate and declare your
+                                                    initial payment amount</p>
+                                            </div>
+                                        </div>
+
                                         <div class="flex flex-col items-start justify-between w-full">
                                             <span class="font-medium mb-1">Package</span>
                                             <input type="text" id="packageInput" placeholder="Enter package name"
                                                 class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-
-
                                         </div>
-                                        <div class="flex flex-col items-start justify-between w-full">
+
+                                        <!-- Percentage Input (for options 1-2) -->
+                                        <div class="flex flex-col items-start justify-between w-full"
+                                            id="percentageSection">
                                             <span class="font-medium mb-1">Percentage (%)</span>
                                             <input type="number" id="percentageInput"
                                                 placeholder="Enter discount percentage" step="0.01" min="0" max="100"
                                                 class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
                                         </div>
 
+                                        <!-- Custom Initial Payment (for options 3-4) -->
+                                        <div class="flex flex-col items-start justify-between w-full hidden"
+                                            id="customPaymentSection">
+                                            <span class="font-medium mb-1">Required Initial Payment (PHP)</span>
+                                            <input type="number" id="customInitialPaymentInput"
+                                                placeholder="Enter required initial payment" step="0.01" min="0"
+                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
+                                        </div>
 
                                         <div class="flex flex-col items-start justify-between w-full">
                                             <span class="font-medium mb-1">Total Discount (PHP)</span>
@@ -485,7 +546,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                                 placeholder="Enter enrollment fee" step="0.01" min="0"
                                                 class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
                                         </div>
-
 
                                         <div class="flex flex-col items-start justify-between w-full">
                                             <span class="font-medium mb-1">Promo Type</span>
@@ -507,8 +567,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                                         <table class="w-full">
                                             <thead class="w-full bg-gray-50 sticky top-0">
                                                 <tr>
+                                                    <th class="text-sm border-2 p-2 font-semibold">Selection</th>
                                                     <th class="text-sm border-2 p-2 font-semibold">Package</th>
-
                                                     <th class="text-sm border-2 p-2 font-semibold">Percentage</th>
                                                     <th class="text-sm border-2 p-2 font-semibold">Enrollment Fee</th>
                                                     <th class="text-sm border-2 p-2 font-semibold">Total Discount</th>
@@ -576,7 +636,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         { value: 'Weekday 1', text: 'Weekday 1' },
         { value: 'Weekday 2', text: 'Weekday 2' },
         { value: 'Weekday 3', text: 'Weekday 3' },
-        { value: 'Weekday 4', text: 'Weekday 4' },
+        { value: ' Weekday 4', text: ' Wee k day 4' },
     ];
 
     const weekendOptions = [
@@ -674,12 +734,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             showMessage('Start time must be before end time.');
             return false;
         }
-
-        // // Check for duplicate training dates
-        // if (schedules.some(schedule => schedule.trainingDate === training)) {
-        //     showMessage('A training session is already scheduled for this date.');
-        //     return false;
-        // }
 
         return true;
     }
@@ -826,8 +880,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </script>
 
 <script>
-
-
     function handleLearningModeChange() {
         const systemFeeInput = document.getElementById('system_fee');
         const learningModeRadios = document.querySelectorAll('input[name="learning_mode"]');
@@ -955,7 +1007,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 </script>
 
 <script>
-    // Promo Management Script with Auto Calculation
+    // Enhanced Promo Management Script with Selection Types 1-4
     let promoCounter = 0;
     let promos = [];
 
@@ -963,6 +1015,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     const packageInput = document.getElementById('packageInput');
     const enrollmentFeeInput = document.getElementById('enrollmentFeeInput');
     const percentageInput = document.getElementById('percentageInput');
+    const customInitialPaymentInput = document.getElementById('customInitialPaymentInput');
     const promoTypeInput = document.getElementById('promoTypeInput');
     const addPromoButton = document.getElementById('addPromo');
     const promoTableBody = document.getElementById('promoTableBody');
@@ -970,8 +1023,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     const promoHiddenInputs = document.getElementById('promoHiddenInputs');
     const promoJsonDisplay = document.getElementById('promoJsonDisplay');
 
-    // New element for auto calculation display (make sure this element exists in your HTML)
-    const uponEnrollmentDisplay = document.getElementById('upon_enrollment_amount');
+    // Selection type elements
+    const percentageSection = document.getElementById('percentageSection');
+    const customPaymentSection = document.getElementById('customPaymentSection');
+    const promoSelectionRadios = document.querySelectorAll('input[name="promo_selection"]');
 
     // Helper: Show promo messages
     function showPromoMessage(message, type = 'error') {
@@ -981,6 +1036,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }, 5000);
     }
 
+    // Handle selection type changes
+    function handleSelectionTypeChange() {
+        const selectedType = document.querySelector('input[name="promo_selection"]:checked').value;
+
+        if (selectedType <= 2) {
+            // Options 1-2: Show percentage, hide custom payment
+            percentageSection.classList.remove('hidden');
+            customPaymentSection.classList.add('hidden');
+            customInitialPaymentInput.value = '';
+        } else {
+            // Options 3-4: Hide percentage, show custom payment
+            percentageSection.classList.add('hidden');
+            customPaymentSection.classList.remove('hidden');
+            percentageInput.value = '';
+            enrollmentFeeInput.value = '';
+        }
+    }
+
     // Get total tuition fee from inputs or hidden field
     function getTotalTuitionFee() {
         const totalTuitionHidden = document.getElementById('total_tuition_hidden');
@@ -988,7 +1061,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             return parseFloat(totalTuitionHidden.value) || 0;
         }
 
-        // Fallback: sum individual fees (adjust these IDs to your inputs)
+        // Fallback: sum individual fees
         const assessmentFee = parseFloat(document.getElementById('assessment_fee')?.value) || 0;
         const tuitionFee = parseFloat(document.getElementById('tuition_fee')?.value) || 0;
         const miscFee = parseFloat(document.getElementById('misc_fee')?.value) || 0;
@@ -1002,39 +1075,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return assessmentFee + tuitionFee + miscFee + ojtFee + systemFee + uniformFee + idFee + bookFee + kitFee;
     }
 
-    // Calculate discount and Upon Enrollment based on percentage input
+    // Calculate discount and Upon Enrollment based on percentage input (for options 1-2)
     function calculateUponEnrollment() {
-        const percentage = parseFloat(percentageInput.value) || 0;
-        const totalTuition = getTotalTuitionFee();
+        const selectedType = document.querySelector('input[name="promo_selection"]:checked').value;
 
-        if (percentage > 0 && totalTuition > 0) {
-            // Calculate discount amount (e.g., 10% of 1000 = 100)
-            const discountAmount = (totalTuition * percentage) / 100;
+        if (selectedType <= 2) {
+            const percentage = parseFloat(percentageInput.value) || 0;
+            const totalTuition = getTotalTuitionFee();
 
+            if (percentage > 0 && totalTuition > 0) {
+                // Calculate discount amount (e.g., 10% of 1000 = 100)
+                const discountAmount = (totalTuition * percentage) / 100;
 
-            // Calculate amount due upon enrollment (total tuition - discount)
-            const uponEnrollment = totalTuition - discountAmount;
+                // Calculate amount due upon enrollment (total tuition - discount)
+                const uponEnrollment = totalTuition - discountAmount;
 
+                // Update enrollment fee input (auto-fill with discount amount)
+                enrollmentFeeInput.value = discountAmount.toFixed(2);
 
-
-            // Update enrollment fee input (auto-fill)
-            enrollmentFeeInput.value = uponEnrollment.toFixed(2);
-
-            // Update UI display if exists
-            if (uponEnrollmentDisplay) {
-                uponEnrollmentDisplay.textContent = formatCurrency(uponEnrollment);
+                return { discountAmount, uponEnrollment };
+            } else {
+                // Reset if invalid
+                enrollmentFeeInput.value = '';
+                return { discountAmount: 0, uponEnrollment: 0 };
             }
-            document.getElementById("enrollmentFeeInput").value = discountAmount;
-            return { discountAmount, uponEnrollment };
-        } else {
-            // Reset if invalid
-            enrollmentFeeInput.value = '';
-            if (uponEnrollmentDisplay) {
-                uponEnrollmentDisplay.textContent = '';
-            }
-            return { discountAmount: 0, uponEnrollment: 0 };
         }
 
+        return { discountAmount: 0, uponEnrollment: 0 };
     }
 
     // Format number as PHP currency
@@ -1048,27 +1115,48 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // Validate form inputs before adding promo
     function validatePromoForm() {
         const packageName = packageInput.value.trim();
-        const percentage = percentageInput.value.trim();
         const promoType = promoTypeInput.value.trim();
+        const selectedType = parseInt(document.querySelector('input[name="promo_selection"]:checked').value);
         const totalTuition = getTotalTuitionFee();
 
-        if (!packageName || !percentage || !promoType) {
-            showPromoMessage('Please fill in Package Name, Percentage, and Promo Type.');
+        if (!packageName || !promoType) {
+            showPromoMessage('Please fill in Package Name and Promo Type.');
             return false;
         }
+
         if (totalTuition <= 0) {
             showPromoMessage('Please ensure the total tuition fee is calculated first.');
             return false;
         }
-        const percentageValue = parseFloat(percentage);
-        if (isNaN(percentageValue) || percentageValue < 0 || percentageValue > 100) {
-            showPromoMessage('Please enter a valid percentage between 0 and 100.');
-            return false;
+
+        if (selectedType <= 2) {
+            // Options 1-2: Percentage validation
+            const percentage = parseFloat(percentageInput.value);
+            const enrollmentFee = parseFloat(enrollmentFeeInput.value);
+
+            if (isNaN(percentage) || percentage <= 0 || percentage > 100) {
+                showPromoMessage('Please enter a valid percentage between 0 and 100.');
+                return false;
+            }
+            if (isNaN(enrollmentFee) || enrollmentFee <= 0) {
+                showPromoMessage('Please ensure enrollment fee is calculated properly.');
+                return false;
+            }
+        } else {
+            // Options 3-4: Custom payment validation
+            const customPayment = parseFloat(customInitialPaymentInput.value);
+
+            if (isNaN(customPayment) || customPayment <= 0) {
+                showPromoMessage('Please enter a valid required initial payment amount.');
+                return false;
+            }
         }
+
         if (promos.some(promo => promo.packageName.toLowerCase() === packageName.toLowerCase())) {
             showPromoMessage('A promo with this package name already exists.');
             return false;
         }
+
         return true;
     }
 
@@ -1083,95 +1171,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return input;
     }
 
-    // Update promo textboxes display (optional UI for editing promos)
-    function updateTextboxDisplay() {
-        promoJsonDisplay.innerHTML = '';
-
-        promos.forEach((promo, index) => {
-            const promoDiv = document.createElement('div');
-            promoDiv.style.marginBottom = '10px';
-            promoDiv.style.padding = '10px';
-            promoDiv.style.border = '1px solid #ccc';
-            promoDiv.style.backgroundColor = '#f9f9f9';
-            const title = document.createElement('h4');
-            title.textContent = `Promo ${index + 1}:`;
-            title.style.marginBottom = '5px';
-            promoDiv.appendChild(title);
-
-            // Package Name
-            const packageLabel = document.createElement('label');
-            packageLabel.textContent = 'Package Name: ';
-            const packageTextbox = document.createElement('input');
-            packageTextbox.type = 'text';
-            packageTextbox.name = `promos[${index}][package_name]`;
-            packageTextbox.value = promo.packageName;
-            packageTextbox.style.margin = '5px';
-            packageTextbox.style.padding = '5px';
-            promoDiv.appendChild(packageLabel);
-            promoDiv.appendChild(packageTextbox);
-            promoDiv.appendChild(document.createElement('br'));
-
-            // Percentage
-            const percentageLabel = document.createElement('label');
-            percentageLabel.textContent = 'Percentage: ';
-            const percentageTextbox = document.createElement('input');
-            percentageTextbox.type = 'text';
-            percentageTextbox.name = `promos[${index}][percentage]`;
-            percentageTextbox.value = promo.percentage.toString();
-            percentageTextbox.style.margin = '5px';
-            percentageTextbox.style.padding = '5px';
-            promoDiv.appendChild(percentageLabel);
-            promoDiv.appendChild(percentageTextbox);
-            promoDiv.appendChild(document.createElement('br'));
-
-            // Upon Enrollment (readonly)
-            const enrollmentLabel = document.createElement('label');
-            enrollmentLabel.textContent = 'Upon Enrollment: ';
-            const enrollmentTextbox = document.createElement('input');
-            enrollmentTextbox.type = 'text';
-            enrollmentTextbox.name = `promos[${index}][enrollment_fee]`;
-            enrollmentTextbox.value = formatCurrency(promo.enrollmentFee);
-            enrollmentTextbox.style.margin = '5px';
-            enrollmentTextbox.style.padding = '5px';
-            enrollmentTextbox.readOnly = true;
-            enrollmentTextbox.style.backgroundColor = '#e9ecef';
-            promoDiv.appendChild(enrollmentLabel);
-            promoDiv.appendChild(enrollmentTextbox);
-            promoDiv.appendChild(document.createElement('br'));
-
-            // Discount Amount (readonly)
-            const discountLabel = document.createElement('label');
-            discountLabel.textContent = 'Discount Amount: ';
-            const discountTextbox = document.createElement('input');
-            discountTextbox.type = 'text';
-            discountTextbox.value = formatCurrency(promo.discountAmount || 0);
-            discountTextbox.style.margin = '5px';
-            discountTextbox.style.padding = '5px';
-            discountTextbox.readOnly = true;
-            discountTextbox.style.backgroundColor = '#e9ecef';
-            promoDiv.appendChild(discountLabel);
-            promoDiv.appendChild(discountTextbox);
-            promoDiv.appendChild(document.createElement('br'));
-
-            // Promo Type
-            const typeLabel = document.createElement('label');
-            typeLabel.textContent = 'Promo Type: ';
-            const typeTextbox = document.createElement('input');
-            typeTextbox.type = 'text';
-            typeTextbox.name = `promos[${index}][promo_type]`;
-            typeTextbox.value = promo.promoType;
-            typeTextbox.style.margin = '5px';
-            typeTextbox.style.padding = '5px';
-            promoDiv.appendChild(typeLabel);
-            promoDiv.appendChild(typeTextbox);
-
-            promoJsonDisplay.appendChild(promoDiv);
-        });
-    }
-
     // Add promo to table and promos array
-    // Fix the addPromoToTable function
-    // Fix the addPromoToTable function
     function addPromoToTable(event) {
         if (event) {
             event.preventDefault();
@@ -1183,21 +1183,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         promoCounter++;
 
         const totalTuition = getTotalTuitionFee();
-        const percentage = parseFloat(percentageInput.value.trim());
+        const selectedType = parseInt(document.querySelector('input[name="promo_selection"]:checked').value);
+        const packageName = packageInput.value.trim();
+        const promoType = promoTypeInput.value.trim();
 
-        // Calculate discount amount (this is what goes to enrollment_fee in database)
-        const discountAmount = (totalTuition * percentage) / 100;
-        const uponEnrollment = totalTuition - discountAmount;
-
-        const promo = {
+        let promo = {
             id: promoCounter,
-            packageName: packageInput.value.trim(),
-            percentage: percentage,
-            enrollmentFee: discountAmount, // This is the discount amount to be stored
-            discountAmount: discountAmount,
-            totalTuition: totalTuition,
-            promoType: promoTypeInput.value.trim()
+            packageName: packageName,
+            selectionType: selectedType,
+            promoType: promoType,
+            totalTuition: totalTuition
         };
+
+        if (selectedType <= 2) {
+            // Options 1-2: Percentage calculation
+            const percentage = parseFloat(percentageInput.value);
+            const discountAmount = (totalTuition * percentage) / 100;
+            const uponEnrollment = totalTuition - discountAmount;
+
+            promo = {
+                ...promo,
+                percentage: percentage,
+                enrollmentFee: discountAmount, // This is the discount amount
+                discountAmount: discountAmount,
+                uponEnrollment: uponEnrollment,
+                customInitialPayment: null
+            };
+        } else {
+            // Options 3-4: Custom initial payment
+            const customPayment = parseFloat(customInitialPaymentInput.value);
+
+            promo = {
+                ...promo,
+                percentage: 0,
+                enrollmentFee: 0,
+                discountAmount: 0,
+                uponEnrollment: totalTuition,
+                customInitialPayment: customPayment
+            };
+        }
 
         // Add to promos array
         promos.push(promo);
@@ -1206,12 +1230,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         const tr = document.createElement('tr');
         tr.setAttribute('data-id', promo.id);
 
+        const selectionDisplay = `Option ${selectedType}`;
+        const percentageDisplay = selectedType <= 2 ? `${promo.percentage}%` : 'N/A';
+        const enrollmentDisplay = selectedType <= 2 ? formatCurrency(promo.uponEnrollment) : formatCurrency(totalTuition);
+        const discountDisplay = selectedType <= 2 ? formatCurrency(promo.discountAmount) : 'Manual';
+        const customPaymentNote = selectedType > 2 ? `Required: ${formatCurrency(promo.customInitialPayment)}` : '';
+
         tr.innerHTML = `
+        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${selectionDisplay}</td>
         <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${promo.packageName}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${promo.percentage}%</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${formatCurrency(uponEnrollment)}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${formatCurrency(promo.discountAmount)}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${promo.promoType}</td>
+        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${percentageDisplay}</td>
+        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${enrollmentDisplay}</td>
+        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${discountDisplay}</td>
+        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${promo.promoType}${customPaymentNote ? '<br><small class="text-red-600">' + customPaymentNote + '</small>' : ''}</td>
         <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">
             <button type="button" class="px-4 py-2 rounded-xl shadow-lg bg-red-400 remove-btn" data-id="${promo.id}">Remove</button>
         </td>
@@ -1227,6 +1258,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][percentage]`, promo.percentage.toString()));
         hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][enrollment_fee]`, promo.enrollmentFee.toString()));
         hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][promo_type]`, promo.promoType));
+        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][selection_type]`, promo.selectionType.toString()));
+        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][custom_initial_payment]`, (promo.customInitialPayment || '').toString()));
 
         promoHiddenInputs.appendChild(hiddenContainer);
 
@@ -1234,12 +1267,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         packageInput.value = '';
         percentageInput.value = '';
         enrollmentFeeInput.value = '';
+        customInitialPaymentInput.value = '';
         promoTypeInput.value = '';
 
         showPromoMessage('Promo added successfully!', 'success');
     }
 
-    // Update the remove function to handle the new container structure
+    // Remove promo functionality
     promoTableBody.addEventListener('click', function (event) {
         if (event.target.classList.contains('remove-btn')) {
             const idToRemove = parseInt(event.target.getAttribute('data-id'));
@@ -1263,44 +1297,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
     });
 
-    // Remove promo from table and promos array
-    promoTableBody.addEventListener('click', function (event) {
-        if (event.target.classList.contains('remove-btn')) {
-            const idToRemove = parseInt(event.target.getAttribute('data-id'));
-            promos = promos.filter(promo => promo.id !== idToRemove);
-
-            // Remove row from table
-            const rowToRemove = promoTableBody.querySelector(`tr[data-id="${idToRemove}"]`);
-            if (rowToRemove) {
-                promoTableBody.removeChild(rowToRemove);
-            }
-
-            // Remove hidden inputs associated with this promo (rebuild all inputs)
-            promoHiddenInputs.innerHTML = '';
-            promos.forEach((promo, index) => {
-                promoHiddenInputs.appendChild(createPromoTextbox(`promos[${index}][package_name]`, promo.packageName));
-                promoHiddenInputs.appendChild(createPromoTextbox(`promos[${index}][percentage]`, promo.percentage));
-                promoHiddenInputs.appendChild(createPromoTextbox(`promos[${index}][enrollment_fee]`, promo.enrollmentFee));
-                promoHiddenInputs.appendChild(createPromoTextbox(`promos[${index}][discount_amount]`, promo.discountAmount));
-                promoHiddenInputs.appendChild(createPromoTextbox(`promos[${index}][promo_type]`, promo.promoType));
-            });
-
-            // Update promo textboxes UI
-            updateTextboxDisplay();
-
-            showPromoMessage('Promo removed successfully!', 'success');
-        }
+    // Event listeners
+    promoSelectionRadios.forEach(radio => {
+        radio.addEventListener('change', handleSelectionTypeChange);
     });
 
-    // Event listener to update Upon Enrollment on percentage change
     percentageInput.addEventListener('input', calculateUponEnrollment);
-
-    // Add promo button click
     addPromoButton.addEventListener('click', addPromoToTable);
 
-    // Initial setup: calculate if percentage is pre-filled
+    // Initialize
+    handleSelectionTypeChange();
     calculateUponEnrollment();
 </script>
+
 <script>
     const form = document.getElementById('myForm');
 
