@@ -102,51 +102,10 @@ if (isset($_GET['student_id'])) {
             'full_payment' => 0
         ];
 
-        $paid_demos = [];
-        $paid_payment_types = [];
         $IP = 0;
         $R = 0;
 
-        $stmt = $conn->prepare("SELECT cash_received, payment_type, demo_type FROM pos_transactions WHERE student_id = ?");
-        $stmt->bind_param("i", $student_id);
-        $stmt->execute();
-        $payment_result = $stmt->get_result();
-
-        if ($payment_result->num_rows > 0) {
-            while ($payment_row = $payment_result->fetch_assoc()) {
-                $payment_type = $payment_row['payment_type'];
-                $amount = floatval($payment_row['cash_received']);
-
-                if (isset($payment_counts[$payment_type])) {
-                    $payment_counts[$payment_type]++;
-                }
-
-                switch ($payment_type) {
-                    case 'initial_payment':
-                        $IP += $amount;
-                        if (!in_array('initial_payment', $paid_payment_types)) {
-                            $paid_payment_types[] = 'initial_payment';
-                        }
-                        break;
-                    case 'reservation':
-                        $R += $amount;
-                        if (!in_array('reservation', $paid_payment_types)) {
-                            $paid_payment_types[] = 'reservation';
-                        }
-                        break;
-                    case 'demo_payment':
-                        if (!empty($payment_row['demo_type'])) {
-                            $paid_demos[] = $payment_row['demo_type'];
-                        }
-                        break;
-                    case 'full_payment':
-                        $paid_payment_types = ['initial_payment', 'reservation', 'demo_payment'];
-                        break;
-                }
-            }
-        }
-        $stmt->close();
-
+        // Calculate expected demo fee (CDM) first
         $final_total = $TT - $PR;
 
         // Proper demo fee calculation
@@ -154,24 +113,95 @@ if (isset($_GET['student_id'])) {
         $row_balance_total = $result_balance->fetch_assoc();
         $balance_total = $row_balance_total['balance'];
 
+        $result_balance2 = $conn->query("SELECT * FROM `pos_transactions` WHERE student_id = '$student_id' AND payment_type = 'initial_payment' ORDER BY `pos_transactions`.`id` DESC");
+        $row_balance_total2 = $result_balance2->fetch_assoc();
+        $balance_total2 = $row_balance_total2['balance'];
+
+        $initial_pay = $row_balance_total2['credit_amount'];
+
+        $select_programs_total = "SELECT * FROM program WHERE id = '" . $row_balance_total['program_id'] . "'";
+        $select_programs_total_result = $conn->query($select_programs_total);
+        $select_program_row = $select_programs_total_result->fetch_assoc();
+        $total_tuition = $select_program_row['total_tuition'];
         // Calculate demo fees properly
         if ($open == false) {
-            $paidDemosCount = count($paid_demos);
-            $remainingDemos = 4 - $paidDemosCount;
+            // paidDemosCount will be calculated later (after paid_demos is built)
+            $remainingDemos = 4; // will be adjusted below
 
-            if ($remainingDemos > 0 && $balance_total > 0) {
-                $CDM = $balance_total / $remainingDemos;
-            } else if ($remainingDemos > 0) {
+            if ($balance_total > 0) {
+                // We'll adjust remainingDemos after demo payment sums below
+                $CDM = $total_tuition - $initial_pay / 4; // default, will be adjusted
+            } else {
                 $initialPayment = floatval($row_program['initial_fee'] ?? 0);
                 $reservationPayment = floatval($row_program['reservation_fee'] ?? 0);
                 $remainingAfterInitialReservation = $final_total - $initialPayment - $reservationPayment;
-                $CDM = max(0, $remainingAfterInitialReservation / 4);
-            } else {
-                $CDM = 0;
+                $CDM = max(0, $remainingAfterInitialReservation - $initial_pay / 4);
             }
         } else {
             $CDM = 0;
         }
+
+        // --- Paid Demo Calculation (Correct, based on sum) ---
+        $demo_payment_sums = [];
+        $stmt = $conn->prepare("
+            SELECT demo_type, SUM(cash_received) as total_paid 
+            FROM pos_transactions 
+            WHERE student_id = ? AND program_id = ? AND payment_type = 'demo_payment' 
+            GROUP BY demo_type
+        ");
+        $program_id = isset($row_program['id']) ? $row_program['id'] : 0;
+        $stmt->bind_param("ii", $student_id, $program_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $demo_payment_sums[$row['demo_type']] = floatval($row['total_paid']);
+        }
+        $stmt->close();
+
+        // Now determine which demos are fully paid
+        $paid_demos = [];
+        $partially_paid_demos = [];
+        foreach (['demo1', 'demo2', 'demo3', 'demo4'] as $demo) {
+            if (
+                isset($demo_payment_sums[$demo]) &&
+                $demo_payment_sums[$demo] >= $CDM - 0.01 // allow for floating point
+            ) {
+                $paid_demos[] = $demo;
+            } elseif (
+                isset($demo_payment_sums[$demo]) &&
+                $demo_payment_sums[$demo] > 0 && $demo_payment_sums[$demo] < $CDM - 0.01
+            ) {
+                $partially_paid_demos[$demo] = $demo_payment_sums[$demo];
+            }
+        }
+        $paidDemosCount = count($paid_demos);
+        $remainingDemos = 4 - $paidDemosCount;
+        if ($remainingDemos > 0 && $total_tuition > 0) {
+            $CDM = $total_tuition / $remainingDemos;
+        }
+
+        // --- Paid Payment Types ---
+        $paid_payment_types = [];
+        $stmt = $conn->prepare("SELECT payment_type FROM pos_transactions WHERE student_id = ?");
+        $stmt->bind_param("i", $student_id);
+        $stmt->execute();
+        $payment_result = $stmt->get_result();
+
+        if ($payment_result->num_rows > 0) {
+            while ($payment_row = $payment_result->fetch_assoc()) {
+                $payment_type = $payment_row['payment_type'];
+                if ($payment_type === 'initial_payment' && !in_array('initial_payment', $paid_payment_types)) {
+                    $paid_payment_types[] = 'initial_payment';
+                }
+                if ($payment_type === 'reservation' && !in_array('reservation', $paid_payment_types)) {
+                    $paid_payment_types[] = 'reservation';
+                }
+                if ($payment_type === 'full_payment') {
+                    $paid_payment_types = ['initial_payment', 'reservation', 'demo_payment'];
+                }
+            }
+        }
+        $stmt->close();
 
         // Get FIRST transaction's schedule for maintenance
         $first_transaction_stmt = $conn->prepare("
@@ -225,14 +255,9 @@ if (isset($_GET['student_id'])) {
             $subtotal = floatval($row_balance['subtotal']);
         }
         $stmt->close();
+
+
     }
-}
-?>
-<?php
-// After fetching $transactions and $open
-$enrollment_locked = false;
-if (isset($transactions) && count($transactions) > 0) {
-    $enrollment_locked = true;
 }
 ?>
 <!-- Add SweetAlert2 -->
@@ -1029,7 +1054,7 @@ if (isset($transactions) && count($transactions) > 0) {
                             <input type="hidden" name="subtotal" id="subtotalHidden" />
                             <input type="hidden" name="final_total" id="finalTotalHidden" />
                             <input type="hidden" name="promo_applied" id="promoAppliedHidden" value="0" />
-                            <input type="hidden" name="paid_demos" id="paidDemosField"
+                            <input type="" name="paid_demos" id="paidDemosField"
                                 value="<?= htmlspecialchars(json_encode($paid_demos ?? [])) ?>" />
                             <input type="hidden" name="paid_payment_types" id="paidPaymentTypesField"
                                 value="<?= htmlspecialchars(json_encode($paid_payment_types ?? [])) ?>" />
@@ -1092,6 +1117,10 @@ if (isset($transactions) && count($transactions) > 0) {
         let paidDemos = <?= json_encode($paid_demos ?? []) ?>;
         let paidPaymentTypes = <?= json_encode($paid_payment_types ?? []) ?>;
         let allPrograms = [];
+        let total_ammount = <?= json_encode($select_program_row['total_tuition']) ?>;
+        let initial_total_pay = <?php echo $initial_pay ?>;
+
+        console.log(initial_total_pay);
 
         // Cash Drawer Variables
         let serialPort = null;
@@ -1115,7 +1144,7 @@ if (isset($transactions) && count($transactions) > 0) {
 
         let existingInitialPayment = <?= $IP ?? 0 ?>;
         let existingReservation = <?= $R ?? 0 ?>;
-        let currentBalance = <?= $balance_total ?? 0 ?>;
+        let currentBalance = <?= $total_tuition ?? 0 ?>;
         let isFirstTransaction = <?= $open ? 'true' : 'false' ?>;
 
         const existingTransaction = {
@@ -1703,20 +1732,28 @@ if (isset($transactions) && count($transactions) > 0) {
                 const initialPayment = parseFloat(currentProgram.initial_fee || 0);
                 const reservationPayment = parseFloat(currentProgram.reservation_fee || 0);
 
-                const remainingAfterInitialReservation = finalTotal - initialPayment - reservationPayment;
+                const remainingAfterInitialReservation = total_ammount - initial_total_pay - reservationPayment;
+                console.log("------------------------>", remainingAfterInitialReservation);
+                console.log("------------------------>", total_ammount);
+                console.log("------------------------>", initialPayment);
                 demoFeePerDemo = Math.max(0, remainingAfterInitialReservation / 4);
             } else {
                 // For existing transactions, use current balance
                 const currentBalanceAmount = currentBalance || 0;
                 const paidDemosCount = paidDemos.length;
                 const remainingDemos = 4 - paidDemosCount;
-
+                console.log("initial: ", initial_total_pay)
+                console.log("total: ", total_ammount)
+                console.log("remainingDemos: ", remainingDemos)
                 if (remainingDemos > 0 && currentBalanceAmount > 0) {
-                    demoFeePerDemo = currentBalanceAmount / remainingDemos;
+                    demoFeePerDemo_notfinal = total_ammount - initial_total_pay;
+                    demoFeePerDemo = demoFeePerDemo_notfinal / remainingDemos;
                 }
+                console.log("This is Demo:", demoFeePerDemo);
             }
 
             return demoFeePerDemo;
+
         }
 
         // Enhanced: Update demo fees and make them visible immediately with promo awareness
@@ -1732,6 +1769,8 @@ if (isset($transactions) && count($transactions) > 0) {
                 .map(i => {
                     const demoName = `demo${i}`;
                     const isPaid = paidDemos.includes(demoName);
+
+                    console.log(isPaid);
                     const status = isPaid ? ' <span class="text-green-600 text-xs"><i class="fa-solid fa-check-circle"></i> Paid</span>' : '';
                     return `<li class="demo-fee-calculated">Demo ${i} Fee: ₱${demoFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${status}</li>`;
                 })
