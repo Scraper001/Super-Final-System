@@ -36,13 +36,14 @@ function debug_log($message, $data = null)
 /**
  * ENHANCED: Excess Payment Handler for Initial Payments
  */
-function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_option, $original_amount, $required_amount, $excess_amount, $total_tuition)
+function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_option, $original_amount, $required_amount, $excess_amount, $total_tuition, $start_balance)
 {
     $result = [
         'processed_amount' => $required_amount,
         'change_amount' => $excess_amount,
         'description' => '',
-        'demo_allocations' => []
+        'demo_allocations' => [],
+        'final_balance' => null
     ];
 
     switch ($excess_option) {
@@ -60,7 +61,8 @@ function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_opt
                     'demo2' => $demo_balance,
                     'demo3' => $demo_balance,
                     'demo4' => $demo_balance
-                ]
+                ],
+                'final_balance' => $start_balance - $original_amount
             ];
             break;
 
@@ -80,8 +82,9 @@ function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_opt
                 $existing_demos[$row['demo_type']] = safe_float($row['paid']);
             }
             $stmt->close();
-            $balance_after_initial = $total_tuition - $original_amount;
-            $running_balance = $balance_after_initial;
+
+            // Corrected balance calculation
+            $running_balance = $start_balance - $required_amount;
 
             for ($i = 1; $i <= 4; $i++) {
                 if ($remaining_excess <= 0)
@@ -113,10 +116,11 @@ function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_opt
                 $remaining_excess -= $allocation;
             }
             $result = [
-                'processed_amount' => $original_amount,
+                'processed_amount' => $required_amount,
                 'change_amount' => $remaining_excess,
-                'description' => "Initial payment applied. Excess allocated to demos sequentially.",
-                'demo_allocations' => $demo_allocations
+                'description' => "Initial payment of ₱" . number_format($required_amount, 2) . " applied. Excess allocated to demos.",
+                'demo_allocations' => $demo_allocations,
+                'final_balance' => $running_balance
             ];
             break;
 
@@ -127,7 +131,8 @@ function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_opt
                 'processed_amount' => $required_amount,
                 'change_amount' => $excess_amount,
                 'description' => "Only required initial amount processed. ₱" . number_format($excess_amount, 2) . " returned as change.",
-                'demo_allocations' => []
+                'demo_allocations' => [],
+                'final_balance' => $start_balance - $required_amount
             ];
             break;
     }
@@ -443,6 +448,7 @@ try {
     $excess_processing_result = null;
     $final_payment_amount = $payment_amount;
     $final_change_amount = max(0, $cash - $payment_amount);
+    $start_balance = $current_balance > 0 ? $current_balance : $final_total;
 
     if ($has_excess_payment && $excess_choice) {
         if ($payment_type === 'initial_payment') {
@@ -454,7 +460,8 @@ try {
                 $original_payment_amount,
                 $required_payment_amount,
                 $excess_amount,
-                $final_total
+                $final_total,
+                $start_balance
             );
         } elseif ($payment_type === 'demo_payment') {
             $excess_processing_result = handleExcessDemoPayment(
@@ -475,11 +482,12 @@ try {
         }
     }
 
-    $balance = $final_total - $final_payment_amount;
+    $balance = $start_balance - $final_payment_amount;
 
-    // For existing transactions, calculate new balance
-    if ($current_balance > 0) {
-        $balance = $current_balance - $final_payment_amount;
+    // If excess was processed and allocated, the final balance for the response is different
+    $response_balance = $balance;
+    if ($excess_processing_result && isset($excess_processing_result['final_balance']) && !is_null($excess_processing_result['final_balance'])) {
+        $response_balance = $excess_processing_result['final_balance'];
     }
 
     // Validate payment
@@ -513,6 +521,9 @@ try {
             throw new Exception($program_info['message']);
         }
 
+
+
+
         // FIXED: Insert POS transaction with correct field mapping
         $sql = "INSERT INTO pos_transactions (
             student_id, program_id, learning_mode, package_name, payment_type, 
@@ -529,7 +540,18 @@ try {
 
         $debit_amount = $final_payment_amount;
         $credit_amount = $final_payment_amount;
-        $change_given = $final_change_amount;
+
+
+
+        if ($excess_choice == "allocate_to_demos") {
+            $change_given = 0;
+            $final_change_amount = 0;
+        } else {
+            $change_given = $final_change_amount;
+        }
+
+
+
 
         $stmt->bind_param(
             "iisssssdddddddsddds",
@@ -550,6 +572,7 @@ try {
             $enrollment_status,
             $debit_amount,
             $credit_amount,
+
             $change_given,
             $description
         );
@@ -639,7 +662,7 @@ try {
             'student_id' => $student_id,
             'payment_type' => $payment_type,
             'amount' => $final_payment_amount,
-            'balance' => $balance,
+            'balance' => $response_balance,
             'excess_handled' => $excess_choice ?? 'none'
         ]);
 
@@ -666,7 +689,7 @@ try {
             'message' => $response_message,
             'transaction_id' => $transaction_id,
             'enrollment_status' => $enrollment_status,
-            'balance' => $balance,
+            'balance' => $response_balance,
             'subtotal' => $subtotal,
             'promo_discount' => $promo_discount,
             'total_amount' => $final_total,

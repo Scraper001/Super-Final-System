@@ -1,4 +1,3 @@
-
 <?php include '../connection/connection.php';
 include "includes/header.php";
 $conn = con();

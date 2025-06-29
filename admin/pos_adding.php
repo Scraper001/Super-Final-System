@@ -6,10 +6,13 @@ $conn = con();
 $student = null;
 $open = true;
 
+$current_timestamp = '2025-06-29 07:18:09'; // Current timestamp
+$current_user = 'scrapper22'; // Current user
+
 if (isset($_GET['student_id'])) {
     $student_id = intval($_GET['student_id']);
 
-    // Prepared statement for student info
+    // Get student info
     $stmt = $conn->prepare("SELECT * FROM student_info_tbl WHERE id = ?");
     $stmt->bind_param("i", $student_id);
     $stmt->execute();
@@ -48,13 +51,15 @@ if (isset($_GET['student_id'])) {
         if ($program_results->num_rows > 0) {
             $row_program = $program_results->fetch_assoc();
             $program = $row_program['program_name'];
+            $program_id = $row_program['id']; // Set program_id here
         } else {
             $program = "THIS PROGRAM IS REMOVED";
             $row_program = ['id' => 0, 'total_tuition' => 0];
+            $program_id = 0;
         }
         $stmt->close();
 
-        // Get promo details with enhanced selection type support
+        // Get promo details
         $stmt = $conn->prepare("SELECT * FROM promo WHERE program_id = ?");
         $stmt->bind_param("i", $row_program['id']);
         $stmt->execute();
@@ -74,10 +79,9 @@ if (isset($_GET['student_id'])) {
         }
         $stmt->close();
 
-        // Calculate promo discount with selection type support
+        // Calculate promo discount
         $TT = floatval($row_program['total_tuition'] ?? 0);
         $PR = 0;
-
         if ($row_promo['package_name'] !== "Regular" && $row_promo['promo_type'] !== 'none') {
             $selection_type = intval($row_promo['selection_type'] ?? 1);
 
@@ -94,7 +98,7 @@ if (isset($_GET['student_id'])) {
             }
         }
 
-        // Get existing payment amounts and track paid payment types and demos
+        // Existing payment info
         $payment_counts = [
             'initial_payment' => 0,
             'reservation' => 0,
@@ -105,10 +109,9 @@ if (isset($_GET['student_id'])) {
         $IP = 0;
         $R = 0;
 
-        // Calculate expected demo fee (CDM) first
         $final_total = $TT - $PR;
 
-        // Proper demo fee calculation
+        // Get initial payment and balance info
         $result_balance = $conn->query("SELECT * FROM `pos_transactions` WHERE student_id = '$student_id' ORDER BY `pos_transactions`.`id` DESC");
         $row_balance_total = $result_balance->fetch_assoc();
         $balance_total = $row_balance_total['balance'];
@@ -117,72 +120,108 @@ if (isset($_GET['student_id'])) {
         $row_balance_total2 = $result_balance2->fetch_assoc();
         $balance_total2 = $row_balance_total2['balance'];
 
-        $initial_pay = $row_balance_total2['credit_amount'];
+        $initial_pay = isset($row_balance_total2['credit_amount']) ? $row_balance_total2['credit_amount'] : 0;
 
+        // Get program total
         $select_programs_total = "SELECT * FROM program WHERE id = '" . $row_balance_total['program_id'] . "'";
         $select_programs_total_result = $conn->query($select_programs_total);
         $select_program_row = $select_programs_total_result->fetch_assoc();
         $total_tuition = $select_program_row['total_tuition'];
-        // Calculate demo fees properly
-        if ($open == false) {
-            // paidDemosCount will be calculated later (after paid_demos is built)
-            $remainingDemos = 4; // will be adjusted below
 
-            if ($balance_total > 0) {
-                // We'll adjust remainingDemos after demo payment sums below
-                $CDM = $total_tuition - $initial_pay / 4; // default, will be adjusted
-            } else {
-                $initialPayment = floatval($row_program['initial_fee'] ?? 0);
-                $reservationPayment = floatval($row_program['reservation_fee'] ?? 0);
-                $remainingAfterInitialReservation = $final_total - $initialPayment - $reservationPayment;
-                $CDM = max(0, $remainingAfterInitialReservation - $initial_pay / 4);
-            }
-        } else {
-            $CDM = 0;
-        }
+        // Enhanced demo details tracking
+        $demo_details = [];
 
-        // --- Paid Demo Calculation (Correct, based on sum) ---
-        $demo_payment_sums = [];
-        $stmt = $conn->prepare("
-            SELECT demo_type, SUM(cash_received) as total_paid 
-            FROM pos_transactions 
-            WHERE student_id = ? AND program_id = ? AND payment_type = 'demo_payment' 
-            GROUP BY demo_type
+        // Get detailed demo payments with latest information
+        $demo_query = $conn->prepare("
+            SELECT 
+                pt.demo_type,
+                SUM(pt.cash_received) as total_paid,
+                pt.credit_amount as required_amount,
+                pt.balance as current_balance,
+                MAX(pt.created_at) as last_payment_date,
+                COUNT(*) as payment_count
+            FROM pos_transactions pt
+            WHERE pt.student_id = ? 
+            AND pt.program_id = ? 
+            AND pt.payment_type = 'demo_payment'
+            GROUP BY pt.demo_type
+            ORDER BY pt.demo_type
         ");
-        $program_id = isset($row_program['id']) ? $row_program['id'] : 0;
-        $stmt->bind_param("ii", $student_id, $program_id);
-        $stmt->execute();
-        $res = $stmt->get_result();
-        while ($row = $res->fetch_assoc()) {
-            $demo_payment_sums[$row['demo_type']] = floatval($row['total_paid']);
-        }
-        $stmt->close();
 
-        // Now determine which demos are fully paid
+        $demo_query->bind_param("ii", $student_id, $program_id);
+        $demo_query->execute();
+        $demo_result = $demo_query->get_result();
+
+        // Calculate default demo fee
+        $default_demo_fee = ($total_tuition - $initial_pay) / 4;
+
+        // Process demo payment details
+        while ($row = $demo_result->fetch_assoc()) {
+            $total_paid = floatval($row['total_paid']);
+            $required = floatval($row['required_amount']) ?: $default_demo_fee;
+            $current_balance = floatval($row['current_balance']);
+
+            // Enhanced status determination
+            $status = 'unpaid';
+            if ($total_paid >= $required - 0.01) { // Account for floating point precision
+                $status = 'paid';
+            } elseif ($total_paid > 0) {
+                $status = 'partial';
+            }
+
+            $demo_details[$row['demo_type']] = [
+                'paid_amount' => $total_paid,
+                'required_amount' => $required,
+                'balance' => $current_balance,
+                'status' => $status,
+                'last_payment' => $row['last_payment_date'],
+                'payment_count' => intval($row['payment_count']),
+                'timestamp' => $current_timestamp,
+                'updated_by' => $current_user
+            ];
+        }
+        $demo_query->close();
+
+        // Fill in details for unpaid demos
+        foreach (['demo1', 'demo2', 'demo3', 'demo4'] as $demo) {
+            if (!isset($demo_details[$demo])) {
+                $demo_details[$demo] = [
+                    'paid_amount' => 0,
+                    'required_amount' => $default_demo_fee,
+                    'balance' => $default_demo_fee,
+                    'status' => 'unpaid',
+                    'last_payment' => null,
+                    'payment_count' => 0,
+                    'timestamp' => $current_timestamp,
+                    'updated_by' => $current_user
+                ];
+            }
+        }
+
+        // Sum all payments for each demo (for compatibility)
+        $demo_payment_sums = [];
+        foreach ($demo_details as $demo_type => $details) {
+            $demo_payment_sums[$demo_type] = $details['paid_amount'];
+        }
+
+        // Set paid and partially paid demos arrays (for compatibility)
         $paid_demos = [];
         $partially_paid_demos = [];
-        foreach (['demo1', 'demo2', 'demo3', 'demo4'] as $demo) {
-            if (
-                isset($demo_payment_sums[$demo]) &&
-                $demo_payment_sums[$demo] >= $CDM - 0.01 // allow for floating point
-            ) {
-                $paid_demos[] = $demo;
-            } elseif (
-                isset($demo_payment_sums[$demo]) &&
-                $demo_payment_sums[$demo] > 0 && $demo_payment_sums[$demo] < $CDM - 0.01
-            ) {
-                $partially_paid_demos[$demo] = $demo_payment_sums[$demo];
+        foreach ($demo_details as $demo_type => $details) {
+            if ($details['status'] === 'paid') {
+                $paid_demos[] = $demo_type;
+            } elseif ($details['status'] === 'partial') {
+                $partially_paid_demos[$demo_type] = $details['paid_amount'];
             }
         }
+
+        // Update remaining demos count
         $paidDemosCount = count($paid_demos);
         $remainingDemos = 4 - $paidDemosCount;
-        if ($remainingDemos > 0 && $total_tuition > 0) {
-            $CDM = $total_tuition / $remainingDemos;
-        }
 
-        // --- Paid Payment Types ---
+        // Get paid payment types
         $paid_payment_types = [];
-        $stmt = $conn->prepare("SELECT payment_type FROM pos_transactions WHERE student_id = ?");
+        $stmt = $conn->prepare("SELECT DISTINCT payment_type FROM pos_transactions WHERE student_id = ?");
         $stmt->bind_param("i", $student_id);
         $stmt->execute();
         $payment_result = $stmt->get_result();
@@ -198,12 +237,13 @@ if (isset($_GET['student_id'])) {
                 }
                 if ($payment_type === 'full_payment') {
                     $paid_payment_types = ['initial_payment', 'reservation', 'demo_payment'];
+                    break;
                 }
             }
         }
         $stmt->close();
 
-        // Get FIRST transaction's schedule for maintenance
+        // Get schedules
         $first_transaction_stmt = $conn->prepare("
             SELECT selected_schedules 
             FROM pos_transactions 
@@ -215,7 +255,7 @@ if (isset($_GET['student_id'])) {
             ORDER BY id ASC 
             LIMIT 1
         ");
-        $first_transaction_stmt->bind_param("ii", $student_id, $row_program['id']);
+        $first_transaction_stmt->bind_param("ii", $student_id, $program_id);
         $first_transaction_stmt->execute();
         $first_transaction_result = $first_transaction_stmt->get_result();
 
@@ -255,8 +295,6 @@ if (isset($_GET['student_id'])) {
             $subtotal = floatval($row_balance['subtotal']);
         }
         $stmt->close();
-
-
     }
 }
 ?>
@@ -1114,13 +1152,31 @@ if (isset($_GET['student_id'])) {
         let selectedSchedules = [];
         let currentProgram = null;
         let currentPackage = null;
+
         let paidDemos = <?= json_encode($paid_demos ?? []) ?>;
         let paidPaymentTypes = <?= json_encode($paid_payment_types ?? []) ?>;
         let allPrograms = [];
-        let total_ammount = <?= json_encode($select_program_row['total_tuition']) ?>;
-        let initial_total_pay = <?php echo $initial_pay ?>;
 
-        console.log(initial_total_pay);
+
+        console.log(paidDemos);
+
+        let total_ammount = <?php
+        if (isset($select_program_row['total_tuition'])) {
+            echo json_encode($select_program_row['total_tuition']);
+        } else {
+            echo '0';
+        }
+        ?>;
+
+        let initial_total_pay = <?php
+        if (isset($initial_pay)) {
+            echo $initial_pay;
+        } else {
+            echo '0';
+        }
+        ?>;
+
+
 
         // Cash Drawer Variables
         let serialPort = null;
@@ -1362,7 +1418,6 @@ if (isset($_GET['student_id'])) {
 
             if (isExcess && (paymentType === 'initial_payment' || paymentType === 'demo_payment')) {
                 const excessAmount = totalPayment - requiredAmount;
-                console.log(`💰 Excess payment detected: ₱${excessAmount.toFixed(2)} for ${paymentType}`);
 
                 const result = await showExcessPaymentModal(totalPayment, requiredAmount, excessAmount, paymentType);
                 return result;
@@ -1535,12 +1590,12 @@ if (isset($_GET['student_id'])) {
         async function openCashDrawerOnPayment(paymentAmount, paymentType) {
             // Enhanced: Skip cash drawer for reservations and initial payments
             if (paymentType === 'reservation' || paymentType === 'initial_payment') {
-                console.log(`💰 Payment Type: ${paymentType} - Cash drawer bypass activated`);
+
                 return true; // Return success without opening drawer
             }
 
             if (!cashDrawerConnected || !writer) {
-                console.log("🚫 Cash drawer not connected for payment type:", paymentType);
+
                 return false;
             }
 
@@ -1548,7 +1603,7 @@ if (isset($_GET['student_id'])) {
                 const command = new Uint8Array([27, 112, 0, 25, 25]);
                 await writer.write(command);
                 showCashDrawerOpenSuccess(paymentAmount, paymentType);
-                console.log(`✅ Cash drawer opened for ${paymentType} payment of ₱${paymentAmount}`);
+
                 return true;
 
             } catch (error) {
@@ -1733,23 +1788,20 @@ if (isset($_GET['student_id'])) {
                 const reservationPayment = parseFloat(currentProgram.reservation_fee || 0);
 
                 const remainingAfterInitialReservation = total_ammount - initial_total_pay - reservationPayment;
-                console.log("------------------------>", remainingAfterInitialReservation);
-                console.log("------------------------>", total_ammount);
-                console.log("------------------------>", initialPayment);
+
                 demoFeePerDemo = Math.max(0, remainingAfterInitialReservation / 4);
             } else {
                 // For existing transactions, use current balance
                 const currentBalanceAmount = currentBalance || 0;
                 const paidDemosCount = paidDemos.length;
                 const remainingDemos = 4 - paidDemosCount;
-                console.log("initial: ", initial_total_pay)
-                console.log("total: ", total_ammount)
-                console.log("remainingDemos: ", remainingDemos)
+
+
                 if (remainingDemos > 0 && currentBalanceAmount > 0) {
                     demoFeePerDemo_notfinal = total_ammount - initial_total_pay;
-                    demoFeePerDemo = demoFeePerDemo_notfinal / remainingDemos;
+                    demoFeePerDemo = demoFeePerDemo_notfinal / 4;
                 }
-                console.log("This is Demo:", demoFeePerDemo);
+
             }
 
             return demoFeePerDemo;
@@ -1763,38 +1815,50 @@ if (isset($_GET['student_id'])) {
             }
 
             const demoFee = calculateDemoFeeJS();
+            const demoDetails = <?= json_encode($demo_details ?? []) ?>;
 
-            // Enhanced: Update demo fees in the receipt section with better formatting
             const demoFeesHtml = [1, 2, 3, 4]
                 .map(i => {
                     const demoName = `demo${i}`;
+                    const demoInfo = demoDetails[demoName] || {};
                     const isPaid = paidDemos.includes(demoName);
 
-                    console.log(isPaid);
-                    const status = isPaid ? ' <span class="text-green-600 text-xs"><i class="fa-solid fa-check-circle"></i> Paid</span>' : '';
-                    return `<li class="demo-fee-calculated">Demo ${i} Fee: ₱${demoFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${status}</li>`;
+                    // Get actual payment details
+                    const paidAmount = demoInfo.paid_amount || 0;
+                    const requiredAmount = demoInfo.required_amount || demoFee;
+                    const remainingBalance = demoInfo.balance || 0;
+                    const status = demoInfo.status || 'unpaid';
+
+                    let statusHtml = '';
+                    let balanceHtml = '';
+
+                    switch (status) {
+                        case 'paid':
+                            statusHtml = '<span class="text-green-600 text-xs"><i class="fa-solid fa-check-circle"></i> Paid</span>';
+                            break;
+                        case 'partial':
+                            statusHtml = `<span class="text-orange-600 text-xs"><i class="fa-solid fa-clock"></i> Partially Paid (₱${paidAmount.toLocaleString()})</span>`;
+
+                            break;
+                        default:
+                            statusHtml = '';
+                            break;
+                    }
+
+                    return `<li class="demo-fee-calculated">
+                Demo ${i} Fee: ₱${requiredAmount.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}${statusHtml}${balanceHtml}
+            </li>`;
                 })
                 .join('');
 
-            // Update existing demo fees or create new container
             if ($('.demo-fees-display').length > 0) {
                 $('.demo-fees-display').html(demoFeesHtml).show();
             } else if ($('#demoFeesDisplay').length > 0) {
                 $('#demoFeesDisplay').html(demoFeesHtml).show();
             }
-
-            // Update individual demo fee elements if they exist
-            $('.demo-fee-calculated').each(function (index) {
-                const demoNumber = index + 1;
-                const demoName = `demo${demoNumber}`;
-                const isPaid = paidDemos.includes(demoName);
-                const statusText = isPaid ? ' <i class="fa-solid fa-check-circle"></i> Paid' : '';
-                const textClass = isPaid ? 'text-gray-500 line-through' : '';
-
-                $(this).html(`Demo ${demoNumber} Fee: <span class="${textClass}">₱${demoFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span><span class="text-green-600 text-xs ml-1">${statusText}</span>`);
-            });
-
-            console.log(`💰 Demo fees updated: ₱${demoFee.toFixed(2)} each | User: Scraper001 | Time: 2025-06-21 03:25:31`);
         }
 
         // =============================================================================================
@@ -1872,7 +1936,7 @@ if (isset($_GET['student_id'])) {
             // Enhanced: Calculate and show totals
             calculateTotal(program, currentPackage);
 
-            console.log(`🎓 Program details displayed: ${program.program_name} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
+
         }
 
         // =============================================================================================
@@ -1914,13 +1978,13 @@ if (isset($_GET['student_id'])) {
             // Update debug info
             updateDebugInfo();
 
-            console.log(`🏷️ Promo selection displayed: Option ${selectionType} | Package: ${packageData.package_name} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
+
         }
 
         // Enhanced: Hide promo selection info for regular packages
         function hidePromoSelectionInfo() {
             $('#promoSelectionInfo').addClass('hidden').hide();
-            console.log(`🏷️ Promo selection info hidden | User: Scraper001 | Time: 2025-06-21 03:25:31`);
+
         }
 
         // =============================================================================================
@@ -1938,7 +2002,6 @@ if (isset($_GET['student_id'])) {
                 return;
             }
 
-            console.log('🔍 Loading schedules for program:', currentProgram.id, 'at 2025-06-21 03:25:31');
 
             // Load available schedules for editing
             $.ajax({
@@ -1951,7 +2014,7 @@ if (isset($_GET['student_id'])) {
                 },
                 dataType: 'json',
                 success: function (schedules) {
-                    console.log('📅 Schedules loaded:', schedules);
+
                     if (schedules && schedules.length > 0) {
                         populateEditScheduleTable(schedules);
                         $('#scheduleEditModal').show();
@@ -1997,8 +2060,6 @@ if (isset($_GET['student_id'])) {
                 currentlySelected = [];
             }
 
-            console.log('📋 Current schedules from database:', currentlySelected);
-            console.log('📋 Available schedules:', schedules);
 
             schedules.forEach(schedule => {
                 // Check if this schedule is currently selected
@@ -2006,7 +2067,7 @@ if (isset($_GET['student_id'])) {
                     return (cs.id == schedule.id || cs.schedule_id == schedule.id);
                 });
 
-                console.log(`📝 Schedule ${schedule.id} (${schedule.week_description}) is selected: ${isSelected}`);
+
 
                 const row = `
         <tr data-schedule-id="${schedule.id}" class="${isSelected ? 'bg-blue-50' : ''}">
@@ -2027,7 +2088,7 @@ if (isset($_GET['student_id'])) {
                 tbody.append(row);
             });
 
-            console.log(`✅ Populated ${schedules.length} schedules in edit modal at 2025-06-21 03:25:31`);
+
         }
 
         $('#closeScheduleModal, #cancelScheduleEdit').click(function () {
@@ -2038,7 +2099,8 @@ if (isset($_GET['student_id'])) {
             const newSelectedSchedules = [];
             let selectedCount = 0;
 
-            console.log('💾 Saving schedule changes at 2025-06-21 03:25:31 by Scraper001');
+
+
 
             // Collect all checked schedules with proper database structure
             $('#editScheduleTable .edit-schedule-checkbox:checked').each(function () {
@@ -2065,7 +2127,7 @@ if (isset($_GET['student_id'])) {
                 newSelectedSchedules.push(scheduleData);
                 selectedCount++;
 
-                console.log('✅ Added schedule to selection:', scheduleData);
+
             });
 
             // Update the global selectedSchedules array
@@ -2075,13 +2137,7 @@ if (isset($_GET['student_id'])) {
             const scheduleJson = JSON.stringify(selectedSchedules);
             $('#hiddenSchedule').val(scheduleJson);
 
-            console.log('📝 Updated schedule selection:', {
-                count: selectedCount,
-                schedules: selectedSchedules,
-                json: scheduleJson,
-                timestamp: '2025-06-21 03:25:31',
-                user: 'Scraper001'
-            });
+
 
             // Update the database enrollment record
             const studentId = $('input[name="student_id"]').val();
@@ -2101,13 +2157,13 @@ if (isset($_GET['student_id'])) {
                     dataType: 'json',
                     success: function (response) {
                         if (response.success) {
-                            console.log('✅ Database updated successfully:', response);
+
                         } else {
-                            console.error('❌ Database update failed:', response.message);
+
                         }
                     },
                     error: function (xhr, status, error) {
-                        console.error('❌ Database update error:', error);
+
                     }
                 });
             }
@@ -2124,10 +2180,10 @@ if (isset($_GET['student_id'])) {
                     dataType: 'json',
                     success: function (schedules) {
                         populateSchedule(schedules);
-                        console.log('🔄 Main schedule table refreshed at 2025-06-21 03:25:31');
+
                     },
                     error: function () {
-                        console.error('❌ Failed to refresh main schedule table');
+
                     }
                 });
             }
@@ -2199,7 +2255,7 @@ if (isset($_GET['student_id'])) {
                 $('#debugPromo').text(`Promo Selection: No Promo`);
             }
 
-            console.log(`🐛 Debug Info Updated - Selected: ${selectedCount}, DOM: ${domCheckedCount}, Validation: ${validationStatus} | User: Scraper001 | Time: 2025-06-21 09:13:47`);
+
         };
 
         const ajax = (url, data = {}, success, error = 'Request failed') => {
@@ -2285,6 +2341,8 @@ if (isset($_GET['student_id'])) {
         const populateDemoSelect = (preserveSelection = true) => {
             const $demoSelect = $('#demoSelect');
             const currentSelection = preserveSelection ? $demoSelect.val() : '';
+            const currentTimestamp = '2025-06-29 07:40:14';
+            const currentUser = 'scrapper22';
 
             $demoSelect.empty().append('<option value="">Select Demo</option>');
 
@@ -2295,16 +2353,84 @@ if (isset($_GET['student_id'])) {
                 { value: 'demo4', label: '4th Practical Demo' }
             ];
 
-            const availableDemos = allDemos.filter(demo => !paidDemos.includes(demo.value));
+            // Get demo details from PHP with actual paid amounts
+            const demoDetails = <?= json_encode($demo_details ?? []) ?>;
+            const originalDemoFee = calculateDemoFeeJS(); // Get the original demo fee
 
-            availableDemos.forEach(demo => {
-                $demoSelect.append(`<option value="${demo.value}">${demo.label}</option>`);
+            // Filter available demos considering both paid and partially paid status
+            const availableDemos = allDemos.filter(demo => {
+                const demoInfo = demoDetails[demo.value] || {};
+                return demoInfo.status !== 'paid'; // Keep demos that aren't fully paid
             });
 
-            // Enhanced: Always restore selection if available
+            // Add demos to select with remaining balance for partial payments
+            availableDemos.forEach(demo => {
+                const demoInfo = demoDetails[demo.value] || {};
+                let label = demo.label;
+
+                if (demoInfo.status === 'partial') {
+                    // Calculate remaining balance by subtracting paid amount from original fee
+                    const paidAmount = demoInfo.paid_amount || 0;
+                    const remainingBalance = originalDemoFee - paidAmount;
+
+                    // Show original fee and remaining balance
+                    label = `${demo.label} (₱${originalDemoFee.toLocaleString()} - Remaining: ₱${remainingBalance.toLocaleString()})`;
+
+                    $demoSelect.append(`<option value="${demo.value}" 
+                data-remaining="${remainingBalance}"
+                data-status="${demoInfo.status}"
+                data-paid="${paidAmount}"
+                data-original="${originalDemoFee}"
+            >${label}</option>`);
+                } else {
+                    // For unpaid demos, show original fee
+                    label = `${demo.label} (₱${originalDemoFee.toLocaleString()})`;
+
+                    $demoSelect.append(`<option value="${demo.value}" 
+                data-remaining="${originalDemoFee}"
+                data-status="unpaid"
+                data-paid="0"
+                data-original="${originalDemoFee}"
+            >${label}</option>`);
+                }
+            });
+
+            // Remove any existing change event handlers
+            $demoSelect.off('change');
+
+            // Add new change event handler
+            $demoSelect.on('change', function () {
+                const selectedDemo = $(this).val();
+                if (selectedDemo) {
+                    const selectedOption = $(this).find(`option[value="${selectedDemo}"]`);
+                    const status = selectedOption.data('status');
+                    const paidAmount = parseFloat(selectedOption.data('paid'));
+                    const originalFee = parseFloat(selectedOption.data('original'));
+                    const remainingBalance = originalFee - paidAmount;
+
+                    // Set the payment amount based on remaining balance
+                    $('#totalPayment').val(remainingBalance.toFixed(2));
+                    $('#cashToPay').val(remainingBalance.toFixed(2));
+
+                    console.log(`[${currentTimestamp}] ${currentUser}: Demo ${selectedDemo} selected
+                Status: ${status}
+                Original Fee: ₱${originalFee.toFixed(2)}
+                Paid Amount: ₱${paidAmount.toFixed(2)}
+                Remaining: ₱${remainingBalance.toFixed(2)}`);
+
+                    // Clear cash and change fields
+                    $('#cash').val('');
+                    $('#change').val('0.00');
+
+                    // Trigger payment calculation update
+                    updatePaymentAmountsEnhanced();
+                }
+            });
+
+            // Rest of the code remains the same...
             if (currentSelection && availableDemos.some(demo => demo.value === currentSelection)) {
                 setTimeout(() => {
-                    $demoSelect.val(currentSelection);
+                    $demoSelect.val(currentSelection).trigger('change');
                 }, 50);
             }
 
@@ -2319,7 +2445,20 @@ if (isset($_GET['student_id'])) {
             } else {
                 $demoPaymentOption.removeClass('payment-hidden');
                 $demoPaymentInput.prop('disabled', false);
-                $demoPaymentStatus.text(`(${availableDemos.length} remaining)`).show();
+                let remainingCount = availableDemos.filter(d => demoDetails[d.value]?.status !== 'partial').length;
+                let partialCount = availableDemos.filter(d => demoDetails[d.value]?.status === 'partial').length;
+
+                let statusText = `(${remainingCount} remaining`;
+                if (partialCount > 0) {
+                    statusText += `, ${partialCount} partial`;
+                }
+                statusText += ')';
+
+                $demoPaymentStatus.text(statusText).show();
+            }
+
+            if ($('#debugInfo').is(':visible')) {
+                updateDebugInfo();
             }
 
             return availableDemos.length > 0;
@@ -2383,7 +2522,7 @@ if (isset($_GET['student_id'])) {
             $('#finalTotalHidden').val(finalTotal);
             $('#subtotalHidden').val(subtotal);
 
-            console.log(`💰 Total calculated: ₱${finalTotal.toLocaleString()} (Subtotal: ₱${subtotal.toLocaleString()}, Discount: ₱${discount.toLocaleString()}) | User: Scraper001 | Time: 2025-06-21 03:25:31`);
+
 
             return finalTotal;
         };
@@ -2393,7 +2532,6 @@ if (isset($_GET['student_id'])) {
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const learningMode = $('input[name="learning_mode"]:checked').val();
 
-            console.log(`🔍 Validating schedule selection - Payment: ${paymentType}, Learning: ${learningMode} | User: Scraper001 | Time: 2025-06-21 09:13:47`);
 
             if (paymentType === 'initial_payment') {
                 // FIXED: Get schedule data with proper error handling
@@ -2409,7 +2547,7 @@ if (isset($_GET['student_id'])) {
                         currentSchedules = [];
                     }
                 } catch (e) {
-                    console.error('❌ JSON parsing error for schedules:', e);
+
                     currentSchedules = [];
                 }
 
@@ -2417,14 +2555,14 @@ if (isset($_GET['student_id'])) {
                 let maintainedValid = false;
                 if (maintainedSchedules && Array.isArray(maintainedSchedules) && maintainedSchedules.length > 0) {
                     maintainedValid = true;
-                    console.log(`✅ Found ${maintainedSchedules.length} maintained schedules`);
+
                 }
 
                 // FIXED: Check currently selected schedules
                 let currentValid = false;
                 if (currentSchedules && currentSchedules.length > 0) {
                     currentValid = true;
-                    console.log(`✅ Found ${currentSchedules.length} currently selected schedules`);
+
                 }
 
                 // FIXED: Check DOM checkboxes as final validation
@@ -2432,18 +2570,13 @@ if (isset($_GET['student_id'])) {
                 const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
                 if (checkedBoxes && checkedBoxes.length > 0) {
                     domValid = true;
-                    console.log(`✅ Found ${checkedBoxes.length} checked schedule boxes in DOM`);
+
                 }
 
                 // FIXED: Any of these validation methods should pass
                 schedulesValid = maintainedValid || currentValid || domValid;
 
-                console.log(`📊 Schedule validation status:
-            - Maintained schedules: ${maintainedValid} (${maintainedSchedules.length} items)
-            - Current schedules: ${currentValid} (${currentSchedules.length} items)
-            - DOM checkboxes: ${domValid} (${checkedBoxes ? checkedBoxes.length : 0} checked)
-            - Overall valid: ${schedulesValid}
-        `);
+
 
                 if (!schedulesValid) {
                     $('#scheduleWarning').show().text('⚠️ Initial payment requires schedule selection');
@@ -2458,7 +2591,6 @@ if (isset($_GET['student_id'])) {
             }
 
             function updateHiddenScheduleFromDOM() {
-                console.log('🔄 Updating hidden schedule field from DOM selections | User: Scraper001 | Time: 2025-06-21 09:13:47');
 
                 const newSelectedSchedules = [];
 
@@ -2493,7 +2625,7 @@ if (isset($_GET['student_id'])) {
                 const scheduleJson = JSON.stringify(selectedSchedules);
                 $('#hiddenSchedule').val(scheduleJson);
 
-                console.log(`✅ Updated hidden schedule field with ${newSelectedSchedules.length} schedules:`, scheduleJson);
+
             }
 
 
@@ -2516,14 +2648,14 @@ if (isset($_GET['student_id'])) {
                         alertDiv.style.display = 'block';
                     }
 
-                    console.log('✅ Reservation validation passed - schedules not required for F2F/Online');
+
                     return true;
                 }
 
                 // For other learning modes, check if schedules are available
                 if (maintainedSchedules.length > 0) {
                     $('#scheduleWarning').hide();
-                    console.log('✅ Reservation validation passed - using maintained schedules');
+
                     return true;
                 }
 
@@ -2546,7 +2678,7 @@ if (isset($_GET['student_id'])) {
             }
 
             $('#scheduleWarning').hide();
-            console.log('✅ Schedule validation passed');
+
             return true;
         };
 
@@ -2560,7 +2692,7 @@ if (isset($_GET['student_id'])) {
             $('#programDetailsHidden').val(JSON.stringify(p));
             calculateTotal(p, currentPackage);
 
-            console.log(`🎓 Program updated: ${p.program_name} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
+
         };
 
         // ENHANCED: Payment calculation with corrected change logic and promo validation
@@ -2607,11 +2739,11 @@ if (isset($_GET['student_id'])) {
                     // FIXED: Always calculate demo fee even if no demo type selected yet
                     if (demoType) {
                         amount = calculateDemoFeeJS();
-                        console.log(`💰 Demo fee calculated for ${demoType}: ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
                     } else {
                         // Still show a demo fee even without selection for reference
                         amount = calculateDemoFeeJS();
-                        console.log(`💰 Demo fee calculated (no demo selected): ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
                     }
                     break;
                 case 'reservation':
@@ -2635,7 +2767,7 @@ if (isset($_GET['student_id'])) {
             updateDemoFeesDisplay();
             updateDebugInfo();
 
-            console.log(`💳 Payment amounts updated - Type: ${paymentType}, Amount: ₱${amount.toFixed(2)} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
         }
 
         function validateDemoPayment() {
@@ -2664,7 +2796,7 @@ if (isset($_GET['student_id'])) {
                     return false;
                 }
 
-                console.log(`✅ Demo payment validation passed - Demo: ${demoType}, Amount: ₱${totalPayment} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
             }
 
             return true;
@@ -2790,7 +2922,7 @@ if (isset($_GET['student_id'])) {
                                         allocationDetails: preview
                                     };
 
-                                    console.log(`✅ Demo excess choice selected: ${option} | Amount: ₱${excessAmount} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
                                     resolve(result);
                                 }
                             });
@@ -2798,7 +2930,7 @@ if (isset($_GET['student_id'])) {
                     }
                 }).then((result) => {
                     if (result.isDismissed) {
-                        console.log(`❌ Demo excess payment cancelled by user | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
                         resolve(null); // Cancel payment
                     }
                 });
@@ -3018,7 +3150,7 @@ if (isset($_GET['student_id'])) {
         `);
             }
 
-            console.log(`🔄 Program reset | User: Scraper001 | Time: 2025-06-21 03:25:31`);
+
         };
 
         const resetSchedule = () => {
@@ -3064,9 +3196,7 @@ if (isset($_GET['student_id'])) {
                 $('#packageSelect').html('<option value="">Select a package</option>');
 
                 data.forEach(package => {
-                    // Enhanced: Display selection type in package options
-                    const selectionType = package.selection_type || 1;
-                    const displayText = `${package.package_name} (Option ${selectionType})`;
+                    const displayText = "Package: " + `${package.package_name}`;
                     $('#packageSelect').append(`<option value="${package.package_name}">${displayText}</option>`);
                 });
 
@@ -3077,7 +3207,6 @@ if (isset($_GET['student_id'])) {
                 }
             });
         };
-
         // Enhanced: Disable reservation for promo packages with validation
         function disableReservationIfPromo() {
             const selectedPackage = $('#packageSelect').val();
@@ -3087,34 +3216,22 @@ if (isset($_GET['student_id'])) {
             const $reservationLabel = $reservationRadio.closest('label');
 
             if (isPromo) {
-                // Enhanced: Check if it's a custom payment option (3-4) for stricter validation
-                if (currentPackage && currentPackage.selection_type > 2) {
-                    $reservationRadio.prop('disabled', true).prop('checked', false);
-                    $reservationLabel.css('color', '#b91c1c');
-                    if ($('#reservationPromoMsg').length === 0) {
-                        $reservationLabel.append(
-                            '<span id="reservationPromoMsg" style="color:#b91c1c; font-size:12px; margin-left:8px;">Reservation not available for custom payment options.</span>'
-                        );
-                    }
-                } else {
-                    $reservationRadio.prop('disabled', true).prop('checked', false);
-                    $reservationLabel.css('color', '#b91c1c');
-                    if ($('#reservationPromoMsg').length === 0) {
-                        $reservationLabel.append(
-                            '<span id="reservationPromoMsg" style="color:#b91c1c; font-size:12px; margin-left:8px;">Reservation is not available for promo packages.</span>'
-                        );
-                    }
+                $reservationRadio.prop('disabled', true).prop('checked', false);
+                $reservationLabel.css('color', '#b91c1c');
+                if ($('#reservationPromoMsg').length === 0) {
+                    $reservationLabel.append(
+                        '<span id="reservationPromoMsg" style="color:#b91c1c; font-size:12px; margin-left:8px;">Reservation is not available for promo packages.</span>'
+                    );
                 }
             } else {
                 $reservationRadio.prop('disabled', false);
                 $reservationLabel.css('color', '');
                 $('#reservationPromoMsg').remove();
             }
-
-            console.log(`🚫 Reservation status updated - Promo: ${isPromo} | User: Scraper001 | Time: 2025-06-21 03:25:31`);
         }
 
         const loadSchedules = (id) => ajax('functions/ajax/get_schedules.php', { program_id: id }, populateSchedule);
+
 
         const validatePaymentTypes = () => {
             paidPaymentTypes.forEach(paymentType => {
@@ -3157,65 +3274,35 @@ if (isset($_GET['student_id'])) {
                 if (packageName === 'Regular Package') {
                     currentPackage = null;
                     $('#packageInfo').text(`Package: ${packageName}`);
-                    $('#packageDetailsHidden').val('{ }');
+                    $('#packageDetailsHidden').val('{}');
                     calculateTotal(currentProgram, null);
                     updateProgram(currentProgram);
-                    hidePromoSelectionInfo();
                 } else {
                     ajax('functions/ajax/get_package_details.php', {
                         program_id: currentProgram.id,
                         package_name: packageName
                     }, (packageData) => {
                         currentPackage = packageData;
-
-                        // Enhanced: Display promo selection information
-                        displayPromoSelectionInfo(packageData);
-
-                        // Enhanced package info display with selection type
-                        let packageDisplayText = `Package: ${packageName}`;
-                        if (packageData.selection_type_display) {
-                            packageDisplayText += ` (${packageData.selection_type_display})`;
-                        }
-                        if (packageData.display_info) {
-                            packageDisplayText += ` - ${packageData.display_info}`;
-                        }
-
-                        $('#packageInfo').html(`<strong>Package:</strong> ${packageDisplayText}`);
+                        $('#packageInfo').text(`Package: ${packageName}`);
                         $('#packageDetailsHidden').val(JSON.stringify(packageData));
                         calculateTotal(currentProgram, packageData);
                         updateProgram(currentProgram);
-
-                        // Enhanced: Show selection type information in receipt
-                        if (packageData.selection_type > 2) {
-                            $('#promoInfo').addClass('text-blue-600').html(`
-                                <strong>Custom Payment Option:</strong> ${packageData.display_info}<br>
-                                <small>Required initial payment as declared during program setup</small>
-                            `).show();
-                        } else {
-                            $('#promoInfo').removeClass('text-blue-600').html(`
-                                <strong>Promo Discount:</strong> ₱${packageData.enrollment_fee ? parseFloat(packageData.enrollment_fee).toLocaleString() : '0'}<br>
-                                <small>Automatic ${packageData.percentage}% discount applied</small>
-                            `).show();
-                        }
-
-                        console.log(`🏷️ Package selected: ${packageName} (Option ${packageData.selection_type}) | User: Scraper001 | Time: 2025-06-21 03:25:31`);
                     });
                 }
             } else {
                 currentPackage = null;
                 $('#packageInfo').text('');
                 $('#packageDetailsHidden').val('');
-                hidePromoSelectionInfo();
                 if (currentProgram) {
                     calculateTotal(currentProgram, null);
                     updateProgram(currentProgram);
                 }
             }
-
+            // ---> Add this line to always check and update reservation status
             disableReservationIfPromo();
         });
-
-        $('#input[name="learning_mode"]').change(function () {
+        disableReservationIfPromo();
+        $('input[name="learning_mode"]').change(function () {
             const mode = $(this).val();
             $('#learningMode').text(`Learning Mode: ${mode}`);
 
@@ -3226,6 +3313,7 @@ if (isset($_GET['student_id'])) {
                 updateDemoFeesDisplay();
             }
         });
+
 
         // Enhanced: Payment type change handler with demo selection preservation and promo validation
         $('input[name="type_of_payment"]').change(function () {
@@ -3320,7 +3408,7 @@ if (isset($_GET['student_id'])) {
             const rowId = row.getAttribute('data-row-id');
             const paymentType = $('input[name="type_of_payment"]:checked').val();
 
-            console.log(`📝 Schedule row selection - ID: ${rowId}, Checked: ${checkbox.checked}, Payment: ${paymentType} | User: Scraper001 | Time: 2025-06-21 09:13:47`);
+
 
             // FIXED: Handle locked schedules properly
             if (row.classList.contains('schedule-locked') && paymentType === 'reservation') {
@@ -3357,19 +3445,19 @@ if (isset($_GET['student_id'])) {
                 if (existingIndex === -1) {
                     selectedSchedules.push(scheduleData);
                     row.classList.add('bg-blue-50');
-                    console.log(`✅ Added schedule ${rowId} to selection`);
+
                 }
             } else {
                 selectedSchedules = selectedSchedules.filter(s => s.id !== rowId);
                 row.classList.remove('bg-blue-50');
-                console.log(`➖ Removed schedule ${rowId} from selection`);
+
             }
 
             // FIXED: Always update hidden field with proper JSON
             try {
                 const scheduleJson = JSON.stringify(selectedSchedules);
                 $('#hiddenSchedule').val(scheduleJson);
-                console.log(`📄 Updated hidden field:`, scheduleJson);
+
             } catch (e) {
                 console.error('❌ Error updating hidden field:', e);
                 $('#hiddenSchedule').val('[]');
@@ -3377,7 +3465,7 @@ if (isset($_GET['student_id'])) {
 
             // FIXED: Immediate validation after selection
             const validationResult = validateScheduleSelection();
-            console.log(`🔍 Immediate validation result: ${validationResult}`);
+
 
             updateDebugInfo();
         };
@@ -3391,7 +3479,6 @@ if (isset($_GET['student_id'])) {
             const totalPayment = parseFloat($('#totalPayment').val()) || 0;
             const demoType = $('#demoSelect').val();
 
-            console.log(`🚀 Form submission started - Payment: ${paymentType}, Amount: ₱${totalPayment}, Demo: ${demoType} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
 
             // ENHANCED: Validate demo payment first
             if (!validateDemoPayment()) {
@@ -3406,12 +3493,11 @@ if (isset($_GET['student_id'])) {
 
                 if (totalPayment > requiredAmount && requiredAmount > 0) {
                     const excessAmount = totalPayment - requiredAmount;
-                    console.log(`💰 Demo excess detected: ₱${excessAmount.toFixed(2)} for ${demoType} | User: Scraper001 | Time: 2025-06-21 09:27:13`);
 
                     excessData = await showDemoExcessPaymentModal(totalPayment, requiredAmount, excessAmount, demoType);
 
                     if (!excessData) {
-                        console.log(`❌ Demo payment cancelled due to excess handling | User: Scraper001 | Time: 2025-06-21 09:27:13`);
+
                         return; // User cancelled
                     }
                 }
@@ -3479,7 +3565,7 @@ if (isset($_GET['student_id'])) {
                     }
                 }
 
-                console.log(`💰 Excess data prepared for submission:`, excessData);
+
             } else {
                 formData.append('has_excess_payment', 'false');
             }
@@ -3504,7 +3590,7 @@ if (isset($_GET['student_id'])) {
                 dataType: 'json',
                 timeout: 30000,
                 success: function (response) {
-                    console.log(`✅ Payment response received:`, response);
+
 
                     if (response.success) {
                         let successMessage = `Demo payment of ₱${totalPayment.toLocaleString()} for ${demoType.replace('demo', 'Demo ').replace(/(\d)/, '$1')} processed successfully!`;
@@ -3582,7 +3668,7 @@ if (isset($_GET['student_id'])) {
             loadPrograms();
             updateDebugInfo();
 
-            console.log('🎉 Enhanced POS System initialized with Promo Selection Options (1-4) | User: Scraper001 | Time: 2025-06-21 03:25:31');
+
         };
 
         initializeSystem();
@@ -3996,7 +4082,7 @@ if (isset($_GET['student_id'])) {
 
         }, 2000);
 
-        console.log('🎉 Enhanced POS System with Promo Selection Options (1-4) fully initialized | User: Scraper001 | Time: 2025-06-21 03:25:31');
+
     });
 
     // Enhanced: Global print function
@@ -4018,14 +4104,14 @@ if (isset($_GET['student_id'])) {
         var packageSelect = document.getElementById("packageSelect");
         var locked_warning = document.getElementById("locked_warning");
 
-        console.log("enrollmentLocked:", enrollmentLocked, "| User: Scraper001 | Time: 2025-06-21 03:25:31");
+
 
         if (enrollmentLocked === true) {
             // FIX: Don't disable the dropdowns, just show a warning.
             // programSelect.disabled = true;
             // packageSelect.disabled = true;
             locked_warning.innerHTML = "To avoid accidental errors, the Program and Package selections are locked."
-            console.log("Locked after delay | User: Scraper001 | Time: 2025-06-21 03:25:31");
+
         } else {
             programSelect.disabled = false;
             packageSelect.disabled = false;

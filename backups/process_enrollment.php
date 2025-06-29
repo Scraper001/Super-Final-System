@@ -1,8 +1,8 @@
 <?php
 /**
- * Fixed Process Enrollment with Corrected Excess Payment Handling
- * CarePro POS System - Simplified Implementation
- * User: Scraper001 | Time: 2025-06-21 09:41:13
+ * Enhanced Process Enrollment with Excess Payment Handling
+ * CarePro POS System - Complete Implementation
+ * User: Scraper001 | Time: 2025-06-21 09:18:55
  */
 
 include '../../../connection/connection.php';
@@ -34,54 +34,199 @@ function debug_log($message, $data = null)
 }
 
 /**
- * SIMPLIFIED: Excess Payment Handler - Returns Change Only
- * Note: Real allocation to database would require complex balance recalculation
+ * ENHANCED: Excess Payment Handler for Initial Payments
  */
-function handleExcessPayment($excess_option, $original_amount, $required_amount, $excess_amount, $payment_type)
+function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_option, $original_amount, $required_amount, $excess_amount, $total_tuition)
 {
     $result = [
         'processed_amount' => $required_amount,
         'change_amount' => $excess_amount,
         'description' => '',
-        'allocation_notes' => []
+        'demo_allocations' => []
     ];
 
     switch ($excess_option) {
         case 'treat_as_full':
-        case 'allocate_to_demos':
-            // For initial payment excess - return as change due to complexity
+            // 1️⃣ Treat Payment as Full Initial
+            $remaining_tuition = $total_tuition - $original_amount;
+            $demo_balance = max(0, $remaining_tuition / 4);
+
             $result = [
-                'processed_amount' => $required_amount,
-                'change_amount' => $excess_amount,
-                'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change. Note: Allocation selected but returned for system stability.",
-                'allocation_notes' => ["User requested allocation but system returned change for data integrity"]
+                'processed_amount' => $original_amount,
+                'change_amount' => 0,
+                'description' => "Payment treated as full initial. Demo balance reduced to ₱" . number_format($demo_balance, 2) . " each.",
+                'demo_allocations' => [
+                    'demo1' => $demo_balance,
+                    'demo2' => $demo_balance,
+                    'demo3' => $demo_balance,
+                    'demo4' => $demo_balance
+                ]
             ];
             break;
 
-        case 'add_to_next_demo':
-        case 'credit_to_account':
-            // For demo payment excess - return as change due to complexity
+        case 'allocate_to_demos':
+            // 2️⃣ Allocate Excess to Demos (Fixed)
+            $current_demo_fee = ($total_tuition - $required_amount) / 4;
+            $remaining_excess = $excess_amount;
+            $demo_allocations = [];
+
+            // Check existing demo payments
+            $existing_demos = [];
+            $stmt = $conn->prepare("SELECT demo_type, SUM(cash_received) as paid FROM pos_transactions WHERE student_id = ? AND program_id = ? AND payment_type = 'demo_payment' GROUP BY demo_type");
+            $stmt->bind_param("ii", $student_id, $program_id);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            while ($row = $res->fetch_assoc()) {
+                $existing_demos[$row['demo_type']] = safe_float($row['paid']);
+            }
+            $stmt->close();
+            $balance_after_initial = $total_tuition - $original_amount;
+            $running_balance = $balance_after_initial;
+
+            for ($i = 1; $i <= 4; $i++) {
+                if ($remaining_excess <= 0)
+                    break;
+                $demo_type = "demo{$i}";
+                $already_paid = isset($existing_demos[$demo_type]) ? $existing_demos[$demo_type] : 0.0;
+                $to_pay = max(0, $current_demo_fee - $already_paid);
+                $allocation = min($remaining_excess, $to_pay);
+
+                if ($allocation > 0) {
+                    $running_balance -= $allocation; // Decrement balance for this allocation
+
+                    $stmt = $conn->prepare(
+                        "INSERT INTO pos_transactions 
+            (student_id, program_id, payment_type, demo_type, cash_received, balance, description, status, processed_by, transaction_date)
+            VALUES (?, ?, 'demo_payment', ?, ?, ?, 'Excess allocation from initial payment', 'Active', 'Scraper001', NOW())"
+                    );
+                    $stmt->bind_param("iisdd", $student_id, $program_id, $demo_type, $allocation, $running_balance);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+
+                $demo_allocations[$demo_type] = [
+                    'allocated' => $allocation,
+                    'already_paid' => $already_paid,
+                    'remaining' => max(0, $current_demo_fee - $already_paid - $allocation),
+                    'status' => ($already_paid + $allocation) >= $current_demo_fee ? 'Paid in Full' : (($already_paid + $allocation) > 0 ? 'Partially Paid' : 'Unpaid')
+                ];
+                $remaining_excess -= $allocation;
+            }
             $result = [
-                'processed_amount' => $required_amount,
-                'change_amount' => $excess_amount,
-                'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change. Note: Allocation requested but returned for system stability.",
-                'allocation_notes' => ["User requested demo allocation but system returned change for data integrity"]
+                'processed_amount' => $original_amount,
+                'change_amount' => $remaining_excess,
+                'description' => "Initial payment applied. Excess allocated to demos sequentially.",
+                'demo_allocations' => $demo_allocations
             ];
             break;
 
         case 'return_as_change':
         default:
-            // Return the Excess as Change
+            // 3️⃣ Return the Excess as Change
             $result = [
                 'processed_amount' => $required_amount,
                 'change_amount' => $excess_amount,
-                'description' => "Excess payment of ₱" . number_format($excess_amount, 2) . " returned as change.",
-                'allocation_notes' => []
+                'description' => "Only required initial amount processed. ₱" . number_format($excess_amount, 2) . " returned as change.",
+                'demo_allocations' => []
             ];
             break;
     }
 
     return $result;
+}
+
+/**
+ * ENHANCED: Excess Payment Handler for Demo Payments
+ */
+function handleExcessDemoPayment($conn, $student_id, $program_id, $excess_option, $original_amount, $required_amount, $excess_amount, $current_demo)
+{
+    $result = [
+        'processed_amount' => $required_amount,
+        'change_amount' => $excess_amount,
+        'description' => ''
+    ];
+
+    switch ($excess_option) {
+        case 'add_to_next_demo':
+            // Add Excess to Next Demo
+            $next_demo = findNextUnpaidDemo($conn, $student_id, $program_id, $current_demo);
+
+
+
+
+
+
+            if ($next_demo) {
+                $result = [
+                    'processed_amount' => $original_amount,
+                    'change_amount' => 0,
+                    'description' => "Demo payment processed. ₱" . number_format($excess_amount, 2) . " credited to {$next_demo}.",
+                    'next_demo_credit' => ['demo' => $next_demo, 'amount' => $excess_amount]
+                ];
+                // Insert as a demo_payment transaction for the next demo
+                $stmt = $conn->prepare(
+                    "INSERT INTO pos_transactions 
+                    (student_id, program_id, payment_type, demo_type, cash_received, balance, description, status, processed_by, transaction_date)
+                    VALUES (?, ?, 'demo_payment', ?, ?, 0, 'Excess from previous demo', 'Active', 'Scraper001', NOW())"
+                );
+                $stmt->bind_param("iisd", $student_id, $program_id, $next_demo, $excess_amount);
+                $stmt->execute();
+                $stmt->close();
+            } else {
+                $result['description'] = "No unpaid demos found. ₱" . number_format($excess_amount, 2) . " returned as change.";
+            }
+            break;
+
+        case 'credit_to_account':
+            // Credit to Student's Account
+            $result = [
+                'processed_amount' => $original_amount,
+                'change_amount' => 0,
+                'description' => "Demo payment processed. ₱" . number_format($excess_amount, 2) . " credited to student account.",
+                'account_credit' => $excess_amount
+            ];
+            // You could insert into a credit table or a future-feature here
+            break;
+
+        case 'return_as_change':
+        default:
+            // Return as Change
+            $result = [
+                'processed_amount' => $required_amount,
+                'change_amount' => $excess_amount,
+                'description' => "Only required demo amount processed. ₱" . number_format($excess_amount, 2) . " returned as change."
+            ];
+            break;
+    }
+
+    return $result;
+}
+
+/**
+ * Find next unpaid demo
+ */
+function findNextUnpaidDemo($conn, $student_id, $program_id, $current_demo)
+{
+    $demos = ['demo1', 'demo2', 'demo3', 'demo4'];
+    $current_index = array_search($current_demo, $demos);
+
+    if ($current_index === false)
+        return null;
+
+    for ($i = $current_index + 1; $i < count($demos); $i++) {
+        $check_demo = $demos[$i];
+
+        // Check if demo is unpaid
+        $stmt = $conn->prepare("SELECT id FROM pos_transactions WHERE student_id = ? AND program_id = ? AND demo_type = ?");
+        $stmt->bind_param("iis", $student_id, $program_id, $check_demo);
+        $stmt->execute();
+
+        if ($stmt->get_result()->num_rows == 0) {
+            return $check_demo;
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -139,14 +284,81 @@ function checkProgramEndDate($conn, $program_id)
 }
 
 /**
- * ADDED: Schedule validation function
+ * Calculate demo fee for a student
  */
-function validateScheduleSelection($payment_type, $selected_schedules, $conn, $student_id, $program_id)
+function calculateDemoFee($conn, $student_id, $program_id, $final_total)
 {
-    // Full payment and initial payment require schedule selection
-    if (in_array($payment_type, ['full_payment', 'initial_payment'])) {
-        $schedules_data = json_decode($selected_schedules, true);
+    // Get current balance from most recent transaction
+    $balance_stmt = $conn->prepare("
+        SELECT balance FROM pos_transactions 
+        WHERE student_id = ? AND program_id = ? 
+        ORDER BY id DESC LIMIT 1
+    ");
 
+    if (!$balance_stmt) {
+        debug_log("❌ Failed to prepare balance statement", $conn->error);
+        return 0;
+    }
+
+    $balance_stmt->bind_param("ii", $student_id, $program_id);
+    $balance_stmt->execute();
+    $balance_result = $balance_stmt->get_result()->fetch_assoc();
+    $current_balance = safe_float($balance_result['balance'] ?? $final_total);
+
+    // Get paid demos count
+    $demo_stmt = $conn->prepare("
+        SELECT COUNT(DISTINCT demo_type) as paid_demos_count 
+        FROM pos_transactions 
+        WHERE student_id = ? AND program_id = ? 
+        AND payment_type = 'demo_payment' 
+        AND demo_type IS NOT NULL 
+        AND demo_type != ''
+    ");
+    $demo_stmt->bind_param("ii", $student_id, $program_id);
+    $demo_stmt->execute();
+    $demo_result = $demo_stmt->get_result()->fetch_assoc();
+    $paid_demos_count = intval($demo_result['paid_demos_count'] ?? 0);
+
+    $remaining_demos = 4 - $paid_demos_count;
+    $demo_fee = $remaining_demos > 0 ? max(0, $current_balance / $remaining_demos) : 0;
+
+    return $demo_fee;
+}
+
+$current_time = date('Y-m-d H:i:s');
+
+try {
+    // Get POST data
+    $student_id = $_POST['student_id'];
+    $program_id = $_POST['program_id'];
+    $learning_mode = $_POST['learning_mode'];
+    $payment_type = $_POST['type_of_payment'];
+    $package_name = $_POST['package_id'] ?? 'Regular';
+    $demo_type = $_POST['demo_type'] ?? null;
+    $selected_schedules = $_POST['selected_schedules'] ?? null;
+
+    // ENHANCED: Get excess payment data
+    $has_excess_payment = isset($_POST['has_excess_payment']) && $_POST['has_excess_payment'] === 'true';
+    $excess_choice = $_POST['excess_choice'] ?? null;
+    $excess_amount = safe_float($_POST['excess_amount'] ?? 0);
+    $excess_allocations = $_POST['excess_allocations'] ?? '[]';
+    $original_payment_amount = safe_float($_POST['original_payment_amount'] ?? 0);
+    $required_payment_amount = safe_float($_POST['required_payment_amount'] ?? 0);
+
+    debug_log("💰 Excess Payment Data", [
+        'has_excess' => $has_excess_payment,
+        'choice' => $excess_choice,
+        'excess_amount' => $excess_amount,
+        'original_payment' => $original_payment_amount,
+        'required_payment' => $required_payment_amount
+    ]);
+
+    // Real-time program end date validation
+    $program_info = checkProgramEndDate($conn, $program_id);
+
+    // Validate schedule selection for initial payments
+    if ($payment_type === 'initial_payment') {
+        $schedules_data = json_decode($selected_schedules, true);
         if (!is_array($schedules_data) || empty($schedules_data)) {
             // Check if there are maintained schedules from previous transaction
             $maintained_stmt = $conn->prepare("
@@ -163,63 +375,11 @@ function validateScheduleSelection($payment_type, $selected_schedules, $conn, $s
             $maintained_result = $maintained_stmt->get_result()->fetch_assoc();
 
             if (!$maintained_result || empty($maintained_result['selected_schedules'])) {
-                return [
-                    'valid' => false,
-                    'message' => "Schedule selection is required for " . str_replace('_', ' ', $payment_type) . " payments"
-                ];
+                throw new Exception("Schedule selection is required for initial payments");
             }
 
-            debug_log("✅ Using maintained schedules for " . $payment_type);
-            return [
-                'valid' => true,
-                'message' => "Using maintained schedules",
-                'schedules' => $maintained_result['selected_schedules']
-            ];
+            debug_log("✅ Using maintained schedules for initial payment");
         }
-    }
-
-    return ['valid' => true, 'message' => 'Schedule validation passed'];
-}
-
-$current_time = '2025-06-21 09:41:13';
-
-try {
-    // Get POST data
-    $student_id = $_POST['student_id'];
-    $program_id = $_POST['program_id'];
-    $learning_mode = $_POST['learning_mode'];
-    $payment_type = $_POST['type_of_payment'];
-    $package_name = $_POST['package_id'] ?? 'Regular';
-    $demo_type = $_POST['demo_type'] ?? null;
-    $selected_schedules = $_POST['selected_schedules'] ?? null;
-
-    // FIXED: Simplified excess payment handling
-    $has_excess_payment = isset($_POST['has_excess_payment']) && $_POST['has_excess_payment'] === 'true';
-    $excess_choice = $_POST['excess_choice'] ?? null;
-    $excess_amount = safe_float($_POST['excess_amount'] ?? 0);
-    $original_payment_amount = safe_float($_POST['original_payment_amount'] ?? 0);
-    $required_payment_amount = safe_float($_POST['required_payment_amount'] ?? 0);
-
-    debug_log("💰 Excess Payment Data", [
-        'has_excess' => $has_excess_payment,
-        'choice' => $excess_choice,
-        'excess_amount' => $excess_amount,
-        'original_payment' => $original_payment_amount,
-        'required_payment' => $required_payment_amount
-    ]);
-
-    // Real-time program end date validation
-    $program_info = checkProgramEndDate($conn, $program_id);
-
-    // ADDED: Enhanced schedule validation
-    $schedule_validation = validateScheduleSelection($payment_type, $selected_schedules, $conn, $student_id, $program_id);
-    if (!$schedule_validation['valid']) {
-        throw new Exception($schedule_validation['message']);
-    }
-
-    // Use maintained schedules if found and current schedules are empty
-    if (isset($schedule_validation['schedules'])) {
-        $selected_schedules = $schedule_validation['schedules'];
     }
 
     // Get existing balance and payment info
@@ -284,19 +444,35 @@ try {
         $selected_schedules = $existing_selected_schedules;
     }
 
-    // FIXED: Simplified excess payment processing
+    // ENHANCED: Process excess payment if applicable
     $excess_processing_result = null;
     $final_payment_amount = $payment_amount;
     $final_change_amount = max(0, $cash - $payment_amount);
 
     if ($has_excess_payment && $excess_choice) {
-        $excess_processing_result = handleExcessPayment(
-            $excess_choice,
-            $original_payment_amount,
-            $required_payment_amount,
-            $excess_amount,
-            $payment_type
-        );
+        if ($payment_type === 'initial_payment') {
+            $excess_processing_result = handleExcessInitialPayment(
+                $conn,
+                $student_id,
+                $program_id,
+                $excess_choice,
+                $original_payment_amount,
+                $required_payment_amount,
+                $excess_amount,
+                $final_total
+            );
+        } elseif ($payment_type === 'demo_payment') {
+            $excess_processing_result = handleExcessDemoPayment(
+                $conn,
+                $student_id,
+                $program_id,
+                $excess_choice,
+                $original_payment_amount,
+                $required_payment_amount,
+                $excess_amount,
+                $demo_type
+            );
+        }
 
         if ($excess_processing_result) {
             $final_payment_amount = $excess_processing_result['processed_amount'];
@@ -330,7 +506,7 @@ try {
     // Create description with excess payment info
     $description = "Payment processed - " . ucfirst(str_replace('_', ' ', $payment_type));
     if ($excess_processing_result) {
-        $description .= " (Excess handled: " . $excess_processing_result['description'] . ")";
+        $description .= " (Excess: " . $excess_processing_result['description'] . ")";
     }
 
     // Start transaction
@@ -342,7 +518,7 @@ try {
             throw new Exception($program_info['message']);
         }
 
-        // Insert POS transaction
+        // FIXED: Insert POS transaction with correct field mapping
         $sql = "INSERT INTO pos_transactions (
             student_id, program_id, learning_mode, package_name, payment_type, 
             demo_type, selected_schedules, subtotal, promo_discount, system_fee, 
@@ -389,16 +565,44 @@ try {
 
         $transaction_id = $stmt->insert_id;
 
-        // ENHANCED: Log excess payment information if applicable
-        if ($excess_processing_result) {
-            // Log the excess handling for audit purposes
-            debug_log("💰 Excess payment handled", [
-                'transaction_id' => $transaction_id,
+        // ENHANCED: Log excess payment processing if applicable
+        if ($excess_processing_result && isset($excess_processing_result['demo_allocations'])) {
+            $excess_data = [
                 'choice' => $excess_choice,
                 'excess_amount' => $excess_amount,
+                'allocations' => $excess_processing_result['demo_allocations'],
                 'description' => $excess_processing_result['description'],
-                'allocation_notes' => $excess_processing_result['allocation_notes']
-            ]);
+                'processed_at' => $current_time,
+                'processed_by' => 'Scraper001'
+            ];
+
+            // Check if excess_processing_log table exists
+            $table_check = $conn->query("SHOW TABLES LIKE 'excess_processing_log'");
+            if ($table_check->num_rows > 0) {
+                $log_stmt = $conn->prepare("
+                    INSERT INTO excess_processing_log (
+                        transaction_id, student_id, program_id, excess_amount,
+                        excess_choice, allocations_data, final_change_amount,
+                        processed_at, processed_by, notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), 'Scraper001', ?)
+                ");
+
+                $allocations_json = json_encode($excess_processing_result['demo_allocations']);
+                $notes = $excess_processing_result['description'];
+
+                $log_stmt->bind_param(
+                    "iiiisdds",
+                    $transaction_id,
+                    $student_id,
+                    $program_id,
+                    $excess_amount,
+                    $excess_choice,
+                    $allocations_json,
+                    $excess_processing_result['change_amount'],
+                    $notes
+                );
+                $log_stmt->execute();
+            }
         }
 
         // Insert/Update Student Enrollment
@@ -444,7 +648,7 @@ try {
             'excess_handled' => $excess_choice ?? 'none'
         ]);
 
-        // Prepare response
+        // ENHANCED: Prepare response with excess payment information
         $response_message = 'Payment processed successfully';
         $warnings = [];
 
@@ -483,7 +687,6 @@ try {
                 'days_remaining' => $program_info['days_remaining'] ?? null,
                 'current_date' => date('Y-m-d')
             ],
-            'schedule_validation' => $schedule_validation,
             'timestamp' => $current_time,
             'processed_by' => 'Scraper001'
         ];
@@ -496,10 +699,13 @@ try {
                 'excess_amount' => $excess_amount,
                 'final_change_amount' => $excess_processing_result['change_amount'],
                 'processing_notes' => [$excess_processing_result['description']],
-                'allocation_notes' => $excess_processing_result['allocation_notes'],
                 'processed_at' => $current_time,
                 'processed_by' => 'Scraper001'
             ];
+
+            if (isset($excess_processing_result['demo_allocations'])) {
+                $response['excess_processing']['allocations'] = $excess_processing_result['demo_allocations'];
+            }
         }
 
         echo json_encode($response);
