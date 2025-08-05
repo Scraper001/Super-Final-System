@@ -5,8 +5,6 @@ $conn = con();
 // Get program_id from URL
 $program_id = isset($_GET['program_id']) ? intval($_GET['program_id']) : 0;
 
-
-
 if ($program_id <= 0) {
     echo "<script>
         Swal.fire({
@@ -54,7 +52,7 @@ while ($row = $schedule_result->fetch_assoc()) {
     $schedules_data[] = $row;
 }
 
-// Fetch promos data
+// Fetch promos data with enhanced fields
 $promo_query = "SELECT * FROM `promo` WHERE `program_id` = ?";
 $promo_stmt = $conn->prepare($promo_query);
 $promo_stmt->bind_param("i", $program_id);
@@ -62,8 +60,27 @@ $promo_stmt->execute();
 $promo_result = $promo_stmt->get_result();
 $promos_data = [];
 while ($row = $promo_result->fetch_assoc()) {
+    // Set default values for potentially missing columns
+    if (!isset($row['selection_type'])) {
+        $row['selection_type'] = 1; // Default to option 1 for old records
+    }
+    if (!isset($row['custom_initial_payment'])) {
+        $row['custom_initial_payment'] = null;
+    }
+    if (!isset($row['required_initial_payment'])) {
+        $row['required_initial_payment'] = null;
+    }
     $promos_data[] = $row;
 }
+
+// Check if students are enrolled in this program
+$enrolled_query = "SELECT COUNT(*) as enrolled_count FROM student_enrollments WHERE program_id = ?";
+$enrolled_stmt = $conn->prepare($enrolled_query);
+$enrolled_stmt->bind_param("i", $program_id);
+$enrolled_stmt->execute();
+$enrolled_result = $enrolled_stmt->get_result();
+$enrolled_data = $enrolled_result->fetch_assoc();
+$has_enrolled_students = ($enrolled_data['enrolled_count'] > 0);
 
 // Handle UPDATE form submission
 if ($_SERVER['REQUEST_METHOD'] === "POST") {
@@ -142,17 +159,21 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
         $delete_promo_stmt->bind_param("i", $program_id);
         $delete_promo_stmt->execute();
 
-        // Insert updated promos
+        // Insert updated promos with new fields
         if (isset($_POST['promos']) && is_array($_POST['promos'])) {
             foreach ($_POST['promos'] as $index => $promo_details) {
                 $package_name = !empty($promo_details['package_name']) ? $promo_details['package_name'] : null;
-                $enrollment_fee = !empty($promo_details['enrollment_fee']) ? $promo_details['enrollment_fee'] : null;
-                $percentage = !empty($promo_details['percentage']) ? $promo_details['percentage'] : null;
+                $enrollment_fee = !empty($promo_details['enrollment_fee']) ? floatval($promo_details['enrollment_fee']) : 0;
+                $percentage = !empty($promo_details['percentage']) ? floatval($promo_details['percentage']) : 0;
                 $promo_type = !empty($promo_details['promo_type']) ? $promo_details['promo_type'] : null;
+                $selection_type = !empty($promo_details['selection_type']) ? intval($promo_details['selection_type']) : 1;
+                $custom_initial_payment = !empty($promo_details['custom_initial_payment']) ? floatval($promo_details['custom_initial_payment']) : null;
 
-                if ($package_name && $enrollment_fee && $percentage && $promo_type) {
-                    $stmt = $conn->prepare("INSERT INTO `promo` (`program_id`, `package_name`, `enrollment_fee`, `percentage`, `promo_type`) VALUES (?, ?, ?, ?, ?)");
-                    $stmt->bind_param("issds", $program_id, $package_name, $enrollment_fee, $percentage, $promo_type);
+                if ($package_name && $promo_type) {
+                    $stmt = $conn->prepare("INSERT INTO `promo` 
+                        (`program_id`, `package_name`, `enrollment_fee`, `percentage`, `promo_type`, `selection_type`, `custom_initial_payment`) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("isddsis", $program_id, $package_name, $enrollment_fee, $percentage, $promo_type, $selection_type, $custom_initial_payment);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -184,8 +205,6 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
     }
 }
 ?>
-
-
 
 <div class="flex h-screen overflow-hidden flex-row">
     <!-- Sidebar -->
@@ -222,347 +241,528 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
             <h2 class="font-semibold my-2 text-xs">
-                <a href="index.php" class="hover:text-green-400 text-gray-400">Dashboard</a> > Management Zone | Program
-                Editing
+                <a href="index.php" class="hover:text-green-400 text-gray-400">Dashboard</a> >
+                <a href="program_management.php" class="hover:text-green-400 text-gray-400">Program Management</a> >
+                Edit Program
             </h2>
 
-            <form id="updateForm" class="w-full min-h-screen p-2 bg-white rounded-xl border-2 flex flex-col"
+            <form id="updateForm" class="w-full min-h-screen p-4 bg-white rounded-xl shadow-md flex flex-col"
                 method="POST">
-                <div class="w-full mb-6 px-4">
-                    <h1 class="text-2xl font-bold">Edit Care Pro Program</h1>
-                    <p class="italic">Update Program with Ease</p>
+                <div class="w-full mb-6 px-4 border-b pb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold">Edit Program</h1>
+                            <p class="text-gray-600 italic">Update program details, schedules, and promotions</p>
+                        </div>
+
+                        <?php if ($has_enrolled_students): ?>
+                            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div class="ml-3">
+                                        <p class="text-sm">This program has enrolled students. Some changes may affect
+                                            current enrollments.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
-                <div class="w-full min-h-screen">
+                <div class="w-full">
                     <div class="w-full p-2">
-                        <span class="text-2xl font-semibold italic">Program Name</span>
-                        <input type="text" class="border-2 outline-none py-2 px-5 text-xl" name="program_name"
-                            value="<?php echo htmlspecialchars($program_data['program_name']); ?>">
+                        <div class="mb-6">
+                            <label for="program_name" class="block text-sm font-medium text-gray-700 mb-1">Program
+                                Name</label>
+                            <input type="text" class="border-2 outline-none py-2 px-5 text-xl w-full rounded-lg"
+                                id="program_name" name="program_name"
+                                value="<?php echo htmlspecialchars($program_data['program_name']); ?>">
+                        </div>
 
                         <!-- Schedule Section -->
-                        <div class="w-full flex flex-row mt-4">
-                            <div class="w-[40%] border-dashed py-4 px-2">
-                                <span class="font-semibold italic">Class Schedule and Duration</span>
-                                <!-- Schedule form inputs (same as original) -->
-                                <div class="flex flex-row mt-4 w-full border-2 py-2 border-dashed">
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>Opening of Class</span>
-                                        <input type="date" id="openingClasses" class="border-2 outline-none px-4 py-2">
+                        <div class="w-full mb-8">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Class Schedule Management
+                            </h2>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Panel: Schedule Form -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Add New Schedule</h3>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Opening
+                                                Date</label>
+                                            <input type="date" id="openingClasses"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Ending
+                                                Date</label>
+                                            <input type="date" id="endingClasses"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
                                     </div>
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>Ending of Class</span>
-                                        <input type="date" id="endingClasses" class="border-2 outline-none px-4 py-2">
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Training
+                                            Date</label>
+                                        <input type="date" id="trainingDate"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        <span id="dateError" class="text-red-500 text-xs hidden"></span>
                                     </div>
-                                </div>
 
-                                <div class="mt-2 bg-gray-200 p-2 border-2 border-dashed">
-                                    <span class="font-semibold">Training Date</span>
-                                    <input type="date" id="trainingDate"
-                                        class="border-2 outline-none px-4 py-2 bg-white w-full">
-                                    <span id="dateError" class="error-message hidden"></span>
-                                </div>
-
-                                <div class="mt-2 bg-gray-200 p-2 border-2 border-dashed">
-                                    <span class="font-semibold">Choose a day</span>
-                                    <select id="daySelect" class="border-2 outline-none px-4 py-2 bg-white w-full">
-                                        <option value="">Select a day</option>
-                                    </select>
-                                </div>
-
-                                <div class="flex flex-row mt-4 w-full border-2 py-2 border-dashed">
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>Start of Training</span>
-                                        <input type="time" id="startTime" class="border-2 outline-none px-4 py-2">
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+                                        <select id="daySelect"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                            <option value="">Select a day</option>
+                                        </select>
                                     </div>
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>End of Training</span>
-                                        <input type="time" id="endTime" class="border-2 outline-none px-4 py-2">
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Start
+                                                Time</label>
+                                            <input type="time" id="startTime"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                            <input type="time" id="endTime"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
                                     </div>
+
+                                    <button type="button" id="addSchedule"
+                                        class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors">
+                                        <i class="fas fa-plus mr-2"></i> Add Schedule
+                                    </button>
+
+                                    <div id="messageContainer" class="mt-2 min-h-[24px] text-center"></div>
                                 </div>
 
-                                <div class="w-full border-dashed py-2 items-center justify-center flex">
-                                    <button type="button" id="addSchedule" class="btn-success w-full">Add
-                                        Schedule</button>
-                                </div>
-                                <div id="messageContainer" class="mt-2"></div>
-                            </div>
+                                <!-- Right Panel: Schedule List -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Current Schedules</h3>
 
-                            <div class="w-[60%] border-dashed py-4 px-2 mx-2">
-                                <span class="font-semibold italic">Current Schedules</span>
-                                <div class="border-2 h-[330px] overflow-y-auto">
-                                    <table class="w-full">
-                                        <thead class="w-full bg-gray-50">
-                                            <tr>
-                                                <th class="text-md border-2 p-2">Week Description</th>
-                                                <th class="text-md border-2 p-2">Training Date</th>
-                                                <th class="text-md border-2 p-2">Start Time</th>
-                                                <th class="text-md border-2 p-2">End Time</th>
-                                                <th class="text-md border-2 p-2">Day of Week</th>
-                                                <th class="text-md border-2 p-2">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="scheduleTableBody" class="border-2">
-                                            <!-- Existing schedules will be populated here -->
-                                        </tbody>
-                                    </table>
+                                    <div class="border rounded-lg overflow-hidden">
+                                        <div class="max-h-[330px] overflow-y-auto">
+                                            <table class="w-full">
+                                                <thead class="bg-gray-50 sticky top-0">
+                                                    <tr>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Week</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Date</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Time</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Day</th>
+                                                        <th
+                                                            class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="scheduleTableBody" class="divide-y divide-gray-200">
+                                                    <!-- Existing schedules will be populated here via JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span>Schedules are used for planning student training sessions</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div id="hiddenInputs" style="display: none;"></div>
+                        <div id="hiddenInputs" class="hidden"></div>
 
                         <!-- Fees Section -->
-                        <div class="w-full flex-row flex mt-10">
-                            <div class="w-[40%] mx-4">
-                                <span class="text-2xl font-semibold italic mb-3 block">CHARGES FEE</span>
-                                <div class="w-full grid grid-cols-2 gap-4">
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Learning Mode</span>
-                                        <div class="mx-2 mb-1">
-                                            <input type="radio" name="learning_mode" value="F2F" class="mr-2" <?php echo ($program_data['learning_mode'] ?? '') == 'F2F' ? 'checked' : ''; ?>>
-                                            <span>F2F</span>
+                        <div class="w-full mb-8">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Fee Structure</h2>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Panel: Main Fees -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Program Fees</h3>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Learning
+                                            Mode</label>
+                                        <div class="flex space-x-4">
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" name="learning_mode" value="F2F"
+                                                    class="form-radio h-4 w-4 text-green-600" <?php echo ($program_data['learning_mode'] ?? '') == 'F2F' ? 'checked' : ''; ?>>
+                                                <span class="ml-2">Face to Face</span>
+                                            </label>
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" name="learning_mode" value="Online"
+                                                    class="form-radio h-4 w-4 text-green-600" <?php echo ($program_data['learning_mode'] ?? '') == 'Online' ? 'checked' : ''; ?>>
+                                                <span class="ml-2">Online</span>
+                                            </label>
                                         </div>
-                                        <div class="mx-2">
-                                            <input type="radio" name="learning_mode" value="Online" class="mr-2" <?php echo ($program_data['learning_mode'] ?? '') == 'Online' ? 'checked' : ''; ?>>
-                                            <span>Online</span>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Assessment
+                                                Fee</label>
+                                            <input type="number" name="assessment_fee" id="assessment_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['assesment_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Tuition
+                                                Fee</label>
+                                            <input type="number" name="tuition_fee" id="tuition_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['tuition_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Miscellaneous
+                                                Fee</label>
+                                            <input type="number" name="misc_fee" id="misc_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['misc_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">OJT Fee &
+                                                Medical</label>
+                                            <input type="number" name="ojt_fee" id="ojt_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['ojt_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">System
+                                                Fee</label>
+                                            <input type="number" name="system_fee" id="system_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['system_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Uniform
+                                                Fee</label>
+                                            <input type="number" name="uniform_fee" id="uniform_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['uniform_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">ID Fee</label>
+                                            <input type="number" name="id_fee" id="id_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['id_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Books
+                                                Fee</label>
+                                            <input type="number" name="book_fee" id="book_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['book_fee']; ?>">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Kit Fee</label>
+                                            <input type="number" name="kit_fee" id="kit_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()"
+                                                value="<?php echo $program_data['kit_fee']; ?>">
                                         </div>
                                     </div>
 
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Assessment Fee</span>
-                                        <input type="number" name="assessment_fee" id="assessment_fee"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()"
-                                            value="<?php echo $program_data['assesment_fee']; ?>">
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Tuition Fee</span>
-                                        <input type="number" name="tuition_fee" id="tuition_fee"
-                                            value="<?php echo $program_data['tuition_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <!-- Continue with other fee fields... -->
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Misc Fee</span>
-                                        <input type="number" name="misc_fee" id="misc_fee"
-                                            value="<?php echo $program_data['misc_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">OJT Fee and Medical</span>
-                                        <input type="number" name="ojt_fee" id="ojt_fee"
-                                            value="<?php echo $program_data['ojt_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">System Fee</span>
-                                        <input type="number" name="system_fee" id="system_fee"
-                                            value="<?php echo $program_data['system_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Uniform (Scrub and Polo Shirt)</span>
-                                        <input type="number" name="uniform_fee" id="uniform_fee"
-                                            value="<?php echo $program_data['uniform_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">ID</span>
-                                        <input type="number" name="id_fee" id="id_fee"
-                                            value="<?php echo $program_data['id_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Books</span>
-                                        <input type="number" name="book_fee" id="book_fee"
-                                            value="<?php echo $program_data['book_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Kit</span>
-                                        <input type="number" name="kit_fee" id="kit_fee"
-                                            value="<?php echo $program_data['kit_fee']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                            placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                    </div>
-
-                                    <!-- Add all other fee fields similarly -->
-                                </div>
-                                <div class="grid grid-cols-2 w-full border-2 bg-gray-200 px-4 border-dashed mt-10 py-5">
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Demo 1</span>
-                                        <input type="number" name="demo1_fee" id="demo1_fee"
-                                            value="<?php echo $program_data['demo1_fee_hidden']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                            placeholder="0.00" step="0.01" readonly>
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Demo 2</span>
-                                        <input type="number" name="demo2_fee" id="demo2_fee"
-                                            value="<?php echo $program_data['demo2_fee_hidden']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                            placeholder="0.00" step="0.01" readonly>
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Demo 3</span>
-                                        <input type="number" name="demo3_fee" id="demo3_fee"
-                                            value="<?php echo $program_data['demo3_fee_hidden']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                            placeholder="0.00" step="0.01" readonly>
-                                    </div>
-
-                                    <div class="flex flex-col mx-3">
-                                        <span class="font-semibold mb-2">Demo 4</span>
-                                        <input type="number" name="demo4_fee" id="demo4_fee"
-                                            value="<?php echo $program_data['demo4_fee_hidden']; ?>"
-                                            class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                            placeholder="0.00" step="0.01" readonly>
+                                    <div class="mt-6 bg-green-50 p-4 rounded-lg">
+                                        <h4 class="font-medium text-gray-800 mb-2">Total Tuition:</h4>
+                                        <p id="total_amount" class="text-2xl font-bold text-green-600">
+                                            ₱<?php echo number_format($program_data['total_tuition'], 2); ?>
+                                        </p>
+                                        <input type="hidden" name="total_tuition" id="total_tuition_hidden"
+                                            value="<?php echo $program_data['total_tuition']; ?>">
                                     </div>
                                 </div>
 
-                                <div class="w-full my-6 space-y-2 bg-gray-50 p-4 rounded-lg">
-                                    <div class="text-xl font-semibold">
-                                        Total Tuition: <span id="total_amount"
-                                            class="text-green-600">₱<?php echo number_format($program_data['total_tuition'], 2); ?></span>
-                                    </div>
-                                    <input type="hidden" name="total_tuition" id="total_tuition_hidden"
-                                        value="<?php echo $program_data['total_tuition']; ?>">
-                                    <input type="hidden" name="demo1_fee_hidden" id="demo1_fee_hidden"
-                                        value="<?php echo $program_data['demo1_fee_hidden']; ?>">
-                                    <input type="hidden" name="demo2_fee_hidden" id="demo2_fee_hidden"
-                                        value="<?php echo $program_data['demo2_fee_hidden']; ?>">
-                                    <input type="hidden" name="demo3_fee_hidden" id="demo3_fee_hidden"
-                                        value="<?php echo $program_data['demo3_fee_hidden']; ?>">
-                                    <input type="hidden" name="demo4_fee_hidden" id="demo4_fee_hidden"
-                                        value="<?php echo $program_data['demo4_fee_hidden']; ?>">
-                                </div>
-                            </div>
+                                <!-- Right Panel: Payment Options & Demo Fees -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Payment Structure</h3>
 
-                            <div class="w-[50%]">
-                                <span class="text-2xl font-semibold italic mb-3">PAYMENT</span>
-                                <div class="w-full border-2 p-2 flex items-center justify-center flex-col">
-                                    <div class="flex flex-row items-center my-2">
-                                        <span class="mx-2">Reservation Fee</span>
-                                        <input type="number" name="reservation_fee"
-                                            value="<?php echo $program_data['reservation_fee']; ?>"
-                                            class="py-2 px-4 border-2 outline-none" id="reservation_fee"
-                                            onkeyup="calculateFees()">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Reservation
+                                                Fee</label>
+                                            <div class="relative mt-1 rounded-md shadow-sm">
+                                                <div
+                                                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+
+                                                </div>
+                                                <input type="number" name="reservation_fee" id="reservation_fee"
+                                                    class="w-full border rounded-lg pl-8 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                    placeholder="0.00" onkeyup="calculateFees()"
+                                                    value="<?php echo $program_data['reservation_fee']; ?>">
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Initial
+                                                Payment</label>
+                                            <div class="relative mt-1 rounded-md shadow-sm">
+                                                <div
+                                                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+
+                                                </div>
+                                                <input type="number" name="initial_fee" id="initial_payment"
+                                                    class="w-full border rounded-lg pl-8 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                    placeholder="0.00" onkeyup="calculateFees()"
+                                                    value="<?php echo $program_data['initial_fee']; ?>">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="flex flex-row items-center my-2">
-                                        <span class="mx-2">Initial Payment</span>
-                                        <input type="number" name="initial_fee" id="initial_payment"
-                                            value="<?php echo $program_data['initial_fee']; ?>"
-                                            onkeyup="calculateFees()" class="py-2 px-4 border-2 outline-none">
+
+                                    <!-- Demo Fees Section -->
+                                    <div class="mt-6">
+                                        <h4 class="font-medium text-gray-800 mb-3">Demo Fee Structure</h4>
+                                        <p class="text-sm text-gray-500 mb-3">Demo fees are automatically calculated
+                                            based on remaining balance.</p>
+
+                                        <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    1</label>
+                                                <input type="number" name="demo1_fee" id="demo1_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly
+                                                    value="<?php echo $program_data['demo1_fee_hidden']; ?>">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    2</label>
+                                                <input type="number" name="demo2_fee" id="demo2_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly
+                                                    value="<?php echo $program_data['demo2_fee_hidden']; ?>">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    3</label>
+                                                <input type="number" name="demo3_fee" id="demo3_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly
+                                                    value="<?php echo $program_data['demo3_fee_hidden']; ?>">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    4</label>
+                                                <input type="number" name="demo4_fee" id="demo4_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly
+                                                    value="<?php echo $program_data['demo4_fee_hidden']; ?>">
+                                            </div>
+                                        </div>
+
+                                        <!-- Hidden inputs for demo fees -->
+                                        <input type="hidden" name="demo1_fee_hidden" id="demo1_fee_hidden"
+                                            value="<?php echo $program_data['demo1_fee_hidden']; ?>">
+                                        <input type="hidden" name="demo2_fee_hidden" id="demo2_fee_hidden"
+                                            value="<?php echo $program_data['demo2_fee_hidden']; ?>">
+                                        <input type="hidden" name="demo3_fee_hidden" id="demo3_fee_hidden"
+                                            value="<?php echo $program_data['demo3_fee_hidden']; ?>">
+                                        <input type="hidden" name="demo4_fee_hidden" id="demo4_fee_hidden"
+                                            value="<?php echo $program_data['demo4_fee_hidden']; ?>">
+                                    </div>
+
+                                    <div class="mt-6 text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span>Demo fees represent the remaining balance after initial payment, divided
+                                            into 4 equal installments</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Promo Section -->
-                        <div class="w-full flex flex-col">
-                            <h1 class="text-2xl font-bold mb-6 text-center">Edit Promo Management</h1>
+                        <div class="w-full mb-8">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Promotion Management</h2>
+
                             <div id="promoMessageContainer" class="mb-4 text-center min-h-[24px]"></div>
 
-                            <div class="w-full flex flex-row mt-4">
-                                <div class="w-[40%] border-dashed py-4 px-2">
-                                    <span class="font-semibold italic">Promo Details</span>
-                                    <div class="flex flex-col mt-4 w-full border-2 py-2 border-dashed p-2 space-y-4">
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Package</span>
-                                            <input type="text" id="packageInput" placeholder="Enter package name"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Panel: Promo Form -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Add New Promotion</h3>
 
-
+                                    <!-- Selection Type -->
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Promotion
+                                            Type</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection1">
+                                                <input type="radio" name="promo_selection" value="1" class="mr-2"
+                                                    checked>
+                                                <span class="text-sm">1 - Auto %</span>
+                                            </label>
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection2">
+                                                <input type="radio" name="promo_selection" value="2" class="mr-2">
+                                                <span class="text-sm">2 - Auto %</span>
+                                            </label>
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection3">
+                                                <input type="radio" name="promo_selection" value="3" class="mr-2">
+                                                <span class="text-sm">3 - Manual</span>
+                                            </label>
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection4">
+                                                <input type="radio" name="promo_selection" value="4" class="mr-2">
+                                                <span class="text-sm">4 - Manual</span>
+                                            </label>
                                         </div>
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Percentage (%)</span>
-                                            <input type="number" id="percentageInput"
-                                                placeholder="Enter discount percentage" step="0.01" min="0" max="100"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-                                        </div>
 
-
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Total Discount (PHP)</span>
-                                            <input type="number" id="enrollmentFeeInput"
-                                                placeholder="Enter enrollment fee" step="0.01" min="0"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-                                        </div>
-
-
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Promo Type</span>
-                                            <input type="text" id="promoTypeInput" placeholder="Enter promo type"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
+                                        <div class="mt-2 p-2 bg-blue-50 rounded text-xs">
+                                            <p><strong>Options 1-2:</strong> Percentage calculation will be applied
+                                                automatically</p>
+                                            <p><strong>Options 3-4:</strong> You need to calculate and declare your
+                                                initial payment amount</p>
                                         </div>
                                     </div>
 
-                                    <div class="w-full border-dashed py-2 items-center justify-center flex">
-                                        <button type="button" id="addPromo" class="btn-success w-full">Add
-                                            Promo</button>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
+                                        <input type="text" id="packageInput" placeholder="Enter package name"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                                     </div>
+
+                                    <!-- Percentage Input (for options 1-2) -->
+                                    <div class="mb-4" id="percentageSection">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Percentage
+                                            (%)</label>
+                                        <input type="number" id="percentageInput"
+                                            placeholder="Enter discount percentage" step="0.01" min="0" max="100"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <!-- Custom Initial Payment (for options 3-4) -->
+                                    <div class="mb-4 hidden" id="customPaymentSection">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Required Initial
+                                            Payment (PHP)</label>
+                                        <input type="number" id="customInitialPaymentInput"
+                                            placeholder="Enter required initial payment" step="0.01" min="0"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Total Discount
+                                            (PHP)</label>
+                                        <input type="number" id="enrollmentFeeInput" placeholder="Enter discount amount"
+                                            step="0.01" min="0"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Promo
+                                            Type/Description</label>
+                                        <input type="text" id="promoTypeInput"
+                                            placeholder="Enter promo type or description"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <button type="button" id="addPromo"
+                                        class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors">
+                                        <i class="fas fa-plus mr-2"></i> Add Promotion
+                                    </button>
                                 </div>
 
-                                <div class="w-[60%] border-dashed py-4 px-2 mx-2">
-                                    <span class="font-semibold italic">Current Promos</span>
-                                    <div class="border-2 h-[400px] overflow-y-auto">
-                                        <table class="w-full">
-                                            <thead class="w-full bg-gray-50 sticky top-0">
-                                                <tr>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Package</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Enrollment Fee</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Percentage</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Promo Type</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="promoTableBody" class="border-2">
-                                            </tbody>
-                                        </table>
+                                <!-- Right Panel: Promo List -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Current Promotions</h3>
+
+                                    <div class="border rounded-lg overflow-hidden">
+                                        <div class="max-h-[400px] overflow-y-auto">
+                                            <table class="w-full">
+                                                <thead class="bg-gray-50 sticky top-0">
+                                                    <tr>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Type</th>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Package</th>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Discount</th>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Description</th>
+                                                        <th
+                                                            class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="promoTableBody" class="divide-y divide-gray-200">
+                                                    <!-- Existing promos will be populated here via JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4 text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span>Promotions are special offers for this program that affect pricing</span>
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Hidden inputs container for promo data -->
                             <div id="promoHiddenInputs" style="display: none;"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="w-full flex items-center space-x-4">
+                <div class="w-full flex items-center gap-4 border-t pt-6 mt-4">
                     <button type="submit" name="update_process"
-                        class="px-4 py-2 rounded bg-blue-500 text-white w-full font-semibold">
-                        Update Program
+                        class="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors shadow-md flex-grow">
+                        <i class="fas fa-save mr-2"></i> Update Program
                     </button>
                     <a href="program_management.php"
-                        class="px-4 py-2 rounded bg-gray-500 text-white w-full font-semibold text-center">
-                        Cancel
+                        class="px-6 py-2.5 rounded-lg bg-gray-500 hover:bg-gray-600 text-white font-medium transition-colors shadow-md flex-grow text-center">
+                        <i class="fas fa-times mr-2"></i> Cancel
                     </a>
                 </div>
-
             </form>
         </main>
+
         <?php include "includes/footer.php" ?>
     </div>
 </div>
-
-
 
 <script>
     function handleLearningModeChange() {
@@ -580,7 +780,7 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
                     if (this.value === 'F2F') {
                         // Disable system fee for F2F
                         systemFeeInput.disabled = true;
-
+                        systemFeeInput.value = '0';
                         systemFeeInput.style.backgroundColor = '#e9ecef'; // Visual indication
                         systemFeeInput.style.cursor = 'not-allowed';
                     } else if (this.value === 'Online') {
@@ -626,7 +826,6 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             }
         }
     });
-
 </script>
 
 <script>
@@ -670,11 +869,15 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
     const packageInput = document.getElementById('packageInput');
     const enrollmentFeeInput = document.getElementById('enrollmentFeeInput');
     const percentageInput = document.getElementById('percentageInput');
+    const customInitialPaymentInput = document.getElementById('customInitialPaymentInput');
     const promoTypeInput = document.getElementById('promoTypeInput');
     const addPromoButton = document.getElementById('addPromo');
     const promoTableBody = document.getElementById('promoTableBody');
     const promoMessageContainer = document.getElementById('promoMessageContainer');
     const promoHiddenInputs = document.getElementById('promoHiddenInputs');
+    const promoSelectionRadios = document.querySelectorAll('input[name="promo_selection"]');
+    const percentageSection = document.getElementById('percentageSection');
+    const customPaymentSection = document.getElementById('customPaymentSection');
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', function () {
@@ -702,7 +905,9 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
                 packageName: promo.package_name,
                 enrollmentFee: parseFloat(promo.enrollment_fee),
                 percentage: parseFloat(promo.percentage),
-                promoType: promo.promo_type
+                promoType: promo.promo_type,
+                selectionType: parseInt(promo.selection_type) || 1,
+                customInitialPayment: parseFloat(promo.custom_initial_payment) || null
             };
             promos.push(promoObj);
             addPromoRowToTable(promoObj);
@@ -732,8 +937,18 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             addPromoButton.addEventListener('click', addPromoToTable);
         }
 
+        // Add event listeners for promo selection type
+        promoSelectionRadios.forEach(radio => {
+            radio.addEventListener('change', handleSelectionTypeChange);
+        });
+
+        // Calculate discount based on percentage input
+        if (percentageInput) {
+            percentageInput.addEventListener('input', calculateUponEnrollment);
+        }
+
         // Add enter key support for promo inputs
-        [packageInput, enrollmentFeeInput, percentageInput, promoTypeInput].forEach(input => {
+        [packageInput, enrollmentFeeInput, percentageInput, customInitialPaymentInput, promoTypeInput].forEach(input => {
             if (input) {
                 input.addEventListener('keypress', function (event) {
                     if (event.key === 'Enter') {
@@ -746,11 +961,57 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
     }
 
     // Fee Calculation Functions
+    function calculateFees() {
+        // Get all fee input values (excluding demo fees)
+        const assessmentFee = parseFloat(document.getElementById('assessment_fee').value) || 0;
+        const tuitionFee = parseFloat(document.getElementById('tuition_fee').value) || 0;
+        const miscFee = parseFloat(document.getElementById('misc_fee').value) || 0;
+        const ojtFee = parseFloat(document.getElementById('ojt_fee').value) || 0;
+        const systemFee = parseFloat(document.getElementById('system_fee').value) || 0;
+        const uniformFee = parseFloat(document.getElementById('uniform_fee').value) || 0;
+        const idFee = parseFloat(document.getElementById('id_fee').value) || 0;
+        const bookFee = parseFloat(document.getElementById('book_fee').value) || 0;
+        const kitFee = parseFloat(document.getElementById('kit_fee').value) || 0;
+
+        // Get the initial payment amount
+        const initialPayment = parseFloat(document.getElementById('initial_payment').value) || 0;
+        const reservation_fee = parseFloat(document.getElementById('reservation_fee').value) || 0;
+
+        // Calculate total sum (not including demos)
+        const totalTuition = assessmentFee + tuitionFee + miscFee + ojtFee + systemFee +
+            uniformFee + idFee + bookFee + kitFee;
+
+        // Calculate demo fee using your new formula: (Total_tuition - initial) / 4
+        const remainingAmount = totalTuition;
+        const demoFee = remainingAmount / 4;
+
+        // Update demo fee fields
+        document.getElementById('demo1_fee').value = demoFee.toFixed(2);
+        document.getElementById('demo2_fee').value = demoFee.toFixed(2);
+        document.getElementById('demo3_fee').value = demoFee.toFixed(2);
+        document.getElementById('demo4_fee').value = demoFee.toFixed(2);
+
+        // Update total amount display
+        document.getElementById('total_amount').textContent = '₱' + totalTuition.toFixed(2);
+
+        // Update hidden inputs for form submission
+        document.getElementById('total_tuition_hidden').value = totalTuition.toFixed(2);
+        document.getElementById('demo1_fee_hidden').value = demoFee.toFixed(2);
+        document.getElementById('demo2_fee_hidden').value = demoFee.toFixed(2);
+        document.getElementById('demo3_fee_hidden').value = demoFee.toFixed(2);
+        document.getElementById('demo4_fee_hidden').value = demoFee.toFixed(2);
+
+        // If there's an active percentage input, recalculate promo discount
+        if (document.getElementById('percentageInput').value) {
+            calculateUponEnrollment();
+        }
+    }
 
     // Helper Functions
     function showMessage(message, type = 'error') {
         if (messageContainer) {
-            messageContainer.innerHTML = `<span class="${type === 'success' ? 'success-message' : 'error-message'}">${message}</span>`;
+            const messageClass = type === 'success' ? 'text-green-600' : 'text-red-600';
+            messageContainer.innerHTML = `<p class="${messageClass} text-sm font-medium">${message}</p>`;
             setTimeout(() => {
                 messageContainer.innerHTML = '';
             }, 5000);
@@ -759,7 +1020,8 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
     function showPromoMessage(message, type = 'error') {
         if (promoMessageContainer) {
-            promoMessageContainer.innerHTML = `<span class="${type === 'success' ? 'success-message' : 'error-message'}">${message}</span>`;
+            const messageClass = type === 'success' ? 'text-green-600' : 'text-red-600';
+            promoMessageContainer.innerHTML = `<p class="${messageClass} text-sm font-medium">${message}</p>`;
             setTimeout(() => {
                 promoMessageContainer.innerHTML = '';
             }, 5000);
@@ -876,12 +1138,6 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             return false;
         }
 
-        // Check for duplicate training dates
-        // if (schedules.some(schedule => schedule.trainingDate === training)) {
-        //     showMessage('A training session is already scheduled for this date.');
-        //     return false;
-        // }
-
         return true;
     }
 
@@ -889,26 +1145,26 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
         if (!tableBody) return;
 
         const isWeekendDay = isWeekend(schedule.trainingDate);
-        const rowBgClass = isWeekendDay ? 'bg-yellow-100' : 'bg-blue-100';
+        const rowBgClass = isWeekendDay ? 'bg-yellow-50' : 'bg-blue-50';
 
         const row = document.createElement('tr');
         row.id = `schedule_row_${schedule.id}`;
-        row.className = rowBgClass;
+        row.className = `${rowBgClass} hover:bg-opacity-80 transition-colors`;
 
-        const endTimeCell = schedule.endTime ?
-            `<td class="border-2 p-2 text-center">${formatTime(schedule.endTime)}</td>` :
-            '<td class="border-2 p-2 text-center">-</td>';
+        const endTimeDisplay = schedule.endTime ? formatTime(schedule.endTime) : '-';
 
         row.innerHTML = `
-        <td class="border-2 p-2 text-center">${schedule.weekDescription}</td>
-        <td class="border-2 p-2 text-center">${formatDate(schedule.trainingDate)}</td>
-        <td class="border-2 p-2 text-center">${formatTime(schedule.startTime)}</td>
-        ${endTimeCell}
-        <td class="border-2 p-2 text-center">${schedule.dayOfWeek}</td>
-        <td class="border-2 p-2 text-center">
-            <button type="button" onclick="removeSchedule(${schedule.id})" class="btn-danger">Remove</button>
-        </td>
-    `;
+            <td class="px-4 py-2">${schedule.weekDescription}</td>
+            <td class="px-4 py-2">${formatDate(schedule.trainingDate)}</td>
+            <td class="px-4 py-2">${formatTime(schedule.startTime)} - ${endTimeDisplay}</td>
+            <td class="px-4 py-2"><span class="px-2 py-1 text-xs rounded-full ${isWeekendDay ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">${schedule.dayOfWeek}</span></td>
+            <td class="px-4 py-2 text-center">
+                <button type="button" onclick="removeSchedule(${schedule.id})" class="bg-red-500 hover:bg-red-600 text-white text-xs rounded px-2 py-1 transition-colors">
+                    <i class="fas fa-trash-alt mr-1"></i> Remove
+                </button>
+            </td>
+        `;
+
         tableBody.appendChild(row);
 
         // Create hidden inputs
@@ -974,35 +1230,112 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
         showMessage('Schedule removed successfully!', 'success');
     }
 
-    // Promo Management Functions
+
+    function handleSelectionTypeChange() {
+        const selectedType = document.querySelector('input[name="promo_selection"]:checked').value;
+
+        if (selectedType <= 2) {
+            // Options 1-2: Show percentage, hide custom payment
+            percentageSection.classList.remove('hidden');
+            customPaymentSection.classList.add('hidden');
+            customInitialPaymentInput.value = '';
+        } else {
+            // Options 3-4: Hide percentage, show custom payment
+            percentageSection.classList.add('hidden');
+            customPaymentSection.classList.remove('hidden');
+            percentageInput.value = '';
+            enrollmentFeeInput.value = '';
+        }
+    }
+
+    // Get total tuition fee from inputs or hidden field
+    function getTotalTuitionFee() {
+        const totalTuitionHidden = document.getElementById('total_tuition_hidden');
+        if (totalTuitionHidden) {
+            return parseFloat(totalTuitionHidden.value) || 0;
+        }
+
+        // Fallback: sum individual fees
+        const assessmentFee = parseFloat(document.getElementById('assessment_fee')?.value) || 0;
+        const tuitionFee = parseFloat(document.getElementById('tuition_fee')?.value) || 0;
+        const miscFee = parseFloat(document.getElementById('misc_fee')?.value) || 0;
+        const ojtFee = parseFloat(document.getElementById('ojt_fee')?.value) || 0;
+        const systemFee = parseFloat(document.getElementById('system_fee')?.value) || 0;
+        const uniformFee = parseFloat(document.getElementById('uniform_fee')?.value) || 0;
+        const idFee = parseFloat(document.getElementById('id_fee')?.value) || 0;
+        const bookFee = parseFloat(document.getElementById('book_fee')?.value) || 0;
+        const kitFee = parseFloat(document.getElementById('kit_fee')?.value) || 0;
+
+        return assessmentFee + tuitionFee + miscFee + ojtFee + systemFee + uniformFee + idFee + bookFee + kitFee;
+    }
+
+    // Calculate discount and Upon Enrollment based on percentage input (for options 1-2)
+    function calculateUponEnrollment() {
+        const selectedType = document.querySelector('input[name="promo_selection"]:checked').value;
+
+        if (selectedType <= 2) {
+            const percentage = parseFloat(percentageInput.value) || 0;
+            const totalTuition = getTotalTuitionFee();
+
+            if (percentage > 0 && totalTuition > 0) {
+                // Calculate discount amount (e.g., 10% of 1000 = 100)
+                const discountAmount = (totalTuition * percentage) / 100;
+
+                // Calculate amount due upon enrollment (total tuition - discount)
+                const uponEnrollment = totalTuition - discountAmount;
+
+                // Update enrollment fee input (auto-fill with discount amount)
+                enrollmentFeeInput.value = discountAmount.toFixed(2);
+
+                return { discountAmount, uponEnrollment };
+            } else {
+                // Reset if invalid
+                enrollmentFeeInput.value = '';
+                return { discountAmount: 0, uponEnrollment: 0 };
+            }
+        }
+
+        return { discountAmount: 0, uponEnrollment: 0 };
+    }
+
     function validatePromoForm() {
-        if (!packageInput || !enrollmentFeeInput || !percentageInput || !promoTypeInput) {
+        if (!packageInput || !promoTypeInput) {
             return false;
         }
 
         const packageName = packageInput.value.trim();
-        const enrollmentFee = enrollmentFeeInput.value.trim();
-        const percentage = percentageInput.value.trim();
         const promoType = promoTypeInput.value.trim();
+        const selectedType = parseInt(document.querySelector('input[name="promo_selection"]:checked').value);
+        const totalTuition = getTotalTuitionFee();
 
         // Check if all fields are filled
-        if (!packageName || !enrollmentFee || !percentage || !promoType) {
-            showPromoMessage('Please fill in all fields.');
+        if (!packageName || !promoType) {
+            showPromoMessage('Please fill in Package Name and Promo Type.');
             return false;
         }
 
-        // Validate percentage is a number between 0 and 100
-        const percentageValue = parseFloat(percentage);
-        if (isNaN(percentageValue) || percentageValue < 0 || percentageValue > 100) {
-            showPromoMessage('Please enter a valid percentage between 0 and 100.');
+        if (totalTuition <= 0) {
+            showPromoMessage('Please ensure the total tuition fee is calculated first.');
             return false;
         }
 
-        // Validate enrollment fee is a positive number
-        const feeValue = parseFloat(enrollmentFee);
-        if (isNaN(feeValue) || feeValue < 0) {
-            showPromoMessage('Please enter a valid enrollment fee.');
-            return false;
+        if (selectedType <= 2) {
+            // Options 1-2: Percentage validation
+            const percentage = parseFloat(percentageInput.value);
+            const enrollmentFee = parseFloat(enrollmentFeeInput.value);
+
+            if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+                showPromoMessage('Please enter a valid percentage between 0 and 100.');
+                return false;
+            }
+        } else {
+            // Options 3-4: Custom payment validation
+            const customPayment = parseFloat(customInitialPaymentInput.value);
+
+            if (isNaN(customPayment) || customPayment <= 0) {
+                showPromoMessage('Please enter a valid required initial payment amount.');
+                return false;
+            }
         }
 
         // Check for duplicate package names
@@ -1019,16 +1352,50 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
         const row = document.createElement('tr');
         row.id = `promo_row_${promo.id}`;
-        row.className = 'bg-green-50 hover:bg-green-100';
+        row.className = 'bg-blue-50 hover:bg-blue-100 transition-colors';
+
+        // Determine what to display based on selection type
+        const selectionDisplay = `Option ${promo.selectionType}`;
+
+        let discountDisplay, packageDisplay;
+
+        if (promo.selectionType <= 2) {
+            // Options 1-2: Show percentage discount
+            discountDisplay = promo.percentage > 0
+                ? `<div><span class="font-semibold">${promo.percentage}% OFF</span></div>
+                   <div class="text-xs text-gray-600">${formatCurrency(promo.enrollmentFee)}</div>`
+                : `<span class="font-semibold">${formatCurrency(promo.enrollmentFee)}</span>`;
+        } else {
+            // Options 3-4: Show custom initial payment
+            discountDisplay = `<span class="font-semibold">${formatCurrency(promo.customInitialPayment || 0)}</span>
+                               <div class="text-xs text-green-600">Required Payment</div>`;
+        }
+
+        // Add required payment note for selection types 3-4
+        const packageNoteDisplay = promo.selectionType > 2 && promo.customInitialPayment
+            ? `<div class="text-xs text-green-600 mt-1">Manual: ${formatCurrency(promo.customInitialPayment)}</div>`
+            : '';
+
+        packageDisplay = `<div>${promo.packageName}</div>${packageNoteDisplay}`;
+
         row.innerHTML = `
-        <td class="border-2 p-2 text-center">${promo.packageName}</td>
-        <td class="border-2 p-2 text-center">${formatCurrency(promo.enrollmentFee)}</td>
-        <td class="border-2 p-2 text-center">${promo.percentage}%</td>
-        <td class="border-2 p-2 text-center">${promo.promoType}</td>
-        <td class="border-2 p-2 text-center">
-            <button type="button" onclick="removePromo(${promo.id})" class="btn-danger">Remove</button>
-        </td>
-    `;
+            <td class="px-3 py-3 align-middle">
+                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full 
+                    ${promo.selectionType <= 2 ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                    ${selectionDisplay}
+                </span>
+            </td>
+            <td class="px-3 py-3 align-middle">${packageDisplay}</td>
+            <td class="px-3 py-3 align-middle">${discountDisplay}</td>
+            <td class="px-3 py-3 align-middle">${promo.promoType}</td>
+            <td class="px-3 py-3 text-center">
+                <button type="button" onclick="removePromo(${promo.id})" 
+                    class="bg-red-500 hover:bg-red-600 text-white text-xs rounded px-2 py-1 transition-colors">
+                    <i class="fas fa-trash-alt mr-1"></i> Remove
+                </button>
+            </td>
+        `;
+
         promoTableBody.appendChild(row);
 
         // Create hidden inputs
@@ -1036,9 +1403,11 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
             const hiddenContainer = document.createElement('div');
             hiddenContainer.id = `promo_hidden_container_${promo.id}`;
             hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][package_name]`, promo.packageName));
-            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][enrollment_fee]`, promo.enrollmentFee.toString()));
-            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][percentage]`, promo.percentage.toString()));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][enrollment_fee]`, promo.enrollmentFee?.toString() || '0'));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][percentage]`, promo.percentage?.toString() || '0'));
             hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][promo_type]`, promo.promoType));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][selection_type]`, promo.selectionType?.toString() || '1'));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][custom_initial_payment]`, promo.customInitialPayment?.toString() || ''));
             promoHiddenInputs.appendChild(hiddenContainer);
         }
     }
@@ -1053,21 +1422,56 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
         promoCounter++;
 
-        const promo = {
+        const totalTuition = getTotalTuitionFee();
+        const selectedType = parseInt(document.querySelector('input[name="promo_selection"]:checked').value);
+        const packageName = packageInput.value.trim();
+        const promoType = promoTypeInput.value.trim();
+
+        let promo = {
             id: promoCounter,
-            packageName: packageInput.value.trim(),
-            enrollmentFee: parseFloat(enrollmentFeeInput.value.trim()),
-            percentage: parseFloat(percentageInput.value.trim()),
-            promoType: promoTypeInput.value.trim()
+            packageName: packageName,
+            selectionType: selectedType,
+            promoType: promoType,
+            totalTuition: totalTuition
         };
 
+        if (selectedType <= 2) {
+            // Options 1-2: Percentage calculation
+            const percentage = parseFloat(percentageInput.value) || 0;
+            const discountAmount = (totalTuition * percentage) / 100;
+            const uponEnrollment = totalTuition - discountAmount;
+
+            promo = {
+                ...promo,
+                percentage: percentage,
+                enrollmentFee: discountAmount, // This is the discount amount
+                discountAmount: discountAmount,
+                uponEnrollment: uponEnrollment,
+                customInitialPayment: null
+            };
+        } else {
+            // Options 3-4: Custom initial payment
+            const customPayment = parseFloat(customInitialPaymentInput.value) || 0;
+
+            promo = {
+                ...promo,
+                percentage: 0,
+                enrollmentFee: 0,
+                discountAmount: 0,
+                uponEnrollment: totalTuition,
+                customInitialPayment: customPayment
+            };
+        }
+
+        // Add to promos array
         promos.push(promo);
         addPromoRowToTable(promo);
 
         // Clear form
         packageInput.value = '';
-        enrollmentFeeInput.value = '';
         percentageInput.value = '';
+        enrollmentFeeInput.value = '';
+        customInitialPaymentInput.value = '';
         promoTypeInput.value = '';
 
         showPromoMessage('Promo added successfully!', 'success');
@@ -1119,46 +1523,14 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
 
         promos.forEach((promo, index) => {
             formData.append(`promos[${index}][package_name]`, promo.packageName);
-            formData.append(`promos[${index}][enrollment_fee]`, promo.enrollmentFee.toString());
-            formData.append(`promos[${index}][percentage]`, promo.percentage.toString());
+            formData.append(`promos[${index}][enrollment_fee]`, promo.enrollmentFee?.toString() || '0');
+            formData.append(`promos[${index}][percentage]`, promo.percentage?.toString() || '0');
             formData.append(`promos[${index}][promo_type]`, promo.promoType);
+            formData.append(`promos[${index}][selection_type]`, promo.selectionType?.toString() || '1');
+            formData.append(`promos[${index}][custom_initial_payment]`, promo.customInitialPayment?.toString() || '');
         });
 
         return formData;
-    }
-
-    function getPromoSummary() {
-        return {
-            totalPromos: promos.length,
-            averageDiscount: promos.length > 0 ? promos.reduce((sum, promo) => sum + promo.percentage, 0) / promos.length : 0,
-            totalEnrollmentFees: promos.reduce((sum, promo) => sum + promo.enrollmentFee, 0)
-        };
-    }
-
-    function clearAllPromos() {
-        if (promos.length === 0) {
-            showPromoMessage('No promos to clear.');
-            return;
-        }
-
-        if (confirm('Are you sure you want to clear all promos?')) {
-            promos = [];
-            if (promoTableBody) promoTableBody.innerHTML = '';
-            if (promoHiddenInputs) promoHiddenInputs.innerHTML = '';
-            promoCounter = 0;
-            showPromoMessage('All promos cleared!', 'success');
-        }
-    }
-
-    function showPromoSummary() {
-        if (promos.length === 0) {
-            showPromoMessage('No promos available for summary.');
-            return;
-        }
-
-        const summary = getPromoSummary();
-        const message = `Total Promos: ${summary.totalPromos} | Avg Discount: ${summary.averageDiscount.toFixed(1)}% | Total Enrollment Fees: ${formatCurrency(summary.totalEnrollmentFees)}`;
-        showPromoMessage(message, 'success');
     }
 
     // Make functions available globally
@@ -1168,135 +1540,10 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
     window.getAllPromos = getAllPromos;
     window.getPromoFormData = getPromoFormData;
     window.removePromo = removePromo;
-    window.clearAllPromos = clearAllPromos;
-    window.getPromoSummary = getPromoSummary;
-    window.showPromoSummary = showPromoSummary;
     window.calculateFees = calculateFees;
 </script>
 
-<script>
-    // Add this JavaScript code to fix the promo calculation
-
-    // Add event listener for percentage input to auto-calculate enrollment fee
-    document.addEventListener('DOMContentLoaded', function () {
-        const percentageInput = document.getElementById('percentageInput');
-        const enrollmentFeeInput = document.getElementById('enrollmentFeeInput');
-
-        if (percentageInput && enrollmentFeeInput) {
-            percentageInput.addEventListener('input', function () {
-                calculatePromoDiscount();
-            });
-
-            // Also trigger calculation when total tuition changes
-            const feeInputs = [
-                'assessment_fee', 'tuition_fee', 'misc_fee', 'ojt_fee',
-                'system_fee', 'uniform_fee', 'id_fee', 'book_fee', 'kit_fee'
-            ];
-
-            feeInputs.forEach(inputId => {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    input.addEventListener('input', function () {
-                        calculateFees(); // Calculate total first
-                        calculatePromoDiscount(); // Then calculate promo discount
-                    });
-                }
-            });
-        }
-    });
-
-    // Function to calculate promo discount based on percentage
-    function calculatePromoDiscount() {
-        const percentageInput = document.getElementById('percentageInput');
-        const enrollmentFeeInput = document.getElementById('enrollmentFeeInput');
-        const totalTuitionElement = document.getElementById('total_tuition_hidden');
-
-        if (!percentageInput || !enrollmentFeeInput || !totalTuitionElement) {
-            return;
-        }
-
-        const percentage = parseFloat(percentageInput.value) || 0;
-        const totalTuition = parseFloat(totalTuitionElement.value) || 0;
-
-        if (percentage > 0 && totalTuition > 0) {
-            const discountAmount = (totalTuition * percentage) / 100;
-            enrollmentFeeInput.value = discountAmount.toFixed(2);
-        } else {
-            enrollmentFeeInput.value = '';
-        }
-    }
-
-    // Update the existing calculateFees function to also trigger promo calculation
-    function calculateFees() {
-        // Get all fee input values (excluding demo fees)
-        const assessmentFee = parseFloat(document.getElementById('assessment_fee').value) || 0;
-        const tuitionFee = parseFloat(document.getElementById('tuition_fee').value) || 0;
-        const miscFee = parseFloat(document.getElementById('misc_fee').value) || 0;
-        const ojtFee = parseFloat(document.getElementById('ojt_fee').value) || 0;
-        const systemFee = parseFloat(document.getElementById('system_fee').value) || 0;
-        const uniformFee = parseFloat(document.getElementById('uniform_fee').value) || 0;
-        const idFee = parseFloat(document.getElementById('id_fee').value) || 0;
-        const bookFee = parseFloat(document.getElementById('book_fee').value) || 0;
-        const kitFee = parseFloat(document.getElementById('kit_fee').value) || 0;
-
-        // Get the initial payment amount (you'll need to specify which field this is)
-        // Replace 'initial_payment' with the actual ID of your initial payment field
-
-
-        const initialPayment = parseFloat(document.getElementById('initial_payment').value) || 0;
-        const reservation_fee = parseFloat(document.getElementById('reservation_fee').value) || 0;
-
-
-        // Calculate total sum (not including demos)
-        const totalTuition = assessmentFee + tuitionFee + miscFee + ojtFee + systemFee +
-            uniformFee + idFee + bookFee + kitFee;
-
-        // Calculate demo fee using your new formula: (Total_tuition - initial) / 4
-        const remainingAmount = totalTuition - initialPayment - reservation_fee;
-        const demoFee = remainingAmount / 4;
-
-        // Update demo fee fields
-        document.getElementById('demo1_fee').value = demoFee.toFixed(2);
-        document.getElementById('demo2_fee').value = demoFee.toFixed(2);
-        document.getElementById('demo3_fee').value = demoFee.toFixed(2);
-        document.getElementById('demo4_fee').value = demoFee.toFixed(2);
-
-        // Update total amount display
-        document.getElementById('total_amount').textContent = '₱' + totalTuition.toFixed(2);
-
-        // Update hidden inputs for form submission
-        document.getElementById('total_tuition_hidden').value = totalTuition.toFixed(2);
-        document.getElementById('demo1_fee_hidden').value = demoFee.toFixed(2);
-        document.getElementById('demo2_fee_hidden').value = demoFee.toFixed(2);
-        document.getElementById('demo3_fee_hidden').value = demoFee.toFixed(2);
-        document.getElementById('demo4_fee_hidden').value = demoFee.toFixed(2);
-
-        // Optional: Display remaining amount for verification
-        console.log('Total Tuition:', totalTuition);
-        console.log('Initial Payment:', initialPayment);
-        console.log('Remaining Amount:', remainingAmount);
-        console.log('Demo Fee (each):', demoFee);
-    }
-
-    // Initialize calculation on page load
-    document.addEventListener('DOMContentLoaded', function () {
-        calculateFees();
-
-        // Add event listener to initial payment field to recalculate when it changes
-        const initialPaymentField = document.getElementById('initial_payment');
-        if (initialPaymentField) {
-            initialPaymentField.addEventListener('input', calculateFees);
-        }
-    });
-    // Initialize calculation on page load
-    document.addEventListener('DOMContentLoaded', function () {
-        calculateFees();
-    });
-
-</script>
-
-
-<!-- Add this script tag in your HTML head section or before closing body tag -->
+<!-- Add this script tag for form submission confirmation -->
 <script>
     const form = document.getElementById('updateForm');
 
@@ -1304,12 +1551,18 @@ if ($_SERVER['REQUEST_METHOD'] === "POST") {
         event.preventDefault(); // Stop default form submit
 
         Swal.fire({
-            title: 'Are you sure?',
-            text: "Do you want to submit this form?",
+            title: 'Update Program',
+            text: "Are you sure you want to save these changes?",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Yes, submit it!',
-            cancelButtonText: 'No, cancel',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, update it!',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                confirmButton: 'btn btn-primary',
+                cancelButton: 'btn btn-danger'
+            }
         }).then((result) => {
             if (result.isConfirmed) {
                 form.submit(); // Submit form to same page

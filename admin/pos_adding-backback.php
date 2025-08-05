@@ -7,13 +7,8 @@ $student = null;
 $open = true;
 
 // System information
-$current_timestamp = '2025-07-01 15:40:05'; // Current timestamp
-$current_user = 'Scraper001'; // Current user
-
-
-
-
-
+$current_timestamp = '2025-06-29 22:31:44'; // Current timestamp
+$current_user = 'scrapper22'; // Current user
 
 $current_package = null;
 if (isset($_GET['student_id'])) {
@@ -50,12 +45,8 @@ if (isset($_GET['student_id'])) {
     $enrollment_locked = hasExistingEnrollment($conn, $_GET['student_id']);
 }
 
-
-
-
 if (isset($_GET['student_id'])) {
     $student_id = intval($_GET['student_id']);
-
 
     // Get student info
     $stmt = $conn->prepare("SELECT * FROM student_info_tbl WHERE id = ?");
@@ -78,12 +69,18 @@ if (isset($_GET['student_id'])) {
     $stmt->bind_param("i", $student_id);
     $stmt->execute();
     $transaction_Result = $stmt->get_result();
+
+
+
     $transactions = [];
-    $promo_is_showing = 0;
+
     if ($transaction_Result->num_rows > 0) {
+
+
         while ($row = $transaction_Result->fetch_assoc()) {
             $transactions[] = $row;
         }
+
         $row_transaction = $transactions[0]; // Most recent transaction
         $open = false;
 
@@ -111,11 +108,7 @@ if (isset($_GET['student_id'])) {
         $promo_result = $stmt->get_result();
 
         if ($promo_result->num_rows > 0) {
-
-            $promo_is_showing = 1;
             $row_promo = $promo_result->fetch_assoc();
-            // echo $row_promo['enrollment_fee'];
-
         } else {
             $row_promo = [
                 'package_name' => 'Regular',
@@ -129,41 +122,34 @@ if (isset($_GET['student_id'])) {
         $stmt->close();
 
         // Calculate promo discount
-        // Calculate promo discount
         $TT = floatval($row_program['total_tuition'] ?? 0);
         $PR = 0;
-        $is_custom_payment = false; // New flag to track if this is a custom payment plan
-        $custom_payment_amount = 0; // Track the custom payment amount
-
         if ($row_promo['package_name'] !== "Regular" && $row_promo['promo_type'] !== 'none') {
             $selection_type = intval($row_promo['selection_type'] ?? 1);
 
             if ($selection_type <= 2) {
-                // Options 1-2: Percentage calculation or fixed discount
+                // Options 1-2: Percentage calculation
                 if ($row_promo['promo_type'] === 'percentage') {
                     $PR = $TT * (floatval($row_promo['percentage']) / 100);
                 } else {
                     $PR = floatval($row_promo['enrollment_fee']);
                 }
             } else {
-                // Options 3-4: Custom payment, NO DISCOUNT!
-                $PR = 0;
-                $is_custom_payment = true; // Mark as custom payment plan
-                $custom_payment_amount = floatval($row_promo['custom_initial_payment'] ?? 0);
+                // Options 3-4: Custom payment (discount is already in enrollment_fee)
+                $PR = floatval($row_promo['enrollment_fee']);
             }
         }
 
-        // Add debug logging
-        error_log(sprintf(
-            "[%s] Promo Calculation - User: %s\nPackage: %s (Type %d)\nTotal Tuition: %s\nDiscount Applied: %s\nFinal Amount: %s",
-            "2025-07-01 16:00:07",
-            "Scraper001HAAAAAA!!!",
-            $row_promo['package_name'] ?? 'Regular',
-            $selection_type ?? 1,
-            number_format($TT, 2),
-            number_format($PR, 2),
-            number_format($TT - $PR, 2)
-        ));
+        // Existing payment info
+        $payment_counts = [
+            'initial_payment' => 0,
+            'reservation' => 0,
+            'demo_payment' => 0,
+            'full_payment' => 0
+        ];
+
+        $IP = 0;
+        $R = 0;
 
         $final_total = $TT - $PR;
 
@@ -173,13 +159,8 @@ if (isset($_GET['student_id'])) {
         $balance_total = $row_balance_total['balance'];
 
         $result_balance2 = $conn->query("SELECT * FROM `pos_transactions` WHERE student_id = '$student_id' AND payment_type = 'initial_payment' ORDER BY `pos_transactions`.`id` DESC");
-
-
-        if ($result_balance2->num_rows > 0) {
-            $row_balance_total2 = $result_balance2->fetch_assoc();
-            $balance_total2 = $row_balance_total2['balance'];
-        }
-
+        $row_balance_total2 = $result_balance2->fetch_assoc();
+        $balance_total2 = $row_balance_total2['balance'];
 
         $initial_pay = isset($row_balance_total2['credit_amount']) ? $row_balance_total2['credit_amount'] : 0;
 
@@ -378,6 +359,7 @@ if (isset($_GET['student_id'])) {
         'learning_mode' => isset($row_transaction['learning_mode']) ? $row_transaction['learning_mode'] : ''
     ]);
 }
+
 ?>
 
 <!-- Add SweetAlert2 -->
@@ -916,16 +898,7 @@ if (isset($_GET['student_id'])) {
                             <?php else: ?>
                                 <input type="hidden" id="hiddenSchedule" name="selected_schedules" value="[]" />
                                 <input type="hidden" id="maintainedSchedules" value="[]" />
-                                <span class="text-sm italic text-red-600">Please choose the payment Method, or Payment Type
-                                    first Before
-                                    selecting Schedule. <br> <span class="text-xs">The schedule will reset if your first
-                                        time choosing
-                                        payment
-                                        type or you change payment type to avoid to trigger the modal prevention to
-                                        submitting
-                                        without schedule.</span></span>
                             <?php endif; ?>
-
                         </div>
                     </div>
 
@@ -989,7 +962,7 @@ if (isset($_GET['student_id'])) {
                                                         <br><small>Automatic <?= $row_promo['percentage'] ?>% discount
                                                             applied</small>
                                                     <?php else: ?>
-                                                        <strong>Custom Payment Plan:</strong> <?= $row_promo['promo_type'] ?>
+                                                        <strong>Custom Payment Option:</strong> <?= $row_promo['promo_type'] ?>
                                                         <br><small>Required initial:
                                                             ₱<?= number_format($row_promo['custom_initial_payment'] ?? 0, 2) ?></small>
                                                     <?php endif; ?>
@@ -1091,36 +1064,21 @@ if (isset($_GET['student_id'])) {
                                                 <?php endif; ?>
                                             </ul>
                                         </div>
-                                        <?php if ($PR > 0): ?>
-                                            <div
-                                                class="<?= $is_custom_payment ? 'text-blue-600' : 'text-green-600' ?> text-center mb-2 p-2 <?= $is_custom_payment ? 'bg-blue-50' : 'bg-green-50' ?> rounded">
-                                                <strong>Promo Discount Applied: -₱<?= number_format($PR, 2) ?></strong>
-                                            </div>
-                                        <?php endif; ?>
 
-                                        <?php if ($is_custom_payment): ?>
-                                            <div class="text-blue-600 text-center mb-2 p-2 bg-blue-50 rounded">
-                                                <strong>Custom Initial Payment Required:
-                                                    ₱<?= number_format($custom_payment_amount, 2) ?></strong>
-                                                <br><small>(Option <?= $selection_type ?>)</small>
+                                        <?php if ($PR > 0): ?>
+                                            <div class="text-green-600 text-center mb-2 p-2 bg-green-50 rounded">
+                                                <strong>Promo Discount Applied: -₱<?= number_format($PR, 2) ?></strong>
                                             </div>
                                         <?php endif; ?>
 
                                         <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
                                             <div class="flex justify-between items-center">
                                                 <span class="font-bold text-lg">Total Amount:</span>
-                                                <span>₱</span>
-                                                <span class="font-bold text-xl text-green-800"
-                                                    id="totalAmountDisplay"><?= number_format($final_total ?? 0, 2) ?>
-                                                </span>
-
+                                                <span
+                                                    class="font-bold text-xl text-green-800">₱<?= number_format($final_total ?? 0, 2) ?></span>
                                             </div>
-
-
                                         </div>
-
                                     <?php else: ?>
-
                                         <!-- For first transactions, show placeholder that will be updated by JavaScript -->
                                         <div id="chargesPlaceholder">
                                             <h1 class="font-semibold text-xl mb-2">Charges</h1>
@@ -1130,7 +1088,6 @@ if (isset($_GET['student_id'])) {
                                             </div>
                                         </div>
                                     <?php endif; ?>
-
                                 </div>
                             </div>
 
@@ -1171,9 +1128,7 @@ if (isset($_GET['student_id'])) {
                                                 <?php endforeach; ?>
                                                 <tr class="bg-gray-100 font-semibold">
                                                     <td colspan="2" class="border px-2 py-1 text-right">Total:</td>
-                                                    <td class="border px-2 py-1">
-                                                        <span
-                                                            id="credit_Bal"><?= number_format($total_credit ?? 0, 2) ?></span>
+                                                    <td class="border px-2 py-1">₱<?= number_format($total_credit, 2); ?>
                                                     </td>
                                                     <td class="border px-2 py-1">₱<?= number_format($total_change, 2); ?>
                                                     </td>
@@ -1196,17 +1151,16 @@ if (isset($_GET['student_id'])) {
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
-                                    <span class="mt-5 block">Total Remaining Balance:
-                                        <span class="font-bold" id="remainingBalance"></span>
-                                    </span>
+                                    <span class="mt-5 block">Total Remaining Balance: <span
+                                            class="font-bold">₱<?= number_format($balance_total, 2) ?></span></span>
                                 </div>
                             </div>
 
                             <div class="border-t p-4 text-center text-sm text-gray-600 italic">
                                 <p>Thank you for choosing Care Pro!</p>
-                                <!-- <p>For inquiries, please contact us at <strong>0912-345-6789</strong> or email
+                                <p>For inquiries, please contact us at <strong>0912-345-6789</strong> or email
                                     <strong>support@carepro.ph</strong>.
-                                </p> -->
+                                </p>
                                 <p class="mt-2 font-semibold text-gray-800">--- END OF RECEIPT ---</p>
                             </div>
                         </div>
@@ -1283,30 +1237,13 @@ if (isset($_GET['student_id'])) {
                                     class="border-2 rounded px-2 py-1 outline-none" readonly step="0.01" />
                             </div>
 
-                            <input type="hidden" id="initialPaymentHidden" value="<?= $initial_pay ?>">
-                            <input type="hidden" id="reservationPaidHidden" value="<?php
-                            // Get total reservation paid for this student
-                            $reservation_paid = 0;
-                            $reservation_query = $conn->prepare("SELECT SUM(cash_received) as total_paid FROM pos_transactions WHERE student_id = ? AND payment_type = 'reservation'");
-                            $reservation_query->bind_param("i", $student_id);
-                            $reservation_query->execute();
-                            $reservation_result = $reservation_query->get_result()->fetch_assoc();
-                            if ($reservation_result) {
-                                $reservation_paid = floatval($reservation_result['total_paid']);
-                            }
-                            $reservation_query->close();
-                            echo $reservation_paid;
-                            ?>">
-
                             <!-- Hidden fields -->
                             <input type="hidden" name="program_details" id="programDetailsHidden" />
                             <input type="hidden" name="package_details" id="packageDetailsHidden" />
                             <input type="hidden" name="subtotal" id="subtotalHidden" />
                             <input type="hidden" name="final_total" id="finalTotalHidden" />
-                            <input type="hidden" name="promo_applied" id="promoAppliedHidden"
-                                value="<?php echo $row_promo['enrollment_fee'] ?>" />
-
-                            <input type="hidden" name="paid_demos" id="paidDemosField"
+                            <input type="hidden" name="promo_applied" id="promoAppliedHidden" value="0" />
+                            <input type="" name="paid_demos" id="paidDemosField"
                                 value="<?= htmlspecialchars(json_encode($paid_demos ?? [])) ?>" />
                             <input type="hidden" name="paid_payment_types" id="paidPaymentTypesField"
                                 value="<?= htmlspecialchars(json_encode($paid_payment_types ?? [])) ?>" />
@@ -1362,132 +1299,6 @@ if (isset($_GET['student_id'])) {
 
 <script>
     var enrollmentLocked = <?= $enrollment_locked ? 'true' : 'false' ?>;
-
-    window.addEventListener('load', () => {
-        const totalField = document.getElementById('totalAmountDisplay');
-        const creditField = document.getElementById('credit_Bal');
-        const remainField = document.getElementById('remainingBalance');
-        const promoText = document.getElementById('promo_discount_text');
-
-        // Check if all required elements exist
-        if (!totalField || !creditField || !remainField) {
-            console.error('One or more required elements not found');
-            console.error('totalField:', totalField);
-            console.error('creditField:', creditField);
-            console.error('remainField:', remainField);
-            return;
-        }
-
-        try {
-            // Clean and parse numbers (remove peso signs, commas, and extra spaces)
-            const totalText = totalField.textContent.replace(/[₱,\s]/g, '');
-            const creditText = creditField.textContent.replace(/[₱,\s]/g, '');
-
-            // Parse promo discount if it exists
-            let promoDiscount = 0;
-            if (promoText && promoText.parentElement) {
-                // Get the full text content of the parent li element
-                const fullPromoText = promoText.parentElement.textContent;
-                // Extract the discount amount using regex to find ₱ followed by numbers
-                const discountMatch = fullPromoText.match(/₱([\d,]+(?:\.\d{2})?)/);
-                if (discountMatch) {
-                    const discountText = discountMatch[1].replace(/,/g, '');
-                    promoDiscount = parseFloat(discountText) || 0;
-                }
-            }
-
-            console.log("================================================");
-            console.log("Raw total:", totalField.textContent);
-            console.log("Cleaned total:", totalText);
-            console.log("Raw credit:", creditField.textContent);
-            console.log("Cleaned credit:", creditText);
-            console.log("Raw promo discount:", promoText ? promoText.parentElement.textContent : 'N/A');
-            console.log("Parsed promo discount:", promoDiscount);
-
-            const total = parseFloat(totalText) || 0;
-            const credit = parseFloat(creditText) || 0;
-
-            // Calculate remaining balance: total - credit - promo discount
-            let remaining = total - credit - promoDiscount;
-
-            // Fix floating point precision issues
-            remaining = Math.round(remaining * 100) / 100;
-
-            console.log("Parsed Total:", total);
-            console.log("Parsed Credit:", credit);
-            console.log("Parsed Promo Discount:", promoDiscount);
-            console.log("Raw Remaining:", remaining);
-
-            // Handle different scenarios
-            if (Math.abs(remaining) < 0.01) {
-                // Balance is essentially zero (accounting for floating point errors)
-                remainField.textContent = "0.00";
-                remainField.style.color = "green";
-                remainField.style.fontWeight = "bold";
-                console.log("Status: FULLY PAID");
-
-            } else if (remaining < 0) {
-                // Student has overpaid - show credit balance
-                const creditAmount = Math.abs(remaining);
-                remainField.innerHTML = `0.00 <span style="color: #059669; font-size: 0.9em;"></span>`;
-                remainField.style.color = "green";
-                remainField.style.fontWeight = "bold";
-                console.log("Status: OVERPAID - Credit balance:", creditAmount.toFixed(2));
-
-            } else {
-                // Student still owes money
-                remainField.textContent = remaining.toFixed(2);
-                remainField.style.color = "#dc2626"; // red color
-                remainField.style.fontWeight = "bold";
-                console.log("Status: BALANCE DUE:", remaining.toFixed(2));
-            }
-
-            console.log("Final Display:", remainField.textContent || remainField.innerHTML);
-            console.log("================================================");
-
-        } catch (error) {
-            console.error('Error calculating balance:', error);
-            remainField.textContent = "Error calculating balance";
-            remainField.style.color = "#dc2626";
-        }
-    });
-    // Optional: Add a function to format currency properly
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP',
-            minimumFractionDigits: 2
-        }).format(amount);
-    }
-
-    // Optional: Add real-time updates if credit input changes
-    function setupRealTimeUpdates() {
-        const creditField = document.getElementById('credit_Bal');
-        if (creditField && creditField.tagName === 'INPUT') {
-            creditField.addEventListener('input', () => {
-                // Re-trigger the calculation
-                window.dispatchEvent(new Event('load'));
-            });
-        }
-    }
-
-    function syncHiddenSchedule() {
-        let s = [];
-        $('.row-checkbox:checked').each(function () {
-            const row = $(this).closest('tr');
-            const rowId = row.data('row-id');
-            if (rowId) {
-                s.push({ id: rowId });
-            }
-        });
-        $('#hiddenSchedule').val(JSON.stringify(s));
-    }
-    // Call this function:
-    $('.row-checkbox').on('change', syncHiddenSchedule);
-    $('input[name="type_of_payment"]').on('change', function () {
-        // Always resync on payment type change
-        syncHiddenSchedule();
-    });
 
 
     function handleEnrollmentLock() {
@@ -1546,10 +1357,8 @@ if (isset($_GET['student_id'])) {
         $('#programSelect, #packageSelect').on('mouseenter', function () {
             if (enrollmentLocked) {
                 $(this).attr('title', 'Selection locked - Student has existing enrollment');
-                $(this).prop('disabled', true); // disable the select dropdown
             }
         });
-
 
         $('input[name="learning_mode"]').on('click', function (e) {
             if (enrollmentLocked) {
@@ -2188,122 +1997,45 @@ if (isset($_GET['student_id'])) {
         // ENHANCED: DEMO CALCULATION FUNCTIONS WITH PROMO SELECTION SUPPORT
         // =============================================================================================
         function calculateDemoFeeJS() {
-            // Get reservation paid value from hidden field or variable
-            const reservationPaid = parseFloat($('#reservationPaidHidden').val()) || 0;
-
             if (isFirstTransaction && currentProgram) {
                 // For first transactions, calculate based on program total and initial payment
                 const totalTuition = parseFloat($('#finalTotalHidden').val()) || parseFloat(currentProgram.total_tuition || 0);
                 const initialPayment = initial_total_pay || parseFloat(currentProgram.initial_fee || 0);
-                const promoDiscount = parseFloat($('#promoAppliedHidden').val() || 0);
 
-                // Calculate adjusted total after promo
-                const adjustedTotal = totalTuition - promoDiscount;
+                // Get promo discount directly from PHP variable
 
-                // Calculate remaining amount after initial + reservation payment
-                const remainingAmount = adjustedTotal - initialPayment - reservationPaid;
+
+                // Calculate new tuition after promo discount
+                const newTuition = totalTuition;
+
+                // Calculate remaining amount after initial payment 
+                const remainingAmount = newTuition - initialPayment;
 
                 // Split remaining amount into 4 equal demo payments
                 return remainingAmount / 4;
             } else {
-                // For existing transactions, calculate the ACTUAL balance
-                // Get total tuition and payments made
-                const totalTuition = total_ammount || parseFloat(currentProgram?.total_tuition || 0);
-                const promoDiscount = parseFloat($('#promoAppliedHidden').val() || 0);
-                const adjustedTotal = totalTuition - promoDiscount;
+                // For existing transactions, use current balance
+                const promo = <?php echo isset($row_promo['enrollment_fee']) ? $row_promo['enrollment_fee'] : 0 ?>;
+                console.log(parseFloat(currentBalance));
+                console.log(parseFloat(promo));
+                const currentBalanceAmount = currentBalance - parseFloat(promo) || 0;
 
-                // Sum all payments from transaction table
-                let totalPayments = 0;
-
-                // If we have transactions, use them to calculate payments
-                if (typeof transactions !== 'undefined' && transactions.length > 0) {
-                    totalPayments = transactions.reduce((sum, txn) => {
-                        // Include reservation payments in the sum
-                        if (['initial_payment', 'demo_payment', 'full_payment', 'reservation'].includes(txn.payment_type)) {
-                            return sum + parseFloat(txn.cash_received || 0);
-                        }
-                        return sum;
-                    }, 0);
-                } else {
-                    // Fallback - use initial payment + known demo payments + reservation
-                    totalPayments = (initial_total_pay || 0) + reservationPaid;
-                    if (typeof demo_payment_sums !== 'undefined') {
-                        for (const demoType in demo_payment_sums) {
-                            totalPayments += parseFloat(demo_payment_sums[demoType] || 0);
-                        }
-                    }
-                }
-
-                // Calculate actual remaining balance
-                const actualBalance = Math.max(0, adjustedTotal - totalPayments);
-
-                // Count fully paid demos
-                const paidDemosCount = paidDemos?.length || 0;
+                const paidDemosCount = paidDemos.length;
                 const remainingDemos = 4 - paidDemosCount;
 
-                if (remainingDemos > 0) {
-                    // Calculate remaining demo fee based on ACTUAL balance
-                    return actualBalance / 4;
+                if (remainingDemos > 0 && currentBalanceAmount > 0) {
+                    // Calculate remaining demo fee based on current balance
+                    return currentBalanceAmount / remainingDemos;
                 }
             }
             return 0;
-        }
-        function updateTotalRemainingBalance() {
-            // Get all demo payments
-            let totalPaid = 0;
-            if (typeof transactions !== 'undefined') {
-                transactions.forEach(txn => {
-                    if (['initial_payment', 'demo_payment', 'full_payment'].includes(txn.payment_type)) {
-                        totalPaid += parseFloat(txn.cash_received || 0);
-                    }
-                });
-            }
-
-            // Get total tuition and any promo discount
-            const totalTuition = parseFloat($('#finalTotalHidden').val() || 0);
-            const promoDiscount = parseFloat($('#promoAppliedHidden').val() || 0);
-            const adjustedTotal = totalTuition - promoDiscount;
-
-            // Calculate actual remaining balance
-            const remainingBalance = Math.max(0, adjustedTotal - totalPaid);
-
-            // Update the displayed balance
-            $('#totalRemainingBalance').text(`₱${remainingBalance.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            })}`);
-
-            // Log the recalculation
-            console.log(`[${new Date().toISOString()}] Balance Recalculation - User: Scraper001
-        Total Tuition: ₱${totalTuition.toLocaleString()}
-        Promo Discount: ₱${promoDiscount.toLocaleString()}
-        Adjusted Total: ₱${adjustedTotal.toLocaleString()}
-        Total Payments: ₱${totalPaid.toLocaleString()}
-        Remaining Balance: ₱${remainingBalance.toLocaleString()}
-    `);
-
-            // If all demos are paid, update status
-            const allDemosPaid = paidDemos && paidDemos.length === 4;
-            if (allDemosPaid && remainingBalance === 0) {
-                $('#enrollmentCompleteStatus').show();
-            }
         }
         // Enhanced: Update demo fees and make them visible immediately with promo awareness
         function updateDemoFeesDisplay() {
             if (!currentProgram) return;
 
-            // Calculate the demo fee using our fixed function
             const demoFee = calculateDemoFeeJS();
-
-            // Get demo details from PHP
             const demoDetails = <?= json_encode($demo_details ?? []) ?>;
-
-            // For tracking payment info in debugging
-            const paymentInfo = {
-                demoFee: demoFee,
-                totalPaid: 0,
-                demoStatus: {}
-            };
 
             const demoFeesHtml = [1, 2, 3, 4].map(i => {
                 const demoName = `demo${i}`;
@@ -2311,25 +2043,10 @@ if (isset($_GET['student_id'])) {
                 const isPaid = paidDemos.includes(demoName);
 
                 // Get actual payment details
-                const paidAmount = parseFloat(demoInfo.paid_amount || 0);
-                paymentInfo.totalPaid += paidAmount;
-
-                // FIXED: Check if payment equals or exceeds the required amount with small tolerance for rounding
-                const fullyPaid = paidAmount >= (demoFee - 0.01);
-
-                // FIXED: Use the status from demoInfo but override if we detect it's actually fully paid
-                let status = fullyPaid ? 'paid' : (paidAmount > 0 ? 'partial' : 'unpaid');
-
-                // Store for debugging
-                paymentInfo.demoStatus[demoName] = {
-                    paidAmount: paidAmount,
-                    requiredAmount: demoFee,
-                    calculatedStatus: status,
-                    originalStatus: demoInfo.status
-                };
-
-                // FIXED: Calculate the correct remaining balance
-                const remainingBalance = Math.max(0, demoFee - paidAmount);
+                const paidAmount = demoInfo.paid_amount || 0;
+                const requiredAmount = demoFee;
+                const remainingBalance = Math.max(0, requiredAmount - paidAmount);
+                const status = demoInfo.status || 'unpaid';
 
                 // Generate status HTML inline instead of using separate function
                 let statusHtml = '';
@@ -2341,25 +2058,16 @@ if (isset($_GET['student_id'])) {
                 }
 
                 return `<li class="demo-fee-calculated">
-            Demo ${i} Fee: ₱${demoFee.toLocaleString('en-US', {
+            Demo ${i} Fee: ₱${requiredAmount.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 })}
             ${statusHtml}
             ${status === 'partial' ?
                         `<br><small class="text-gray-600">Remaining: ₱${remainingBalance.toLocaleString()}</small>`
-                        : status === 'paid' ?
-                            `<br><small class="text-green-600">Payment Complete</small>`
-                            : ''}
+                        : ''}
         </li>`;
             }).join('');
-
-            // Log payment info for debugging
-            console.log(`[${new Date().toISOString()}] Demo Fee Display - User: Scraper001
-        Demo Fee: ₱${demoFee.toLocaleString()}
-        Total Paid: ₱${paymentInfo.totalPaid.toLocaleString()}
-        Demo Status: ${JSON.stringify(paymentInfo.demoStatus, null, 2)}
-    `);
 
             if ($('.demo-fees-display').length > 0) {
                 $('.demo-fees-display').html(demoFeesHtml).show();
@@ -2372,18 +2080,10 @@ if (isset($_GET['student_id'])) {
             const selectedDemo = $('#demoSelect').val();
             if (paymentType === 'demo_payment' && selectedDemo) {
                 const selectedDemoInfo = demoDetails[selectedDemo] || {};
-
-                // FIXED: Use correct balance calculation for partially paid demos
-                let demoBalance;
-                const paidAmount = parseFloat(selectedDemoInfo.paid_amount || 0);
-                if (paidAmount > 0) {
-                    // For partial payments, use remaining balance
-                    demoBalance = Math.max(0, demoFee - paidAmount);
-                } else {
-                    // For unpaid demos, use full demo fee
-                    demoBalance = demoFee;
-                }
-
+                const demoBalance = selectedDemoInfo.status === 'partial' ?
+                    selectedDemoInfo.balance : demoFee;
+                $('#totalPayment').val(demoBalance.toFixed(2));
+                $('#cashToPay').val(demoBalance.toFixed(2));
             }
         }
         // =============================================================================================
@@ -2412,42 +2112,38 @@ if (isset($_GET['student_id'])) {
 
             // Enhanced: Create and show charges section immediately
             const chargesHtml = `
-    <h1 class="font-semibold text-xl mb-2">Charges</h1>
-    <div class="mb-3 p-2 rounded-lg ${selectedLearningMode === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}">
-        <div class="flex items-center justify-between">
-            <span class="text-sm font-medium">Learning Mode:</span>
-            <span class="px-3 py-1 text-sm font-semibold rounded-full ${selectedLearningMode === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
-                ${learningModeIcon} ${selectedLearningMode}
-            </span>
+                <h1 class="font-semibold text-xl mb-2">Charges</h1>
+        <div class="mb-3 p-2 rounded-lg ${selectedLearningMode === 'Online' ? 'bg-blue-50 border border-blue-200' : 'bg-green-50 border border-green-200'}">
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-medium">Learning Mode:</span>
+                <span class="px-3 py-1 text-sm font-semibold rounded-full ${selectedLearningMode === 'Online' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                    ${learningModeIcon} ${selectedLearningMode}
+                </span>
+            </div>
         </div>
-    </div>
-    <div class="flex flex-row w-full p-4 gap-4">
-        <ul class="flex-1 list-none space-y-1">
-            <li>Assessment Fee: ₱${parseFloat(program.assesment_fee || 0).toLocaleString()}</li>
-            <li>Tuition Fee: ₱${parseFloat(program.tuition_fee || 0).toLocaleString()}</li>
-            <li>Miscellaneous Fee: ₱${parseFloat(program.misc_fee || 0).toLocaleString()}</li>
-            <li>Uniform Fee: ₱${parseFloat(program.uniform_fee || 0).toLocaleString()}</li>
-            <li>ID Fee: ₱${parseFloat(program.id_fee || 0).toLocaleString()}</li>
-            <li>Book Fee: ₱${parseFloat(program.book_fee || 0).toLocaleString()}</li>
-            <li>Kit Fee: ₱${parseFloat(program.kit_fee || 0).toLocaleString()}</li>
-            ${selectedLearningMode === 'Online' && program.system_fee ?
+        <div class="flex flex-row w-full p-4 gap-4">
+            <ul class="flex-1 list-none space-y-1">
+                <li>Assessment Fee: ₱${parseFloat(program.assesment_fee || 0).toLocaleString()}</li>
+                <li>Tuition Fee: ₱${parseFloat(program.tuition_fee || 0).toLocaleString()}</li>
+                <li>Miscellaneous Fee: ₱${parseFloat(program.misc_fee || 0).toLocaleString()}</li>
+                <li>Uniform Fee: ₱${parseFloat(program.uniform_fee || 0).toLocaleString()}</li>
+                <li>ID Fee: ₱${parseFloat(program.id_fee || 0).toLocaleString()}</li>
+                <li>Book Fee: ₱${parseFloat(program.book_fee || 0).toLocaleString()}</li>
+                <li>Kit Fee: ₱${parseFloat(program.kit_fee || 0).toLocaleString()}</li>
+                ${selectedLearningMode === 'Online' && program.system_fee ?
                     `<li class="text-blue-600">System Fee: ₱${parseFloat(program.system_fee).toLocaleString()}</li>` : ''}
-        </ul>
-        <ul class="flex-1 space-y-1 demo-fees-display" id="demoFeesDisplay">
-            <!-- Demo fees will be calculated and shown here -->
-        </ul>
-    </div>
-    <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
-        <div class="flex justify-between items-center">
-            <span class="font-bold text-lg">Total Amount:</span>
-            <span class="font-bold text-xl" id="totalAmountDisplay"></span>
+            </ul>
+            <ul class="flex-1 space-y-1 demo-fees-display" id="demoFeesDisplay">
+                <!-- Demo fees will be calculated and shown here -->
+            </ul>
         </div>
-        <div class="flex justify-between items-center" id="afterPromoRow" style="display:none;">
-            <span class="font-bold text-lg">After Promo Deduction:</span>
-            <span class="font-bold text-xl text-green-800" id="afterPromoAmount"></span>
+        <div class="mt-4 p-3 bg-green-100 rounded-lg border border-green-300">
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-lg">Total Amount:</span>
+                <span class="font-bold text-xl text-green-800" id="totalAmountDisplay">₱${parseFloat(program.total_tuition || 0).toLocaleString()}</span>
+            </div>
         </div>
-    </div>
-`;
+            `;
 
             // Enhanced: Replace placeholder or update existing charges
             if ($('#chargesPlaceholder').length > 0) {
@@ -2473,7 +2169,6 @@ if (isset($_GET['student_id'])) {
         // =============================================================================================
 
         // Enhanced: Display promo selection information in POS
-        // Enhanced: Display promo selection information in POS
         function displayPromoSelectionInfo(packageData) {
             const selectionType = parseInt(packageData.selection_type || 1);
             const promoInfoDiv = $('#promoSelectionInfo');
@@ -2488,17 +2183,17 @@ if (isset($_GET['student_id'])) {
             promoDisplayDiv.removeClass('promo-option-1 promo-option-2 promo-option-3 promo-option-4')
                 .addClass(`promo-option-${selectionType}`);
 
-            let selectionText = `${selectionType}`;
+            let selectionText = `Option ${selectionType} - `;
             let customPaymentInfo = '';
 
             if (selectionType <= 2) {
                 // Options 1-2: Percentage-based
-                selectionText += `Discount ${packageData.percentage}%`;
+                selectionText += `Auto ${packageData.percentage}% Discount`;
                 customPaymentDiv.hide();
             } else {
                 // Options 3-4: Custom payment
-                selectionText += 'Custom Payment Plan';
-                customPaymentInfo = `Fixed Initial Payment: ₱${parseFloat(packageData.custom_initial_payment || 0).toLocaleString()}`;
+                selectionText += 'Manual Payment Declaration';
+                customPaymentInfo = `Required Initial Payment: ₱${parseFloat(packageData.custom_initial_payment || 0).toLocaleString()}`;
                 customPaymentText.text(customPaymentInfo);
                 customPaymentDiv.show();
             }
@@ -2507,7 +2202,10 @@ if (isset($_GET['student_id'])) {
 
             // Update debug info
             updateDebugInfo();
+
+
         }
+
         // Enhanced: Hide promo selection info for regular packages
         function hidePromoSelectionInfo() {
             $('#promoSelectionInfo').addClass('hidden').hide();
@@ -2808,11 +2506,11 @@ if (isset($_GET['student_id'])) {
                     if (descriptionKey && item[descriptionKey]) {
                         const description = item[descriptionKey].toLowerCase();
                         if (description.includes('online')) {
-                            optionText += ' ';
+                            optionText += ' (Online Learning)';
                         } else if (description.includes('f2f') || description.includes('face to face') || description.includes('F2F') || description.includes('classroom')) {
-                            optionText += '';
+                            optionText += ' (F2F)';
                         } else if (description.includes('hybrid') || description.includes('blended')) {
-                            optionText += ' ';
+                            optionText += ' (Hybrid Learning)';
                         } else {
                             optionText += ` (${item[descriptionKey]})`;
                         }
@@ -2994,66 +2692,52 @@ if (isset($_GET['student_id'])) {
         // Enhanced: Calculate total with promo selection support
         const calculateTotal = (program, package) => {
             let subtotal = parseFloat(program.total_tuition || 0);
-            <?php if ($promo_is_showing > 0) { ?>
-                    let discount = <?php echo $row_promo['enrollment_fee'] ?>;
-            <?php } else { ?>
-                    let discount = 0;
-            <?php } ?>
-            // Calculate discount if promo/package is selected
-            if (package && (package.package_name !== 'Regular Package')) {
-                const selectionType = parseInt(package.selection_type || 1);
+            let discount = 0;
 
-                if (selectionType <= 2) {
-                    // Option 1 or 2: Percentage/amount off
-                    if (package.promo_type === 'percentage') {
-                        discount = subtotal * (parseFloat(package.percentage) / 100);
-                    } else if (package.enrollment_fee) {
-                        discount = parseFloat(package.enrollment_fee);
-                    }
-                } else {
-                    // Option 3 or 4: NO DISCOUNT (custom payment plan)
-                    discount = 0;
+            const learningMode = $('input[name="learning_mode"]:checked').val();
+            if (learningMode === 'Online' && program.learning_mode !== 'Online') {
+                subtotal += parseFloat(program.system_fee || 0);
+            }
+
+            // Fixed package calculation
+            if (package && package.package_name !== 'Regular Package') {
+                if (package.promo_type === 'percentage') {
+                    // Calculate percentage discount
+                    discount = subtotal * (parseFloat(package.percentage) / 100);
+                } else if (package.enrollment_fee) {
+                    // Use fixed enrollment fee as discount
+                    discount = parseFloat(package.enrollment_fee);
                 }
-            }
 
-            const finalTotal = subtotal - discount;
+                // Handle custom initial payment for options 3-4
+                if (parseInt(package.selection_type) > 2 && package.custom_initial_payment) {
+                    // For custom payment options, use the custom initial payment
+                    discount = subtotal - parseFloat(package.custom_initial_payment);
+                }
 
-            // Update display
-            $('#totalAmountDisplay').text(`₱${subtotal.toLocaleString()}`);
-            if (discount > 0) {
-                $('#afterPromoRow').show();
-                $('#afterPromoAmount').text(`₱${finalTotal.toLocaleString()}`);
-            } else {
-                $('#afterPromoRow').hide();
-            }
-
-            // Hidden fields for form
-            $('#finalTotalHidden').val(finalTotal);
-            $('#subtotalHidden').val(subtotal);
-            $('#promoAppliedHidden').val(discount);
-
-            // (Optional) Show promo/discount info elsewhere if needed
-            console.log(discount);
-            if (discount > 0) {
                 $('#promoDiscount').show().text(`Promo Discount: -₱${discount.toLocaleString()}`);
                 $('#promoInfo').show().html(`
-            <strong>Promo Discount:</strong> ₱${discount.toLocaleString()}<br>
-            <small>${package ? (package.package_name + ' - Option ' + package.selection_type) : 'Applied from POS system'}</small>
+            <strong>Package Discount:</strong> ₱${discount.toLocaleString()}<br>
+            <small>${package.package_name} - Option ${package.selection_type}</small>
         `);
             } else {
                 $('#promoDiscount').hide();
                 $('#promoInfo').hide();
             }
 
-            // For custom initial payment info (if needed elsewhere)
-            if (package && parseInt(package.selection_type || 1) > 2 && package.custom_initial_payment) {
-                $('#customPaymentInfo').show().text(`Custom Initial Payment Required: ₱${parseFloat(package.custom_initial_payment).toLocaleString()}`);
-            } else {
-                $('#customPaymentInfo').hide();
-            }
+            const finalTotal = subtotal - discount;
+            $('#subtotalAmount').text(`₱${subtotal.toLocaleString()}`);
+            $('#totalAmount, #totalAmountDisplay').text(`₱${finalTotal.toLocaleString()}`);
+            $('#finalTotalHidden').val(finalTotal);
+            $('#subtotalHidden').val(subtotal);
+            $('#promoAppliedHidden').val(discount);
 
             return finalTotal;
         };
+
+
+
+
 
         // Enhanced: Schedule validation with reservation handling and promo awareness
         const validateScheduleSelection = () => {
@@ -3298,34 +2982,18 @@ if (isset($_GET['student_id'])) {
 
         }
 
-        // Find the validateDemoPayment function and replace it with this version:
         function validateDemoPayment() {
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const demoType = $('#demoSelect').val();
             const totalPayment = parseFloat($('#totalPayment').val()) || 0;
+            const expectedDemoFee = calculateDemoFeeJS();
 
-            if (paymentType === 'demo_payment' && demoType) {
-                // Get demo details
-                const demoDetails = <?= json_encode($demo_details ?? []) ?>;
-                const demoInfo = demoDetails[demoType] || {};
-                const paidAmount = parseFloat(demoInfo.paid_amount || 0);
-                const expectedDemoFee = calculateDemoFeeJS();
-
-                // Calculate remaining amount for this demo
-                const remainingAmount = Math.max(0, expectedDemoFee - paidAmount);
-
-                // For partially paid demos, validate against remaining amount instead of full fee
-                const validationAmount = paidAmount > 0 ? remainingAmount : expectedDemoFee;
-
-                // Allow a small rounding difference (0.01)
-
-                console.log(totalPayment);
-                console.log(validationAmount);
-                if (totalPayment < validationAmount) {
+            if (paymentType === 'demo_payment') {
+                if (Math.abs(totalPayment - expectedDemoFee) > 0.01) { // Allow for small rounding differences
                     Swal.fire({
                         icon: 'warning',
                         title: 'Invalid Demo Payment Amount',
-                        html: `The demo payment amount must be not lessthan to the setted price ₱${validationAmount.toFixed(2)}.<br>Please adjust the amount.`,
+                        text: `The demo payment amount should be ₱${expectedDemoFee.toFixed(2)}. Please adjust the amount.`,
                         confirmButtonText: 'OK'
                     });
                     return false;
@@ -3467,56 +3135,104 @@ if (isset($_GET['student_id'])) {
                 });
             });
         }
-        async function showDemoAllocationPreview(defaultChoice, excessAmount, currentDemo, requiredAmount) {
-            // Get current demo information and calculate remaining demos
-            const demoNumbers = ['demo1', 'demo2', 'demo3', 'demo4'];
-            const currentIndex = demoNumbers.indexOf(currentDemo);
-            const nextDemo = currentIndex < 3 ? demoNumbers[currentIndex + 1] : null;
+        async function showDemoAllocationPreview(option, excessAmount, currentDemo, requiredAmount) {
+            return new Promise((resolve) => {
+                let previewContent = '';
 
-            let modalHtml = `
-        <div class="text-left">
-            <p class="mb-3">Current Payment Details:</p>
-            <ul class="list-unstyled">
-                <li>Required Amount for ${currentDemo}: ₱${requiredAmount.toLocaleString()}</li>
-                <li>Excess Amount: ₱${excessAmount.toLocaleString()}</li>
-            </ul>
-            
-            <p class="mt-3">How would you like to handle the excess payment?</p>
-        </div>
-    `;
+                switch (option) {
+                    case 'allocate_to_next_demo':
+                        const nextDemo = findNextUnpaidDemoForPreview(currentDemo);
+                        if (nextDemo) {
+                            previewContent = `
+                        <div style="text-align: left;">
+                            <h4 style="color: #2e7d32; margin-bottom: 15px;">
+                                <i class="fa-solid fa-preview"></i> Allocation Preview
+                            </h4>
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <div style="margin-bottom: 10px;">
+                                    <strong>Current Demo (${currentDemo.replace('demo', 'Demo ')}):</strong> ₱${requiredAmount.toLocaleString()} ✅ Will be marked as paid
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <strong>Next Demo (${nextDemo.replace('demo', 'Demo ')}):</strong> ₱${excessAmount.toLocaleString()} will be credited
+                                </div>
+                                <div style="color: #2e7d32; font-weight: bold;">
+                                    Total processed: ₱${(requiredAmount + excessAmount).toLocaleString()}
+                                </div>
+                            </div>
+                            <p>Proceed with this allocation?</p>
+                        </div>
+                    `;
+                        } else {
+                            previewContent = `
+                        <div style="text-align: left;">
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <strong>⚠️ No Next Demo Available</strong><br>
+                                All demos appear to be paid. The excess will be returned as change instead.
+                            </div>
+                            <p>Proceed with returning ₱${excessAmount.toLocaleString()} as change?</p>
+                        </div>
+                    `;
+                        }
+                        break;
 
-            const { value: choice } = await Swal.fire({
-                title: 'Excess Payment Detected',
-                html: modalHtml,
-                input: 'radio',
-                inputOptions: {
-                    'allocate_to_demos': `Allocate to subsequent demos${nextDemo ? ` (starting with ${nextDemo})` : ''}`,
-                    'return_as_change': 'Return as change'
-                },
-                inputValue: 'allocate_to_demos',
-                showCancelButton: true,
-                confirmButtonText: 'Continue',
-                customClass: {
-                    input: 'text-left'
+                    case 'credit_to_account':
+                        previewContent = `
+                    <div style="text-align: left;">
+                        <h4 style="color: #1565C0; margin-bottom: 15px;">
+                            <i class="fa-solid fa-piggy-bank"></i> Account Credit Preview
+                        </h4>
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Demo Payment:</strong> ₱${requiredAmount.toLocaleString()} ✅ Will be processed
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <strong>Account Credit:</strong> ₱${excessAmount.toLocaleString()} will be saved
+                            </div>
+                            <div style="color: #1565C0; font-weight: bold;">
+                                Available for future: Demos, fees, or other program expenses
+                            </div>
+                        </div>
+                        <p>Proceed with crediting ₱${excessAmount.toLocaleString()} to student account?</p>
+                    </div>
+                `;
+                        break;
+
+                    case 'return_as_change':
+                        previewContent = `
+                    <div style="text-align: left;">
+                        <h4 style="color: #F57C00; margin-bottom: 15px;">
+                            <i class="fa-solid fa-hand-holding-usd"></i> Change Return Preview
+                        </h4>
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Demo Payment:</strong> ₱${requiredAmount.toLocaleString()} ✅ Will be processed
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <strong>Cash Change:</strong> ₱${excessAmount.toLocaleString()} will be returned
+                            </div>
+                            <div style="color: #F57C00; font-weight: bold;">
+                                Customer receives immediate cash back
+                            </div>
+                        </div>
+                        <p>Proceed with returning ₱${excessAmount.toLocaleString()} as change?</p>
+                    </div>
+                `;
+                        break;
                 }
+
+                Swal.fire({
+                    title: 'Confirm Allocation',
+                    html: previewContent,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Proceed',
+                    cancelButtonText: 'Go Back',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    resolve(result.isConfirmed);
+                });
             });
-
-            if (!choice) return null; // User cancelled
-
-            return {
-                choice: choice,
-                excessAmount: excessAmount,
-                requiredAmount: requiredAmount,
-                originalAmount: requiredAmount + excessAmount,
-                currentDemo: currentDemo,
-                nextDemo: nextDemo,
-                allocationDetails: {
-                    currentDemo: currentDemo,
-                    nextDemo: nextDemo,
-                    requiredAmount: requiredAmount,
-                    excessAmount: excessAmount
-                }
-            };
         }
 
         function findNextUnpaidDemoForPreview(currentDemo) {
@@ -3695,7 +3411,7 @@ if (isset($_GET['student_id'])) {
                             $('#packageSelect').append(
                                 $('<option>', {
                                     value: package.package_name,
-                                    text: package.package_name
+                                    text: "Package: " + package.package_name
                                 })
                             );
                         }
@@ -3962,78 +3678,63 @@ if (isset($_GET['student_id'])) {
             const rowId = row.getAttribute('data-row-id');
             const paymentType = $('input[name="type_of_payment"]:checked').val();
 
+            // First, update the selected schedules array
+            selectedSchedules = []; // Reset the array each time to track only checked boxes
 
+            // Get all checked checkboxes and build the schedules array
+            document.querySelectorAll('.row-checkbox:checked').forEach(checkedBox => {
+                const selectedRow = checkedBox.closest('tr');
+                const scheduleId = selectedRow.getAttribute('data-row-id');
 
-            // FIXED: Handle locked schedules properly
-            if (row.classList.contains('schedule-locked') && paymentType === 'reservation') {
-                if (!checkbox.checked) {
-                    checkbox.checked = true;
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Schedule Locked',
-                        text: 'Schedules are locked for reservation payments and cannot be changed.',
-                        confirmButtonText: 'I understand'
-                    });
-                    return;
-                }
-            }
+                const scheduleData = {
+                    id: scheduleId,
+                    schedule_id: scheduleId,
+                    week_description: selectedRow.cells[1].textContent.trim(),
+                    weekDescription: selectedRow.cells[1].textContent.trim(),
+                    training_date: selectedRow.cells[2].textContent.trim(),
+                    trainingDate: selectedRow.cells[2].textContent.trim(),
+                    start_time: selectedRow.cells[3].textContent.trim(),
+                    startTime: selectedRow.cells[3].textContent.trim(),
+                    end_time: selectedRow.cells[4].textContent.trim(),
+                    endTime: selectedRow.cells[4].textContent.trim(),
+                    day_of_week: selectedRow.cells[5].textContent.trim(),
+                    dayOfWeek: selectedRow.cells[5].textContent.trim()
+                };
 
-            // FIXED: Create proper schedule data structure
-            const scheduleData = {
-                id: rowId,
-                schedule_id: rowId,
-                week_description: row.cells[1].textContent.trim(),
-                weekDescription: row.cells[1].textContent.trim(),
-                training_date: row.cells[2].textContent.trim(),
-                trainingDate: row.cells[2].textContent.trim(),
-                start_time: row.cells[3].textContent.trim(),
-                startTime: row.cells[3].textContent.trim(),
-                end_time: row.cells[4].textContent.trim(),
-                endTime: row.cells[4].textContent.trim(),
-                day_of_week: row.cells[5].textContent.trim(),
-                dayOfWeek: row.cells[5].textContent.trim()
-            };
+                selectedSchedules.push(scheduleData);
+            });
 
+            // Update the hidden input with the current state
+            const scheduleJson = JSON.stringify(selectedSchedules);
+            $('#hiddenSchedule').val(scheduleJson);
+
+            // Update row styling
             if (checkbox.checked) {
-                const existingIndex = selectedSchedules.findIndex(s => s.id === rowId);
-                if (existingIndex === -1) {
-                    selectedSchedules.push(scheduleData);
-                    row.classList.add('bg-blue-50');
-
-                }
+                row.classList.add('bg-blue-50');
             } else {
-                selectedSchedules = selectedSchedules.filter(s => s.id !== rowId);
                 row.classList.remove('bg-blue-50');
-
             }
 
-            // FIXED: Always update hidden field with proper JSON
-            try {
-                const scheduleJson = JSON.stringify(selectedSchedules);
-                $('#hiddenSchedule').val(scheduleJson);
-
-            } catch (e) {
-                console.error('❌ Error updating hidden field:', e);
-                $('#hiddenSchedule').val('[]');
+            // Update debug info if visible
+            if ($('#debugInfo').is(':visible')) {
+                updateDebugInfo();
             }
 
-            // FIXED: Immediate validation after selection
-            const validationResult = validateScheduleSelection();
+            // Validate schedule selection
+            validateScheduleSelection();
 
-
-            updateDebugInfo();
+            console.log(`[${new Date().toISOString()}] Schedule selection updated by ${currentUser}:`, {
+                selectedSchedules: selectedSchedules,
+                hiddenFieldValue: $('#hiddenSchedule').val(),
+                checkedBoxesCount: document.querySelectorAll('.row-checkbox:checked').length
+            });
         };
         // Enhanced: Form submission with promo selection validation and proper change calculation
         // FIXED: Enhanced form submission with better schedule validation
         // ENHANCED: Form submission with excess payment handling
-        let totalPayment2 = document.getElementById('totalPayment');
-        console.log(totalPayment2);
-        // Complete form submission handler
         $('#posForm').submit(async function (e) {
             e.preventDefault();
-            syncHiddenSchedule();
 
-            // Get form values
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const totalPayment = parseFloat($('#totalPayment').val()) || 0;
             const demoType = $('#demoSelect').val();
@@ -4041,38 +3742,78 @@ if (isset($_GET['student_id'])) {
             const programId = $('#programSelect').val() || "";
             const cash = parseFloat($('#cash').val()) || 0;
 
-            // Validate schedules
-            const schedules = JSON.parse($('#hiddenSchedule').val() || '[]');
-            if (paymentType !== 'reservation' && (!Array.isArray(schedules) || schedules.length === 0)) {
+            // Basic validation
+            if (!studentId || !programId || !paymentType || totalPayment <= 0) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'Schedule Required',
-                    text: 'You must select at least one schedule before processing this payment type.'
+                    title: 'Validation Error',
+                    text: 'Please fill in all required fields and enter a valid payment amount.'
                 });
-                return false;
+                return;
             }
 
-            // Validate demo payment
-            if (!validateDemoPayment()) {
-                return false;
+            // Schedule validation for non-reservation payments
+            if (paymentType !== 'reservation') {
+                const scheduleJson = $('#hiddenSchedule').val() || '[]';
+                let selectedSchedules = [];
+                try {
+                    selectedSchedules = JSON.parse(scheduleJson);
+                } catch (e) {
+                    console.error('Schedule parsing error:', e);
+                }
+
+                if (!Array.isArray(selectedSchedules) || selectedSchedules.length === 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Schedule Required',
+                        text: 'Please select at least one schedule before proceeding. Only reservation payments can proceed without schedule selection.',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
             }
 
-            // Check for excess payment
+            // Validate initial payment requirement for demo payments
+            if (paymentType === 'demo_payment') {
+                // Check if initial payment exists in paid payment types
+                const hasInitialPayment = paidPaymentTypes.includes('initial_payment');
+
+                if (!hasInitialPayment) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Initial Payment Required',
+                        html: `
+                    <div class="text-left">
+                        <p class="mb-2">Cannot process demo payment without initial payment.</p>
+                        <p class="mb-2">Please process the initial payment first before proceeding with demo payments.</p>
+                        <hr class="my-3">
+                        <p class="text-sm text-gray-600">
+                            <i class="fas fa-info-circle"></i> Payment order:
+                        </p>
+                        <ol class="list-decimal ml-4 text-sm">
+                            <li>Initial Payment</li>
+                            <li>Demo Payments</li>
+                        </ol>
+                    </div>
+                `,
+                        confirmButtonText: 'I Understand'
+                    });
+                    return;
+                }
+            }
+
+            // ENHANCED: Check for excess payment (including demo payments)
             let excessData = null;
 
             if (paymentType === 'demo_payment' && demoType) {
                 const requiredAmount = calculateDemoFeeJS();
+
                 if (totalPayment > requiredAmount && requiredAmount > 0) {
                     const excessAmount = totalPayment - requiredAmount;
-                    excessData = await showDemoAllocationPreview(
-                        'allocate_to_next_demo', // Default option, can be dynamic
-                        excessAmount,
-                        demoType,
-                        requiredAmount
-                    );
+                    excessData = await showDemoExcessPaymentModal(totalPayment, requiredAmount, excessAmount, demoType);
 
                     if (!excessData) {
-                        return false; // User cancelled
+                        return; // User cancelled
                     }
                 }
             } else if (paymentType === 'initial_payment') {
@@ -4083,20 +3824,11 @@ if (isset($_GET['student_id'])) {
                 if (totalPayment > requiredAmount && requiredAmount > 0) {
                     const excessAmount = totalPayment - requiredAmount;
                     excessData = await showExcessPaymentModal(totalPayment, requiredAmount, excessAmount, paymentType);
+
                     if (!excessData) {
-                        return false; // User cancelled
+                        return; // User cancelled
                     }
                 }
-            }
-
-            // Basic validation
-            if (!studentId || !programId || !paymentType || totalPayment <= 0) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Validation Error',
-                    text: 'Please fill in all required fields and enter a valid payment amount.'
-                });
-                return false;
             }
 
             // Show processing indicator
@@ -4104,120 +3836,114 @@ if (isset($_GET['student_id'])) {
             const originalBtnText = submitBtn.html();
             submitBtn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-2"></i>Processing...');
 
-            // Prepare form data
-            const formData = new FormData(this);
+            // Create form data with excess payment information
+            const formData = new FormData();
             formData.append('student_id', studentId);
             formData.append('program_id', programId);
-            formData.append('learning_mode', $('input[name="learning_mode"]:checked').val() || '');
+            formData.append('learning_mode', $('input[name="learning_mode"]:checked').val());
             formData.append('type_of_payment', paymentType);
             formData.append('package_id', $('#packageSelect').val() || 'Regular');
-            formData.append('selected_schedules', $('#hiddenSchedule').val() || '[]');
-            formData.append('total_payment', totalPayment.toString());
-            formData.append('cash', cash.toString());
 
-            // Add demo type if applicable
+            // Add demo type for demo payments
             if (paymentType === 'demo_payment' && demoType) {
                 formData.append('demo_type', demoType);
             }
 
-
-            // Add excess payment data if exists
+            // Add excess payment data if present
             if (excessData) {
                 formData.append('has_excess_payment', 'true');
-                formData.append('excess_choice', excessData.choice ?? '');
-                formData.append('excess_amount', (excessData.excessAmount !== undefined && excessData.excessAmount !== null) ? excessData.excessAmount.toString() : '0');
-                formData.append('required_payment_amount', (excessData.requiredAmount !== undefined && excessData.requiredAmount !== null) ? excessData.requiredAmount.toString() : '0');
+                formData.append('excess_choice', excessData.choice);
+                formData.append('excess_amount', excessData.excessAmount.toString());
+                formData.append('original_payment_amount', excessData.paymentAmount.toString());
+                formData.append('required_payment_amount', excessData.requiredAmount.toString());
 
-                if (excessData.allocationDetails) {
-                    formData.append('excess_allocations', JSON.stringify(excessData.allocationDetails));
+                // Add demo-specific data
+                if (paymentType === 'demo_payment') {
+                    formData.append('excess_demo_type', excessData.demoType);
+                    if (excessData.allocationDetails) {
+                        formData.append('excess_allocations', JSON.stringify(excessData.allocationDetails));
+                    }
                 }
-                formData.append('original_payment_amount', (excessData.paymentAmount !== undefined && excessData.paymentAmount !== null) ? excessData.paymentAmount.toString() : '0');
             } else {
                 formData.append('has_excess_payment', 'false');
             }
 
+            // Add other form data
+            formData.append('selected_schedules', $('#hiddenSchedule').val() || '[]');
+            formData.append('sub_total', $('#subtotalHidden').val() || '0');
+            formData.append('final_total', $('#finalTotalHidden').val() || '0');
+            formData.append('cash', cash.toString());
+            formData.append('total_payment', totalPayment.toString());
+            formData.append('promo_applied', $('#promoAppliedHidden').val() || '0');
+            formData.append('program_details', $('#programDetailsHidden').val() || '{}');
+            formData.append('package_details', $('#packageDetailsHidden').val() || '{}');
 
-            // You can use a different backend here if needed
-            let ajaxUrl = 'functions/ajax/process_enrollment.php';
-            // Example: route to another backend if excess demo payment
-            if (paymentType === 'demo_payment' && excessData) {
-                ajaxUrl = 'functions/ajax/process_excess_demo_enrollment.php';
-            }
+            // Submit to backend
+            $.ajax({
+                url: 'functions/ajax/process_enrollment.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                timeout: 30000,
+                success: function (response) {
+                    if (response.success) {
+                        let successMessage = `Payment of ₱${totalPayment.toLocaleString()} processed successfully!`;
 
-            // Submit form via AJAX
-            try {
-                const response = await $.ajax({
-                    url: ajaxUrl,
-                    type: 'POST',
-                    data: formData,
-                    processData: false,
-                    contentType: false,
-                    dataType: 'json',
-                    timeout: 30000
-                });
-
-                if (response.success) {
-                    let successMessage = `Payment of ₱${totalPayment.toLocaleString()} processed successfully!`;
-
-                    if (excessData) {
-                        successMessage += `\n\nExcess Payment: ₱${excessData.excessAmount.toLocaleString()} was `;
-
-                        switch (excessData.choice) {
-                            case 'allocate_to_next_demo':
-                                if (excessData.allocationDetails.nextDemo) {
-                                    successMessage += `allocated to ${excessData.allocationDetails.nextDemo.replace('demo', 'Demo ')}`;
-                                } else {
-                                    successMessage += 'returned as change';
-                                }
-                                break;
-                            case 'credit_to_account':
-                                successMessage += 'credited to student account';
-                                break;
-                            case 'return_as_change':
-                                successMessage += 'returned as cash change';
-                                break;
+                        // Add excess payment information to success message
+                        if (response.excess_processing && excessData) {
+                            successMessage += `\n\n💰 Excess Payment Handled:`;
+                            successMessage += `\n• Choice: ${excessData.choice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+                            successMessage += `\n• Excess Amount: ₱${excessData.excessAmount.toLocaleString()}`;
+                            successMessage += `\n• Action: ${excessData.description}`;
                         }
-                    }
 
-                    const result = await Swal.fire({
-                        icon: 'success',
-                        title: 'Payment Successful!',
-                        html: successMessage.replace(/\n/g, '<br>'),
-                        confirmButtonText: 'Print Receipt',
-                        showCancelButton: true,
-                        cancelButtonText: 'Continue',
-                        timer: 8000
-                    });
+                        // Add excess info to receipt if applicable
+                        if (excessData) {
+                            addExcessInfoToReceipt(excessData);
+                        }
 
-                    if (result.isConfirmed) {
-                        printReceiptSection2();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Payment Successful!',
+                            text: successMessage,
+                            confirmButtonText: 'Print Receipt',
+                            showCancelButton: true,
+                            cancelButtonText: 'Continue',
+                            timer: 8000
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                printReceiptSection2();
+                            } else {
+                                window.location.reload();
+                            }
+                        });
                     } else {
-                        window.location.reload();
+                        console.error(`❌ Payment failed:`, response.message);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Payment Failed',
+                            text: response.message || 'Failed to process payment. Please try again.',
+                            confirmButtonText: 'Try Again'
+                        });
                     }
-                } else {
-                    throw new Error(response.message || 'Payment processing failed');
+                },
+                error: function (xhr, status, error) {
+                    console.error(`❌ AJAX error:`, error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Connection Error',
+                        text: 'Failed to connect to server. Please check your connection and try again.',
+                        confirmButtonText: 'Retry'
+                    });
+                },
+                complete: function () {
+                    // Re-enable submit button
+                    submitBtn.prop('disabled', false).html(originalBtnText);
                 }
-            } catch (error) {
-                console.error('Payment error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Payment Failed',
-                    text: error.message || 'An error occurred while processing your payment',
-                    confirmButtonText: 'Try Again'
-                });
-            } finally {
-                submitBtn.prop('disabled', false).html(originalBtnText);
-            }
+            });
         });
-
-
-        // Helper function to find next unpaid demo (example implementation)
-        function findNextUnpaidDemoForPreview(currentDemo) {
-            // Implement your logic to find the next unpaid demo
-            // This is just a placeholder example
-            const demoNumber = parseInt(currentDemo.replace('demo', ''));
-            return `demo${demoNumber + 1}`;
-        }
 
         // ========================================================================================
         // ENHANCED SYSTEM INITIALIZATION WITH PROMO SELECTION SUPPORT
@@ -4417,7 +4143,7 @@ if (isset($_GET['student_id'])) {
             }
         };
 
-        // Enhanced: Expose program display functions with promo integration
+        // Enhanced: Expose program display functions with promo integrationW
         window.programDisplay = {
             refresh: () => {
                 if (currentProgram) {
@@ -4672,7 +4398,9 @@ if (isset($_GET['student_id'])) {
 
             // Show enhanced fix status notification
             $('body').append(`
-        
+        <div class="fixed-success-indicator" id="fixedIndicator">
+            <i class="fa-solid fa-check-circle mr-2"></i>Enhanced POS with Promo Selection (1-4) Ready!
+        </div>
     `);
 
             setTimeout(() => {
@@ -4719,4 +4447,6 @@ if (isset($_GET['student_id'])) {
             locked_warning.innerHTML = "";
         }
     });
-</script><?php include "includes/footer.php"; ?>
+</script>
+
+<?php include "includes/footer.php"; ?>

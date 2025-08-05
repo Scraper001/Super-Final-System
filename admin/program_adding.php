@@ -88,7 +88,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $weekDescription,
                     $trainingDate,
                     $start_time,
-                    $start_time,
+                    $end_time,
                     $day_of_week,
                     $day_value
                 );
@@ -100,85 +100,78 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $date_created2 = date('Y-m-d H:i:s');
         $conn->query("INSERT INTO `logs`(`user_id`, `activity`, `dnt`) VALUES ('" . $_SESSION['user_id'] . "','Added Program: $program_name', '$date_created2' )");
 
+        if (isset($_POST['promos']) && is_array($_POST['promos'])) {
+            foreach ($_POST['promos'] as $index => $promo_details) {
+                // Debug: Log the received data
+                error_log("Processing promo $index: " . json_encode($promo_details));
+
+                $package_name = !empty($promo_details['package_name']) ? trim($promo_details['package_name']) : null;
+                $enrollment_fee = !empty($promo_details['enrollment_fee']) ? floatval($promo_details['enrollment_fee']) : 0;
+                $percentage = !empty($promo_details['percentage']) ? floatval($promo_details['percentage']) : 0;
+                $promo_type = !empty($promo_details['promo_type']) ? trim($promo_details['promo_type']) : null;
+                $selection_type = !empty($promo_details['selection_type']) ? intval($promo_details['selection_type']) : 1;
+                $custom_initial_payment = !empty($promo_details['custom_initial_payment']) ? floatval($promo_details['custom_initial_payment']) : null;
+
+                // Validate required fields based on selection type
+                if (!$package_name || !$promo_type || $selection_type < 1 || $selection_type > 4) {
+                    error_log("Skipping promo $index - Invalid data: Package=$package_name, Type=$promo_type, Selection=$selection_type");
+                    continue;
+                }
+
+                // Validate based on selection type
+                if ($selection_type <= 2) {
+                    // Options 1-2: Percentage calculation
+                    if ($enrollment_fee <= 0 || $percentage <= 0) {
+                        error_log("Skipping promo $index - Invalid percentage data: Fee=$enrollment_fee, Percentage=$percentage");
+                        continue;
+                    }
+                } else {
+                    // Options 3-4: Custom initial payment
+                    if (!$custom_initial_payment || $custom_initial_payment <= 0) {
+                        error_log("Skipping promo $index - Invalid custom payment: Payment=$custom_initial_payment");
+                        continue;
+                    }
+                }
+
+                // Check if this promo already exists
+                $check_stmt = $conn->prepare("SELECT COUNT(*) FROM `promo` WHERE `program_id` = ? AND `package_name` = ? AND `promo_type` = ?");
+                $check_stmt->bind_param("iss", $program_id, $package_name, $promo_type);
+                $check_stmt->execute();
+                $check_stmt->bind_result($count);
+                $check_stmt->fetch();
+                $check_stmt->close();
+
+                // Insert only if promo does not exist
+                if ($count == 0) {
+                    $stmt = $conn->prepare("INSERT INTO `promo` (`program_id`, `package_name`, `enrollment_fee`, `percentage`, `promo_type`, `selection_type`, `custom_initial_payment`) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->bind_param("isddsis", $program_id, $package_name, $enrollment_fee, $percentage, $promo_type, $selection_type, $custom_initial_payment);
+
+                    if ($stmt->execute()) {
+                        error_log("Successfully inserted promo: $package_name");
+                    } else {
+                        error_log("Error inserting promo for index $index: " . $stmt->error);
+                    }
+
+                    $stmt->close();
+                } else {
+                    error_log("Duplicate promo skipped for index $index: $package_name");
+                }
+            }
+        }
+
         echo "<script>
                 document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire({
                     title: 'Success!',
-                    text: 'Program Successfuly Addded',
+                    text: 'Program Successfully Added',
                     icon: 'success',
                     confirmButtonText: 'OK'
                     }).then(() => {
-                    window.location.href = 'program_management.php'; // 🔁 Redirect target
+                    window.location.href = 'program_management.php';
                     });
                 });
               </script>";
-
-    } else {
-        // echo "No schedule data provided.<br>";
     }
-
-    if (isset($_POST['promos']) && is_array($_POST['promos'])) {
-        foreach ($_POST['promos'] as $index => $promo_details) {
-            // Debug: Log the received data
-            error_log("Processing promo $index: " . json_encode($promo_details));
-
-            $package_name = !empty($promo_details['package_name']) ? trim($promo_details['package_name']) : null;
-            $enrollment_fee = !empty($promo_details['enrollment_fee']) ? floatval($promo_details['enrollment_fee']) : 0;
-            $percentage = !empty($promo_details['percentage']) ? floatval($promo_details['percentage']) : 0;
-            $promo_type = !empty($promo_details['promo_type']) ? trim($promo_details['promo_type']) : null;
-            $selection_type = !empty($promo_details['selection_type']) ? intval($promo_details['selection_type']) : 1;
-            $custom_initial_payment = !empty($promo_details['custom_initial_payment']) ? floatval($promo_details['custom_initial_payment']) : null;
-
-            // Debug: Log the processed values
-            error_log("Processed values - Package: $package_name, Enrollment: $enrollment_fee, Percentage: $percentage, Type: $promo_type, Selection: $selection_type");
-
-            // Validate required fields based on selection type
-            if (!$package_name || !$promo_type || $selection_type < 1 || $selection_type > 4) {
-                error_log("Skipping promo $index - Invalid data: Package=$package_name, Type=$promo_type, Selection=$selection_type");
-                continue;
-            }
-
-            // Validate based on selection type
-            if ($selection_type <= 2) {
-                // Options 1-2: Percentage calculation
-                if ($enrollment_fee <= 0 || $percentage <= 0) {
-                    error_log("Skipping promo $index - Invalid percentage data: Fee=$enrollment_fee, Percentage=$percentage");
-                    continue;
-                }
-            } else {
-                // Options 3-4: Custom initial payment
-                if (!$custom_initial_payment || $custom_initial_payment <= 0) {
-                    error_log("Skipping promo $index - Invalid custom payment: Payment=$custom_initial_payment");
-                    continue;
-                }
-            }
-
-            // Check if this promo already exists
-            $check_stmt = $conn->prepare("SELECT COUNT(*) FROM `promo` WHERE `program_id` = ? AND `package_name` = ? AND `promo_type` = ?");
-            $check_stmt->bind_param("iss", $program_id, $package_name, $promo_type);
-            $check_stmt->execute();
-            $check_stmt->bind_result($count);
-            $check_stmt->fetch();
-            $check_stmt->close();
-
-            // Insert only if promo does not exist
-            if ($count == 0) {
-                $stmt = $conn->prepare("INSERT INTO `promo` (`program_id`, `package_name`, `enrollment_fee`, `percentage`, `promo_type`, `selection_type`, `custom_initial_payment`) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("isddsis", $program_id, $package_name, $enrollment_fee, $percentage, $promo_type, $selection_type, $custom_initial_payment);
-
-                if ($stmt->execute()) {
-                    error_log("Successfully inserted promo: $package_name");
-                } else {
-                    error_log("Error inserting promo for index $index: " . $stmt->error);
-                }
-
-                $stmt->close();
-            } else {
-                error_log("Duplicate promo skipped for index $index: $package_name");
-            }
-        }
-    }
-
 }
 
 ?>
@@ -222,416 +215,502 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         <!-- Main Content Area -->
         <main class="flex-1 overflow-y-auto bg-gray-50 p-6">
-            <!-- Dashboard Overview -->
+            <!-- Breadcrumb -->
             <h2 class="font-semibold my-2 text-xs">
-                <a href="index.php" class="hover:text-green-400 text-gray-400">Dashboard</a> >Management Zone |
-                Program
-                Adding</a>
-
+                <a href="index.php" class="hover:text-green-400 text-gray-400">Dashboard</a> >
+                <a href="program_management.php" class="hover:text-green-400 text-gray-400">Program Management</a> >
+                Add New Program
             </h2>
-            <form method="POST" class="w-full min-h-screen p-2 bg-white rounded-xl border-2 flex flex-col" id="myForm">
-                <div class="w-full mb-6 px-4">
-                    <h1 class="text-2xl font-bold">Care Pro Program Builder</h1>
-                    <p class="italic">Build Program with Ease</p>
+
+            <form method="POST" id="myForm" class="w-full min-h-screen p-4 bg-white rounded-xl shadow-md flex flex-col">
+                <div class="w-full mb-6 px-4 border-b pb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold">Create New Program</h1>
+                            <p class="text-gray-600 italic">Add a new training program with schedules and promotions</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="w-full  min-h-screen">
+
+                <div class="w-full">
                     <div class="w-full p-2">
-                        <span class="text-2xl font-semibold italic">Enter Program</span>
-                        <input type="text" class=" border-2 outline-none py-2 px-5 text-xl" name="program_name"
-                            value="">
+                        <div class="mb-6">
+                            <label for="program_name" class="block text-sm font-medium text-gray-700 mb-1">Program
+                                Name</label>
+                            <input type="text" class="border-2 outline-none py-2 px-5 text-xl w-full rounded-lg"
+                                id="program_name" name="program_name" required placeholder="Enter program name">
+                        </div>
 
-                        <div class="w-full flex flex-row mt-4">
-                            <div class="w-[40%] border-dashed py-4 px-2">
-                                <span class="font-semibold italic">Class Schedule and Duration</span>
-                                <div class="flex flex-row mt-4 w-full border-2 py-2 border-dashed">
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>Opening of Class</span>
-                                        <input type="date" id="openingClasses" class="border-2 outline-none px-4 py-2">
+                        <!-- Schedule Section -->
+                        <div class="w-full mb-8">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Class Schedule Management
+                            </h2>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Panel: Schedule Form -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Add New Schedule</h3>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Opening
+                                                Date</label>
+                                            <input type="date" id="openingClasses"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Ending
+                                                Date</label>
+                                            <input type="date" id="endingClasses"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
                                     </div>
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>Ending of Class</span>
-                                        <input type="date" id="endingClasses" class="border-2 outline-none px-4 py-2">
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Training
+                                            Date</label>
+                                        <input type="date" id="trainingDate"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        <span id="dateError" class="text-red-500 text-xs hidden"></span>
                                     </div>
-                                </div>
 
-                                <div class="mt-2 bg-gray-200 p-2 border-2 border-dashed">
-                                    <span class="font-semibold">Training Date</span>
-                                    <input type="date" id="trainingDate"
-                                        class="border-2 outline-none px-4 py-2 bg-white w-full">
-                                    <span id="dateError" class="error-message hidden"></span>
-                                </div>
-
-                                <div class="mt-2 bg-gray-200 p-2 border-2 border-dashed">
-                                    <span class="font-semibold">Choose a day</span>
-                                    <select id="daySelect" class="border-2 outline-none px-4 py-2 bg-white w-full">
-                                        <option value="">Select a day</option>
-                                    </select>
-                                </div>
-
-                                <div class="flex flex-row mt-4 w-full border-2 py-2 border-dashed">
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>Start of Training</span>
-                                        <input type="time" id="startTime" class="border-2 outline-none px-4 py-2">
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+                                        <select id="daySelect"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                            <option value="">Select a day</option>
+                                        </select>
                                     </div>
-                                    <div class="flex flex-col items-center justify-between w-full">
-                                        <span>End of Training</span>
-                                        <input type="time" id="endTime" class="border-2 outline-none px-4 py-2">
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Start
+                                                Time</label>
+                                            <input type="time" id="startTime"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                                            <input type="time" id="endTime"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                        </div>
                                     </div>
+
+                                    <button type="button" id="addSchedule"
+                                        class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors">
+                                        <i class="fas fa-plus mr-2"></i> Add Schedule
+                                    </button>
+
+                                    <div id="messageContainer" class="mt-2 min-h-[24px] text-center"></div>
                                 </div>
 
-                                <div class="w-full border-dashed py-2 items-center justify-center flex">
-                                    <button type="button" id="addSchedule" class="btn-success w-full">Add</button>
-                                </div>
+                                <!-- Right Panel: Schedule List -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Current Schedules</h3>
 
-                                <div id="messageContainer" class="mt-2"></div>
-                            </div>
+                                    <div class="border rounded-lg overflow-hidden">
+                                        <div class="max-h-[330px] overflow-y-auto">
+                                            <table class="w-full">
+                                                <thead class="bg-gray-50 sticky top-0">
+                                                    <tr>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Week</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Date</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Time</th>
+                                                        <th
+                                                            class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Day</th>
+                                                        <th
+                                                            class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="scheduleTableBody" class="divide-y divide-gray-200">
+                                                    <!-- Schedule rows will be added here via JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
 
-                            <div class="w-[60%] border-dashed py-4 px-2 mx-2">
-                                <span class="font-semibold italic">Schedule</span>
-                                <div class="border-2 h-[330px] overflow-y-auto">
-                                    <table class="w-full">
-                                        <thead class="w-full bg-gray-50">
-                                            <tr>
-                                                <th class="text-md border-2 p-2">Week Description</th>
-                                                <th class="text-md border-2 p-2">Training Date</th>
-                                                <th class="text-md border-2 p-2">Start Time</th>
-                                                <th class="text-md border-2 p-2">End Time</th>
-                                                <th class="text-md border-2 p-2">Day</th>
-                                                <th class="text-md border-2 p-2">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="scheduleTableBody" class="border-2">
-                                            <!-- Schedule rows will be added here -->
-                                        </tbody>
-                                    </table>
+                                    <div class="mt-4 text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span>Schedules are used for planning student training sessions</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Hidden container for database storage -->
-                        <div id="hiddenInputs" style="" class="hidden">
-                            <!-- Hidden inputs will be added here for database storage -->
-                        </div>
+                        <div id="hiddenInputs" class="hidden"></div>
 
+                        <!-- Fees Section -->
+                        <div class="w-full mb-8">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Fee Structure</h2>
 
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Panel: Main Fees -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Program Fees</h3>
 
-                        <div class="w-full flex-row  flex mt-10">
-
-                            <div class="w-[50%]">
-                                <div class="w-full">
-                                    <span class="text-2xl font-semibold italic mb-3 block">CHARGES FEE</span>
-                                    <div class="w-full grid grid-cols-2 gap-4">
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Learning Mode</span>
-                                            <div class="mx-2 mb-1">
-                                                <input type="radio" name="learning_mode" value="F2F" class="mr-2"
-                                                    checked>
-                                                <span>F2F</span>
-                                            </div>
-                                            <div class="mx-2">
-                                                <input type="radio" name="learning_mode" value="Online" class="mr-2">
-                                                <span>Online</span>
-                                            </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Learning
+                                            Mode</label>
+                                        <div class="flex space-x-4">
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" name="learning_mode" value="F2F"
+                                                    class="form-radio h-4 w-4 text-green-600" checked>
+                                                <span class="ml-2">Face to Face</span>
+                                            </label>
+                                            <label class="inline-flex items-center">
+                                                <input type="radio" name="learning_mode" value="Online"
+                                                    class="form-radio h-4 w-4 text-green-600">
+                                                <span class="ml-2">Online</span>
+                                            </label>
                                         </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Assessment Fee</span>
-                                            <input type="number" name="assessment_fee" id="assessment_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Tuition Fee</span>
-                                            <input type="number" name="tuition_fee" id="tuition_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Misc Fee</span>
-                                            <input type="number" name="misc_fee" id="misc_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">OJT Fee and Medical</span>
-                                            <input type="number" name="ojt_fee" id="ojt_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">System Fee</span>
-                                            <input type="number" name="system_fee" id="system_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Uniform (Scrub and Polo Shirt)</span>
-                                            <input type="number" name="uniform_fee" id="uniform_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">ID</span>
-                                            <input type="number" name="id_fee" id="id_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Books</span>
-                                            <input type="number" name="book_fee" id="book_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-
-                                        <div class="flex flex-col mx-3">
-                                            <span class="font-semibold mb-2">Kit</span>
-                                            <input type="number" name="kit_fee" id="kit_fee"
-                                                class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500"
-                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
-                                        </div>
-                                        <div
-                                            class="grid grid-cols-2 w-full border-2 bg-gray-200 px-4 border-dashed mt-10 py-5">
-                                            <div class="flex flex-col mx-3">
-                                                <span class="font-semibold mb-2">Demo 1</span>
-                                                <input type="number" name="demo1_fee" id="demo1_fee"
-                                                    class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                                    placeholder="0.00" step="0.01" readonly>
-                                            </div>
-
-                                            <div class="flex flex-col mx-3">
-                                                <span class="font-semibold mb-2">Demo 2</span>
-                                                <input type="number" name="demo2_fee" id="demo2_fee"
-                                                    class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                                    placeholder="0.00" step="0.01" readonly>
-                                            </div>
-
-                                            <div class="flex flex-col mx-3">
-                                                <span class="font-semibold mb-2">Demo 3</span>
-                                                <input type="number" name="demo3_fee" id="demo3_fee"
-                                                    class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                                    placeholder="0.00" step="0.01" readonly>
-                                            </div>
-
-                                            <div class="flex flex-col mx-3">
-                                                <span class="font-semibold mb-2">Demo 4</span>
-                                                <input type="number" name="demo4_fee" id="demo4_fee"
-                                                    class="px-4 p-2 border-2 outline-none rounded focus:border-blue-500 bg-gray-100"
-                                                    placeholder="0.00" step="0.01" readonly>
-                                            </div>
-                                        </div>
-
                                     </div>
 
-                                    <div class="w-full my-6 space-y-2 bg-gray-50 p-4 rounded-lg">
-                                        <div class="text-xl font-semibold">
-                                            Total Tuition: <span id="total_amount" class="text-green-600">₱0.00</span>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Assessment
+                                                Fee</label>
+                                            <input type="number" name="assessment_fee" id="assessment_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
                                         </div>
-                                        <!-- Hidden inputs for form submission -->
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Tuition
+                                                Fee</label>
+                                            <input type="number" name="tuition_fee" id="tuition_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Miscellaneous
+                                                Fee</label>
+                                            <input type="number" name="misc_fee" id="misc_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">OJT Fee &
+                                                Medical</label>
+                                            <input type="number" name="ojt_fee" id="ojt_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">System
+                                                Fee</label>
+                                            <input type="number" name="system_fee" id="system_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Uniform
+                                                Fee</label>
+                                            <input type="number" name="uniform_fee" id="uniform_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">ID Fee</label>
+                                            <input type="number" name="id_fee" id="id_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Books
+                                                Fee</label>
+                                            <input type="number" name="book_fee" id="book_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Kit Fee</label>
+                                            <input type="number" name="kit_fee" id="kit_fee"
+                                                class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                placeholder="0.00" step="0.01" onkeyup="calculateFees()">
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-6 bg-green-50 p-4 rounded-lg">
+                                        <h4 class="font-medium text-gray-800 mb-2">Total Tuition:</h4>
+                                        <p id="total_amount" class="text-2xl font-bold text-green-600">₱0.00</p>
                                         <input type="hidden" name="total_tuition" id="total_tuition_hidden" value="0">
+                                    </div>
+                                </div>
+
+                                <!-- Right Panel: Payment Options & Demo Fees -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Payment Structure</h3>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Reservation
+                                                Fee</label>
+                                            <div class="relative mt-1 rounded-md shadow-sm">
+                                                <div
+                                                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">₱</span>
+                                                </div>
+                                                <input type="number" name="reservation_fee" id="reservation_payment"
+                                                    class="w-full border rounded-lg pl-8 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                    placeholder="0.00">
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Initial
+                                                Payment</label>
+                                            <div class="relative mt-1 rounded-md shadow-sm">
+                                                <div
+                                                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">₱</span>
+                                                </div>
+                                                <input type="number" name="initial_fee" id="initial_payment"
+                                                    class="w-full border rounded-lg pl-8 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                    placeholder="0.00">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Demo Fees Section -->
+                                    <div class="mt-6">
+                                        <h4 class="font-medium text-gray-800 mb-3">Demo Fee Structure</h4>
+                                        <p class="text-sm text-gray-500 mb-3">Demo fees are automatically calculated
+                                            based on remaining balance.</p>
+
+                                        <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    1</label>
+                                                <input type="number" name="demo1_fee" id="demo1_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    2</label>
+                                                <input type="number" name="demo2_fee" id="demo2_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    3</label>
+                                                <input type="number" name="demo3_fee" id="demo3_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Demo
+                                                    4</label>
+                                                <input type="number" name="demo4_fee" id="demo4_fee"
+                                                    class="w-full border rounded-lg px-3 py-2 bg-gray-100"
+                                                    placeholder="0.00" readonly>
+                                            </div>
+                                        </div>
+
+                                        <!-- Hidden inputs for demo fees -->
                                         <input type="hidden" name="demo1_fee_hidden" id="demo1_fee_hidden" value="0">
                                         <input type="hidden" name="demo2_fee_hidden" id="demo2_fee_hidden" value="0">
                                         <input type="hidden" name="demo3_fee_hidden" id="demo3_fee_hidden" value="0">
                                         <input type="hidden" name="demo4_fee_hidden" id="demo4_fee_hidden" value="0">
                                     </div>
+
+                                    <div class="mt-6 text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span>Demo fees represent the remaining balance after initial payment, divided
+                                            into 4 equal installments</span>
+                                    </div>
                                 </div>
                             </div>
-
-
-                            <div class="w-[50%]">
-                                <span class="text-2xl font-semibold italic mb-3">PAYMENT</span>
-                                <div class="w-full border-2 p-2 flex items-center justify-center flex-col">
-                                    <div class=" flex flex-row  items-center my-2">
-                                        <span class="mx-2">Reservation Fee</span>
-                                        <input type="number" name="reservation_fee" id="reservation_payment" onkeyup="
-                                            calculateFees()" class="py-2 px-4 border-2 outline-none">
-
-                                    </div>
-                                    <div class=" flex flex-row  items-center my-2">
-                                        <span class="mx-2">Initial Payment</span>
-                                        <input type="number" name="initial_fee" onkeyup="calculateFees()"
-                                            id="initial_payment" class="py-2 px-4 border-2 outline-none">
-                                    </div>
-
-                                </div>
-                            </div>
-
                         </div>
 
-                        <div class="w-full flex flex-col">
-                            <h1 class="text-2xl font-bold mb-6 text-center">Promo Management System</h1>
+                        <!-- Promo Section -->
+                        <div class="w-full mb-8">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Promotion Management</h2>
 
-                            <!-- Message Container -->
                             <div id="promoMessageContainer" class="mb-4 text-center min-h-[24px]"></div>
 
-                            <div class="w-full flex flex-row mt-4">
-                                <!-- Input Form Section -->
-                                <div class="w-[40%] border-dashed py-4 px-2">
-                                    <span class="font-semibold italic">Promo Details</span>
-                                    <div class="flex flex-col mt-4 w-full border-2 py-2 border-dashed p-2 space-y-4">
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Left Panel: Promo Form -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Add New Promotion</h3>
 
-                                        <!-- Selection Type -->
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-2">Promo Selection (1-4)</span>
-                                            <div class="grid grid-cols-2 gap-2 w-full">
-                                                <label
-                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
-                                                    id="selection1">
-                                                    <input type="radio" name="promo_selection" value="1" class="mr-2"
-                                                        checked>
-                                                    <span class="text-sm">1 - Auto %</span>
-                                                </label>
-                                                <label
-                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
-                                                    id="selection2">
-                                                    <input type="radio" name="promo_selection" value="2" class="mr-2">
-                                                    <span class="text-sm">2 - Auto %</span>
-                                                </label>
-                                                <label
-                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
-                                                    id="selection3">
-                                                    <input type="radio" name="promo_selection" value="3" class="mr-2">
-                                                    <span class="text-sm">3 - Manual</span>
-                                                </label>
-                                                <label
-                                                    class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
-                                                    id="selection4">
-                                                    <input type="radio" name="promo_selection" value="4" class="mr-2">
-                                                    <span class="text-sm">4 - Manual</span>
-                                                </label>
-                                            </div>
-
-                                            <!-- Specification Text -->
-                                            <div class="mt-2 p-2 bg-blue-50 rounded text-xs">
-                                                <p><strong>Options 1-2:</strong> Percentage calculation will be applied
-                                                    automatically</p>
-                                                <p><strong>Options 3-4:</strong> You need to calculate and declare your
-                                                    initial payment amount</p>
-                                            </div>
+                                    <!-- Selection Type -->
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Promotion
+                                            Type</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection1">
+                                                <input type="radio" name="promo_selection" value="1" class="mr-2"
+                                                    checked>
+                                                <span class="text-sm">1 - Auto %</span>
+                                            </label>
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection2">
+                                                <input type="radio" name="promo_selection" value="2" class="mr-2">
+                                                <span class="text-sm">2 - Auto %</span>
+                                            </label>
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection3">
+                                                <input type="radio" name="promo_selection" value="3" class="mr-2">
+                                                <span class="text-sm">3 - Manual</span>
+                                            </label>
+                                            <label
+                                                class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50"
+                                                id="selection4">
+                                                <input type="radio" name="promo_selection" value="4" class="mr-2">
+                                                <span class="text-sm">4 - Manual</span>
+                                            </label>
                                         </div>
 
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Package</span>
-                                            <input type="text" id="packageInput" placeholder="Enter package name"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-                                        </div>
-
-                                        <!-- Percentage Input (for options 1-2) -->
-                                        <div class="flex flex-col items-start justify-between w-full"
-                                            id="percentageSection">
-                                            <span class="font-medium mb-1">Percentage (%)</span>
-                                            <input type="number" id="percentageInput"
-                                                placeholder="Enter discount percentage" step="0.01" min="0" max="100"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-                                        </div>
-
-                                        <!-- Custom Initial Payment (for options 3-4) -->
-                                        <div class="flex flex-col items-start justify-between w-full hidden"
-                                            id="customPaymentSection">
-                                            <span class="font-medium mb-1">Required Initial Payment (PHP)</span>
-                                            <input type="number" id="customInitialPaymentInput"
-                                                placeholder="Enter required initial payment" step="0.01" min="0"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-                                        </div>
-
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Total Discount (PHP)</span>
-                                            <input type="number" id="enrollmentFeeInput"
-                                                placeholder="Enter enrollment fee" step="0.01" min="0"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
-                                        </div>
-
-                                        <div class="flex flex-col items-start justify-between w-full">
-                                            <span class="font-medium mb-1">Promo Type</span>
-                                            <input type="text" id="promoTypeInput" placeholder="Enter promo type"
-                                                class="border-2 outline-none px-4 py-2 w-full rounded focus:border-blue-500">
+                                        <div class="mt-2 p-2 bg-blue-50 rounded text-xs">
+                                            <p><strong>Options 1-2:</strong> Percentage calculation will be applied
+                                                automatically</p>
+                                            <p><strong>Options 3-4:</strong> You need to calculate and declare your
+                                                initial payment amount</p>
                                         </div>
                                     </div>
 
-                                    <div class="w-full border-dashed py-2 items-center justify-center flex">
-                                        <button type="button" id="addPromo" class="btn-success w-full">Add
-                                            Promo</button>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
+                                        <input type="text" id="packageInput" placeholder="Enter package name"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
                                     </div>
+
+                                    <!-- Percentage Input (for options 1-2) -->
+                                    <div class="mb-4" id="percentageSection">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Percentage
+                                            (%)</label>
+                                        <input type="number" id="percentageInput"
+                                            placeholder="Enter discount percentage" step="0.01" min="0" max="100"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <!-- Custom Initial Payment (for options 3-4) -->
+                                    <div class="mb-4 hidden" id="customPaymentSection">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Required Initial
+                                            Payment (PHP)</label>
+                                        <input type="number" id="customInitialPaymentInput"
+                                            placeholder="Enter required initial payment" step="0.01" min="0"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Total Discount
+                                            (PHP)</label>
+                                        <input type="number" id="enrollmentFeeInput" placeholder="Enter discount amount"
+                                            step="0.01" min="0"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Promo
+                                            Type/Description</label>
+                                        <input type="text" id="promoTypeInput"
+                                            placeholder="Enter promo type or description"
+                                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    </div>
+
+                                    <button type="button" id="addPromo"
+                                        class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors">
+                                        <i class="fas fa-plus mr-2"></i> Add Promotion
+                                    </button>
                                 </div>
 
-                                <!-- Table Section -->
-                                <div class="w-[60%] border-dashed py-4 px-2 mx-2">
-                                    <span class="font-semibold italic">Promo List</span>
-                                    <div class="border-2 h-[400px] overflow-y-auto">
-                                        <table class="w-full">
-                                            <thead class="w-full bg-gray-50 sticky top-0">
-                                                <tr>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Selection</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Package</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Percentage</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Enrollment Fee</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Total Discount</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Promo Type</th>
-                                                    <th class="text-sm border-2 p-2 font-semibold">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="promoTableBody" class="border-2">
-                                                <!-- Promos will be dynamically added here -->
-                                            </tbody>
-                                        </table>
+                                <!-- Right Panel: Promo List -->
+                                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                                    <h3 class="font-semibold text-gray-700 mb-4">Current Promotions</h3>
+
+                                    <div class="border rounded-lg overflow-hidden">
+                                        <div class="max-h-[400px] overflow-y-auto">
+                                            <table class="w-full">
+                                                <thead class="bg-gray-50 sticky top-0">
+                                                    <tr>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Type</th>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Package</th>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Discount</th>
+                                                        <th
+                                                            class="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Description</th>
+                                                        <th
+                                                            class="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="promoTableBody" class="divide-y divide-gray-200">
+                                                    <!-- Promos will be added here via JavaScript -->
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
 
-                                    <!-- Additional Actions -->
-                                    <div class="mt-4 flex space-x-2 hidden">
-                                        <button onclick="clearAllPromos()"
-                                            class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
-                                            Clear All
-                                        </button>
-                                        <button onclick="showPromoSummary()"
-                                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                                            Show Summary
-                                        </button>
+                                    <div class="mt-4 text-sm text-gray-500">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <span>Promotions are special offers for this program that affect pricing</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Hidden inputs container for form submission -->
+                            <!-- Hidden inputs container for promo data -->
                             <div id="promoHiddenInputs" style="display: none;"></div>
-
-                            <!-- Demo: Show current promos data -->
-                            <div class="mt-6 p-4 bg-gray-50 rounded hidden">
-                                <h3 class="font-bold mb-2">Current Promos (JSON):</h3>
-                                <pre id="promoJsonDisplay"
-                                    class="bg-white p-2 rounded border text-xs overflow-auto max-h-32">[]</pre>
-                            </div>
                         </div>
-
                     </div>
                 </div>
 
-                <div class="w-full flex items-center">
+                <div class="w-full flex items-center gap-4 border-t pt-6 mt-4">
                     <button type="submit" name="process"
-                        class="px-4 py-2 rounded bg-green-400 w-full font-semibold">Submit</button>
-
+                        class="px-6 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors shadow-md flex-grow">
+                        <i class="fas fa-save mr-2"></i> Create Program
+                    </button>
+                    <a href="program_management.php"
+                        class="px-6 py-2.5 rounded-lg bg-gray-500 hover:bg-gray-600 text-white font-medium transition-colors shadow-md flex-grow text-center">
+                        <i class="fas fa-times mr-2"></i> Cancel
+                    </a>
                 </div>
             </form>
         </main>
 
-
         <?php include "includes/footer.php" ?>
     </div>
 </div>
+
 <?php include "form/modal_program.php" ?>
 
-
 <script>
-    // Replace your existing JavaScript with this fixed version:
-
+    // Schedule Management Script
     let scheduleCounter = 0;
     let schedules = [];
 
-    // Day options - Fixed to show proper day names
+    // Day options
     const weekdayOptions = [
         { value: 'Weekday 1', text: 'Weekday 1' },
         { value: 'Weekday 2', text: 'Weekday 2' },
@@ -659,10 +738,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // Helper functions
     function showMessage(message, type = 'error') {
-        messageContainer.innerHTML = `<span class="${type === 'success' ? 'success-message' : 'error-message'}">${message}</span>`;
-        setTimeout(() => {
-            messageContainer.innerHTML = '';
-        }, 5000);
+        if (messageContainer) {
+            const messageClass = type === 'success' ? 'text-green-600' : 'text-red-600';
+            messageContainer.innerHTML = `<p class="${messageClass} text-sm font-medium">${message}</p>`;
+            setTimeout(() => {
+                messageContainer.innerHTML = '';
+            }, 5000);
+        }
     }
 
     function isWeekend(date) {
@@ -684,10 +766,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     function formatTime(timeString) {
+        if (!timeString) return '';
         return new Date(`2000-01-01T${timeString}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     function populateDayOptions() {
+        if (!trainingDate || !daySelect) return;
+
         const selectedDate = trainingDate.value;
         if (!selectedDate) {
             daySelect.innerHTML = '<option value="">Select a day</option>';
@@ -704,33 +789,41 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     function validateForm() {
+        if (!openingClasses || !endingClasses || !trainingDate || !daySelect || !startTime) {
+            return false;
+        }
+
         const opening = openingClasses.value;
         const ending = endingClasses.value;
         const training = trainingDate.value;
         const day = daySelect.value;
         const start = startTime.value;
-        const end = endTime.value;
+        const end = endTime ? endTime.value : '';
 
         // Reset error message
-        dateError.classList.add('hidden');
-        dateError.textContent = '';
+        if (dateError) {
+            dateError.classList.add('hidden');
+            dateError.textContent = '';
+        }
 
-        // Check if all fields are filled
-        if (!opening || !ending || !training || !day || !start || !end) {
-            showMessage('Please fill in all fields.');
+        // Check if all required fields are filled
+        if (!opening || !ending || !training || !day || !start) {
+            showMessage('Please fill in all required fields.');
             return false;
         }
 
         // Validate training date is within class period
         if (training < opening || training > ending) {
-            dateError.textContent = 'Training date must be between class opening and ending dates.';
-            dateError.classList.remove('hidden');
+            if (dateError) {
+                dateError.textContent = 'Training date must be between class opening and ending dates.';
+                dateError.classList.remove('hidden');
+            }
             showMessage('Training date is outside the class period.');
             return false;
         }
 
-        // Validate start time is before end time
-        if (start >= end) {
+        // Validate start time is before end time (if end time is provided)
+        if (end && start >= end) {
             showMessage('Start time must be before end time.');
             return false;
         }
@@ -738,29 +831,57 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return true;
     }
 
-    function createHiddenInput(name, value) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = value;
-        input.id = `hidden_${name}_${scheduleCounter}`;
-        return input;
-    }
-
     function createTextbox(name, value) {
         const input = document.createElement('input');
         input.type = 'text';
         input.name = name;
         input.value = value;
-        input.readOnly = true; // Optional: prevent user edits
-        input.style.display = 'flex'; // Hides the textbox like a hidden field
-        input.id = `textbox_${name}_${scheduleCounter}`;
+        input.readOnly = true;
+        input.style.display = 'none';
         return input;
     }
 
+    function addScheduleRowToTable(schedule) {
+        if (!tableBody) return;
+
+        const isWeekendDay = isWeekend(schedule.trainingDate);
+        const rowBgClass = isWeekendDay ? 'bg-yellow-50' : 'bg-blue-50';
+
+        const row = document.createElement('tr');
+        row.id = `schedule_row_${schedule.id}`;
+        row.className = `${rowBgClass} hover:bg-opacity-80 transition-colors`;
+
+        const endTimeDisplay = schedule.endTime ? formatTime(schedule.endTime) : '-';
+
+        row.innerHTML = `
+            <td class="px-4 py-2">${schedule.weekDescription}</td>
+            <td class="px-4 py-2">${formatDate(schedule.trainingDate)}</td>
+            <td class="px-4 py-2">${formatTime(schedule.startTime)} - ${endTimeDisplay}</td>
+            <td class="px-4 py-2"><span class="px-2 py-1 text-xs rounded-full ${isWeekendDay ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}">${schedule.dayOfWeek}</span></td>
+            <td class="px-4 py-2 text-center">
+                <button type="button" onclick="removeSchedule(${schedule.id})" class="bg-red-500 hover:bg-red-600 text-white text-xs rounded px-2 py-1 transition-colors">
+                    <i class="fas fa-trash-alt mr-1"></i> Remove
+                </button>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+
+        // Create hidden inputs
+        if (hiddenInputs) {
+            const hiddenContainer = document.createElement('div');
+            hiddenContainer.id = `hidden_container_${schedule.id}`;
+            hiddenContainer.appendChild(createTextbox(`schedule[${schedule.id}][week_description]`, schedule.weekDescription));
+            hiddenContainer.appendChild(createTextbox(`schedule[${schedule.id}][training_date]`, schedule.trainingDate));
+            hiddenContainer.appendChild(createTextbox(`schedule[${schedule.id}][start_time]`, schedule.startTime));
+            hiddenContainer.appendChild(createTextbox(`schedule[${schedule.id}][end_time]`, schedule.endTime || ''));
+            hiddenContainer.appendChild(createTextbox(`schedule[${schedule.id}][day_of_week]`, schedule.dayOfWeek));
+            hiddenContainer.appendChild(createTextbox(`schedule[${schedule.id}][day_value]`, schedule.dayValue));
+            hiddenInputs.appendChild(hiddenContainer);
+        }
+    }
 
     function addScheduleToTable(event) {
-        // Prevent form submission
         if (event) {
             event.preventDefault();
             event.stopPropagation();
@@ -772,55 +893,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         const weekDesc = getWeekDescription(trainingDate.value, openingClasses.value);
         const selectedDayText = daySelect.options[daySelect.selectedIndex].text;
 
-        // Create schedule object
         const schedule = {
             id: scheduleCounter,
             weekDescription: weekDesc,
             trainingDate: trainingDate.value,
             startTime: startTime.value,
-            endTime: endTime.value,
+            endTime: endTime ? endTime.value : '',
             dayOfWeek: selectedDayText,
             dayValue: daySelect.value
         };
 
         schedules.push(schedule);
-
-        // Determine background color based on day type
-        const isWeekendDay = isWeekend(trainingDate.value);
-        const rowBgClass = isWeekendDay ? 'bg-yellow-100' : 'bg-blue-100';
-
-        // Add row to table
-        const row = document.createElement('tr');
-        row.id = `schedule_row_${scheduleCounter}`;
-        row.className = rowBgClass;
-        row.innerHTML = `
-        <td class="border-2 p-2 text-center">${weekDesc}</td>
-        <td class="border-2 p-2 text-center">${formatDate(trainingDate.value)}</td>
-        <td class="border-2 p-2 text-center">${formatTime(startTime.value)}</td>
-        <td class="border-2 p-2 text-center">${formatTime(endTime.value)}</td>
-        <td class="border-2 p-2 text-center">${selectedDayText}</td>
-        <td class="border-2 p-2 text-center">
-            <button type="button" onclick="removeSchedule(${scheduleCounter})" class="btn-danger">Remove</button>
-        </td>
-    `;
-        tableBody.appendChild(row);
-
-        // Create hidden inputs for database storage
-        const hiddenContainer = document.createElement('div');
-        hiddenContainer.id = `hidden_container_${scheduleCounter}`;
-        hiddenContainer.appendChild(createTextbox(`schedule[${scheduleCounter}][week_description]`, weekDesc));
-        hiddenContainer.appendChild(createTextbox(`schedule[${scheduleCounter}][training_date]`, trainingDate.value));
-        hiddenContainer.appendChild(createTextbox(`schedule[${scheduleCounter}][start_time]`, startTime.value));
-        hiddenContainer.appendChild(createTextbox(`schedule[${scheduleCounter}][end_time]`, endTime.value));
-        hiddenContainer.appendChild(createTextbox(`schedule[${scheduleCounter}][day_of_week]`, selectedDayText));
-        hiddenContainer.appendChild(createTextbox(`schedule[${scheduleCounter}][day_value]`, daySelect.value));
-        hiddenInputs.appendChild(hiddenContainer);
+        addScheduleRowToTable(schedule);
 
         // Clear form (except class dates)
         trainingDate.value = '';
         daySelect.innerHTML = '<option value="">Select a day</option>';
         startTime.value = '';
-        endTime.value = '';
+        if (endTime) endTime.value = '';
 
         showMessage('Schedule added successfully!', 'success');
     }
@@ -840,42 +930,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         showMessage('Schedule removed successfully!', 'success');
     }
 
-    // Event listeners - FIXED VERSION
-    trainingDate.addEventListener('change', populateDayOptions);
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        if (trainingDate) {
+            trainingDate.addEventListener('change', populateDayOptions);
+        }
 
-    // Fix the add button event listener to prevent form submission
-    addButton.addEventListener('click', function (event) {
-        event.preventDefault(); // Prevent form submission
-        event.stopPropagation(); // Stop event bubbling
-        addScheduleToTable(event);
+        if (addButton) {
+            addButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                addScheduleToTable(event);
+            });
+        }
     });
 
-    // Function to get all schedules (for database submission)
-    function getAllSchedules() {
-        return schedules;
-    }
-
-    // Function to get form data as FormData object (for AJAX submission)
-    function getFormData() {
-        const formData = new FormData();
-        formData.append('opening_date', openingClasses.value);
-        formData.append('ending_date', endingClasses.value);
-
-        schedules.forEach((schedule, index) => {
-            formData.append(`schedules[${index}][week_description]`, schedule.weekDescription);
-            formData.append(`schedules[${index}][training_date]`, schedule.trainingDate);
-            formData.append(`schedules[${index}][start_time]`, schedule.startTime);
-            formData.append(`schedules[${index}][end_time]`, schedule.endTime);
-            formData.append(`schedules[${index}][day_of_week]`, schedule.dayOfWeek);
-            formData.append(`schedules[${index}][day_value]`, schedule.dayValue);
-        });
-
-        return formData;
-    }
-
-    // Make functions available globally for external use
-    window.getAllSchedules = getAllSchedules;
-    window.getFormData = getFormData;
+    // Make functions available globally
     window.removeSchedule = removeSchedule;
 </script>
 
@@ -941,9 +1011,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
     });
-
     function calculateFees() {
-        // Get all fee input values (excluding demo fees)
+        // Get all fee input values
         const assessmentFee = parseFloat(document.getElementById('assessment_fee').value) || 0;
         const tuitionFee = parseFloat(document.getElementById('tuition_fee').value) || 0;
         const miscFee = parseFloat(document.getElementById('misc_fee').value) || 0;
@@ -954,18 +1023,33 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         const bookFee = parseFloat(document.getElementById('book_fee').value) || 0;
         const kitFee = parseFloat(document.getElementById('kit_fee').value) || 0;
 
-        // Get the initial payment amount (you'll need to specify which field this is)
-        // Replace 'initial_payment' with the actual ID of your initial payment field
+        // Get initial payment
         const initialPayment = parseFloat(document.getElementById('initial_payment').value) || 0;
-        const reservation_payment = parseFloat(document.getElementById('reservation_payment').value) || 0;
 
-        // Calculate total sum (not including demos)
+        // Check for different possible reservation fee field IDs
+        let reservationFee = 0;
+        const reservationFeeElement = document.getElementById('reservation_fee') ||
+            document.getElementById('reservation_payment');
+        if (reservationFeeElement) {
+            reservationFee = parseFloat(reservationFeeElement.value) || 0;
+        }
+
+        // Calculate total tuition
         const totalTuition = assessmentFee + tuitionFee + miscFee + ojtFee + systemFee +
             uniformFee + idFee + bookFee + kitFee;
 
-        // Calculate demo fee using your new formula: (Total_tuition - initial) / 4
-        const remainingAmount = totalTuition - initialPayment - reservation_payment;
-        const demoFee = remainingAmount / 4;
+        // Calculate remaining balance after BOTH initial payment AND reservation fee
+        const remainingBalance = totalTuition;
+
+        // Calculate demo fee as equal installments of the remaining balance
+        const demoFee = remainingBalance / 4;
+
+        console.log("Calculation details:");
+        console.log("Total Tuition:", totalTuition);
+        console.log("Initial Payment:", initialPayment);
+        console.log("Reservation Fee:", reservationFee);
+        console.log("Remaining Balance:", remainingBalance);
+        console.log("Demo Fee (each):", demoFee);
 
         // Update demo fee fields
         document.getElementById('demo1_fee').value = demoFee.toFixed(2);
@@ -982,28 +1066,212 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         document.getElementById('demo2_fee_hidden').value = demoFee.toFixed(2);
         document.getElementById('demo3_fee_hidden').value = demoFee.toFixed(2);
         document.getElementById('demo4_fee_hidden').value = demoFee.toFixed(2);
-
-        // Optional: Display remaining amount for verification
-        console.log('Total Tuition:', totalTuition);
-        console.log('Initial Payment:', initialPayment);
-        console.log('Remaining Amount:', remainingAmount);
-        console.log('Demo Fee (each):', demoFee);
     }
+
+    // Add event listeners to make sure all inputs trigger recalculation
+    document.addEventListener('DOMContentLoaded', function () {
+        calculateFees(); // Initial calculation
+
+        // Add listeners to all fee input fields
+        const feeInputIds = [
+            'assessment_fee', 'tuition_fee', 'misc_fee', 'ojt_fee', 'system_fee',
+            'uniform_fee', 'id_fee', 'book_fee', 'kit_fee'
+        ];
+
+        feeInputIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', calculateFees);
+            }
+        });
+
+        // Add listeners for payment fields
+        const initialPaymentEl = document.getElementById('initial_payment');
+        if (initialPaymentEl) {
+            initialPaymentEl.addEventListener('input', calculateFees);
+        }
+
+        // Check for different possible reservation fee field IDs
+        const reservationFeeEl = document.getElementById('reservation_fee') ||
+            document.getElementById('reservation_payment');
+        if (reservationFeeEl) {
+            reservationFeeEl.addEventListener('input', calculateFees);
+        }
+
+        // Set up learning mode change handlers
+        const learningModeRadios = document.querySelectorAll('input[name="learning_mode"]');
+        learningModeRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                const systemFeeInput = document.getElementById('system_fee');
+                if (systemFeeInput) {
+                    if (this.checked && this.value === 'F2F') {
+                        systemFeeInput.disabled = true;
+                        systemFeeInput.value = '0';
+                        systemFeeInput.style.backgroundColor = '#e9ecef';
+                    } else if (this.checked && this.value === 'Online') {
+                        systemFeeInput.disabled = false;
+                        systemFeeInput.style.backgroundColor = '';
+                    }
+                    calculateFees();
+                }
+            });
+        });
+    });
+    // Initialize calculation on page load with error handling
+    document.addEventListener('DOMContentLoaded', function () {
+        try {
+            calculateFees();
+
+            // Add event listeners to all fee inputs to recalculate when any value changes
+            const feeInputs = [
+                'assessment_fee', 'tuition_fee', 'misc_fee', 'ojt_fee', 'system_fee',
+                'uniform_fee', 'id_fee', 'book_fee', 'kit_fee', 'initial_payment', 'reservation_fee'
+            ];
+
+            feeInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', calculateFees);
+                }
+            });
+
+            // Handle learning mode changes
+            const learningModeRadios = document.querySelectorAll('input[name="learning_mode"]');
+            if (learningModeRadios.length > 0) {
+                learningModeRadios.forEach(radio => {
+                    radio.addEventListener('change', function () {
+                        const systemFeeInput = document.getElementById('system_fee');
+                        if (systemFeeInput) {
+                            if (this.checked && this.value === 'F2F') {
+                                systemFeeInput.disabled = true;
+                                systemFeeInput.value = '0';
+                                systemFeeInput.style.backgroundColor = '#e9ecef';
+                            } else if (this.checked && this.value === 'Online') {
+                                systemFeeInput.disabled = false;
+                                systemFeeInput.style.backgroundColor = '';
+                            }
+                            calculateFees();
+                        }
+                    });
+                });
+
+                // Set initial state for system fee based on learning mode
+                const selectedMode = document.querySelector('input[name="learning_mode"]:checked');
+                if (selectedMode && selectedMode.value === 'F2F') {
+                    const systemFeeInput = document.getElementById('system_fee');
+                    if (systemFeeInput) {
+                        systemFeeInput.disabled = true;
+                        systemFeeInput.value = '0';
+                        systemFeeInput.style.backgroundColor = '#e9ecef';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing fee calculation:', error);
+        }
+    });
 
     // Initialize calculation on page load
     document.addEventListener('DOMContentLoaded', function () {
         calculateFees();
 
-        // Add event listener to initial payment field to recalculate when it changes
-        const initialPaymentField = document.getElementById('initial_payment');
-        if (initialPaymentField) {
-            initialPaymentField.addEventListener('input', calculateFees);
+        // Add event listeners to all fee inputs to recalculate when any value changes
+        const feeInputs = [
+            'assessment_fee', 'tuition_fee', 'misc_fee', 'ojt_fee', 'system_fee',
+            'uniform_fee', 'id_fee', 'book_fee', 'kit_fee', 'initial_payment', 'reservation_fee'
+        ];
+
+        feeInputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('input', calculateFees);
+            }
+        });
+
+        // Handle learning mode changes
+        const learningModeRadios = document.querySelectorAll('input[name="learning_mode"]');
+        learningModeRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                if (this.checked && this.value === 'F2F') {
+                    const systemFeeInput = document.getElementById('system_fee');
+                    if (systemFeeInput) {
+                        systemFeeInput.disabled = true;
+                        systemFeeInput.value = '0';
+                        systemFeeInput.style.backgroundColor = '#e9ecef';
+                    }
+                } else if (this.checked && this.value === 'Online') {
+                    const systemFeeInput = document.getElementById('system_fee');
+                    if (systemFeeInput) {
+                        systemFeeInput.disabled = false;
+                        systemFeeInput.style.backgroundColor = '';
+                    }
+                }
+                calculateFees();
+            });
+        });
+
+        // Set initial state for system fee based on learning mode
+        const selectedMode = document.querySelector('input[name="learning_mode"]:checked');
+        if (selectedMode && selectedMode.value === 'F2F') {
+            const systemFeeInput = document.getElementById('system_fee');
+            if (systemFeeInput) {
+                systemFeeInput.disabled = true;
+                systemFeeInput.value = '0';
+                systemFeeInput.style.backgroundColor = '#e9ecef';
+            }
         }
     });
     // Initialize calculation on page load
     document.addEventListener('DOMContentLoaded', function () {
         calculateFees();
+
+        // Add event listeners to all fee inputs to recalculate when any value changes
+        const feeInputs = [
+            'assessment_fee', 'tuition_fee', 'misc_fee', 'ojt_fee', 'system_fee',
+            'uniform_fee', 'id_fee', 'book_fee', 'kit_fee', 'initial_payment', 'reservation_fee'
+        ];
+
+        feeInputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('input', calculateFees);
+            }
+        });
+
+        // Handle learning mode changes
+        const learningModeRadios = document.querySelectorAll('input[name="learning_mode"]');
+        learningModeRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                if (this.checked && this.value === 'F2F') {
+                    const systemFeeInput = document.getElementById('system_fee');
+                    if (systemFeeInput) {
+                        systemFeeInput.disabled = true;
+                        systemFeeInput.value = '0';
+                        systemFeeInput.style.backgroundColor = '#e9ecef';
+                    }
+                } else if (this.checked && this.value === 'Online') {
+                    const systemFeeInput = document.getElementById('system_fee');
+                    if (systemFeeInput) {
+                        systemFeeInput.disabled = false;
+                        systemFeeInput.style.backgroundColor = '';
+                    }
+                }
+                calculateFees();
+            });
+        });
+
+        // Set initial state for system fee based on learning mode
+        const selectedMode = document.querySelector('input[name="learning_mode"]:checked');
+        if (selectedMode && selectedMode.value === 'F2F') {
+            const systemFeeInput = document.getElementById('system_fee');
+            if (systemFeeInput) {
+                systemFeeInput.disabled = true;
+                systemFeeInput.value = '0';
+                systemFeeInput.style.backgroundColor = '#e9ecef';
+            }
+        }
     });
+
 </script>
 
 <script>
@@ -1021,19 +1289,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     const promoTableBody = document.getElementById('promoTableBody');
     const promoMessageContainer = document.getElementById('promoMessageContainer');
     const promoHiddenInputs = document.getElementById('promoHiddenInputs');
-    const promoJsonDisplay = document.getElementById('promoJsonDisplay');
-
-    // Selection type elements
+    const promoSelectionRadios = document.querySelectorAll('input[name="promo_selection"]');
     const percentageSection = document.getElementById('percentageSection');
     const customPaymentSection = document.getElementById('customPaymentSection');
-    const promoSelectionRadios = document.querySelectorAll('input[name="promo_selection"]');
 
     // Helper: Show promo messages
     function showPromoMessage(message, type = 'error') {
-        promoMessageContainer.innerHTML = `<span class="${type === 'success' ? 'success-message' : 'error-message'}">${message}</span>`;
-        setTimeout(() => {
-            promoMessageContainer.innerHTML = '';
-        }, 5000);
+        if (promoMessageContainer) {
+            const messageClass = type === 'success' ? 'text-green-600' : 'text-red-600';
+            promoMessageContainer.innerHTML = `<p class="${messageClass} text-sm font-medium">${message}</p>`;
+            setTimeout(() => {
+                promoMessageContainer.innerHTML = '';
+            }, 5000);
+        }
+    }
+
+    // Format currency
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('en-PH', {
+            style: 'currency',
+            currency: 'PHP'
+        }).format(amount);
     }
 
     // Handle selection type changes
@@ -1104,21 +1380,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return { discountAmount: 0, uponEnrollment: 0 };
     }
 
-    // Format number as PHP currency
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('en-PH', {
-            style: 'currency',
-            currency: 'PHP'
-        }).format(amount);
-    }
-
-    // Validate form inputs before adding promo
     function validatePromoForm() {
+        if (!packageInput || !promoTypeInput) {
+            return false;
+        }
+
         const packageName = packageInput.value.trim();
         const promoType = promoTypeInput.value.trim();
         const selectedType = parseInt(document.querySelector('input[name="promo_selection"]:checked').value);
         const totalTuition = getTotalTuitionFee();
 
+        // Check if all fields are filled
         if (!packageName || !promoType) {
             showPromoMessage('Please fill in Package Name and Promo Type.');
             return false;
@@ -1134,12 +1406,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             const percentage = parseFloat(percentageInput.value);
             const enrollmentFee = parseFloat(enrollmentFeeInput.value);
 
-            if (isNaN(percentage) || percentage <= 0 || percentage > 100) {
+            if (isNaN(percentage) || percentage < 0 || percentage > 100) {
                 showPromoMessage('Please enter a valid percentage between 0 and 100.');
-                return false;
-            }
-            if (isNaN(enrollmentFee) || enrollmentFee <= 0) {
-                showPromoMessage('Please ensure enrollment fee is calculated properly.');
                 return false;
             }
         } else {
@@ -1152,6 +1420,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
+        // Check for duplicate package names
         if (promos.some(promo => promo.packageName.toLowerCase() === packageName.toLowerCase())) {
             showPromoMessage('A promo with this package name already exists.');
             return false;
@@ -1160,7 +1429,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return true;
     }
 
-    // Create readonly input for hidden promo data
     function createPromoTextbox(name, value) {
         const input = document.createElement('input');
         input.type = 'text';
@@ -1171,7 +1439,71 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         return input;
     }
 
-    // Add promo to table and promos array
+    function addPromoRowToTable(promo) {
+        if (!promoTableBody) return;
+
+        const row = document.createElement('tr');
+        row.id = `promo_row_${promo.id}`;
+        row.className = 'bg-blue-50 hover:bg-blue-100 transition-colors';
+
+        // Determine what to display based on selection type
+        const selectionDisplay = `Option ${promo.selectionType}`;
+
+        let discountDisplay, packageDisplay;
+
+        if (promo.selectionType <= 2) {
+            // Options 1-2: Show percentage discount
+            discountDisplay = promo.percentage > 0
+                ? `<div><span class="font-semibold">${promo.percentage}% OFF</span></div>
+                   <div class="text-xs text-gray-600">${formatCurrency(promo.enrollmentFee)}</div>`
+                : `                <span class="font-semibold">${formatCurrency(promo.enrollmentFee)}</span>`;
+        } else {
+            // Options 3-4: Show custom initial payment
+            discountDisplay = `<span class="font-semibold">${formatCurrency(promo.customInitialPayment || 0)}</span>
+                               <div class="text-xs text-green-600">Required Payment</div>`;
+        }
+
+        // Add required payment note for selection types 3-4
+        const packageNoteDisplay = promo.selectionType > 2 && promo.customInitialPayment
+            ? `<div class="text-xs text-green-600 mt-1">Manual: ${formatCurrency(promo.customInitialPayment)}</div>`
+            : '';
+
+        packageDisplay = `<div>${promo.packageName}</div>${packageNoteDisplay}`;
+
+        row.innerHTML = `
+            <td class="px-3 py-3 align-middle">
+                <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full 
+                    ${promo.selectionType <= 2 ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}">
+                    ${selectionDisplay}
+                </span>
+            </td>
+            <td class="px-3 py-3 align-middle">${packageDisplay}</td>
+            <td class="px-3 py-3 align-middle">${discountDisplay}</td>
+            <td class="px-3 py-3 align-middle">${promo.promoType}</td>
+            <td class="px-3 py-3 text-center">
+                <button type="button" onclick="removePromo(${promo.id})" 
+                    class="bg-red-500 hover:bg-red-600 text-white text-xs rounded px-2 py-1 transition-colors">
+                    <i class="fas fa-trash-alt mr-1"></i> Remove
+                </button>
+            </td>
+        `;
+
+        promoTableBody.appendChild(row);
+
+        // Create hidden inputs
+        if (promoHiddenInputs) {
+            const hiddenContainer = document.createElement('div');
+            hiddenContainer.id = `promo_hidden_container_${promo.id}`;
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][package_name]`, promo.packageName));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][enrollment_fee]`, promo.enrollmentFee?.toString() || '0'));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][percentage]`, promo.percentage?.toString() || '0'));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][promo_type]`, promo.promoType));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][selection_type]`, promo.selectionType?.toString() || '1'));
+            hiddenContainer.appendChild(createPromoTextbox(`promos[${promo.id}][custom_initial_payment]`, promo.customInitialPayment?.toString() || ''));
+            promoHiddenInputs.appendChild(hiddenContainer);
+        }
+    }
+
     function addPromoToTable(event) {
         if (event) {
             event.preventDefault();
@@ -1197,7 +1529,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         if (selectedType <= 2) {
             // Options 1-2: Percentage calculation
-            const percentage = parseFloat(percentageInput.value);
+            const percentage = parseFloat(percentageInput.value) || 0;
             const discountAmount = (totalTuition * percentage) / 100;
             const uponEnrollment = totalTuition - discountAmount;
 
@@ -1211,7 +1543,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             };
         } else {
             // Options 3-4: Custom initial payment
-            const customPayment = parseFloat(customInitialPaymentInput.value);
+            const customPayment = parseFloat(customInitialPaymentInput.value) || 0;
 
             promo = {
                 ...promo,
@@ -1225,45 +1557,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         // Add to promos array
         promos.push(promo);
+        addPromoRowToTable(promo);
 
-        // Create table row
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-id', promo.id);
-
-        const selectionDisplay = `Option ${selectedType}`;
-        const percentageDisplay = selectedType <= 2 ? `${promo.percentage}%` : 'N/A';
-        const enrollmentDisplay = selectedType <= 2 ? formatCurrency(promo.uponEnrollment) : formatCurrency(totalTuition);
-        const discountDisplay = selectedType <= 2 ? formatCurrency(promo.discountAmount) : 'Manual';
-        const customPaymentNote = selectedType > 2 ? `Required: ${formatCurrency(promo.customInitialPayment)}` : '';
-
-        tr.innerHTML = `
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${selectionDisplay}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${promo.packageName}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${percentageDisplay}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${enrollmentDisplay}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${discountDisplay}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">${promo.promoType}${customPaymentNote ? '<br><small class="text-red-600">' + customPaymentNote + '</small>' : ''}</td>
-        <td class="px-2 py-2 bg-blue-100 border-blue-800 border-2">
-            <button type="button" class="px-4 py-2 rounded-xl shadow-lg bg-red-400 remove-btn" data-id="${promo.id}">Remove</button>
-        </td>
-    `;
-
-        promoTableBody.appendChild(tr);
-
-        // Create hidden inputs with correct values
-        const hiddenContainer = document.createElement('div');
-        hiddenContainer.id = `promo_container_${promoCounter}`;
-
-        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][package_name]`, promo.packageName));
-        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][percentage]`, promo.percentage.toString()));
-        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][enrollment_fee]`, promo.enrollmentFee.toString()));
-        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][promo_type]`, promo.promoType));
-        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][selection_type]`, promo.selectionType.toString()));
-        hiddenContainer.appendChild(createPromoTextbox(`promos[${promoCounter}][custom_initial_payment]`, (promo.customInitialPayment || '').toString()));
-
-        promoHiddenInputs.appendChild(hiddenContainer);
-
-        // Clear input fields
+        // Clear form
         packageInput.value = '';
         percentageInput.value = '';
         enrollmentFeeInput.value = '';
@@ -1273,41 +1569,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         showPromoMessage('Promo added successfully!', 'success');
     }
 
-    // Remove promo functionality
-    promoTableBody.addEventListener('click', function (event) {
-        if (event.target.classList.contains('remove-btn')) {
-            const idToRemove = parseInt(event.target.getAttribute('data-id'));
+    function removePromo(id) {
+        // Remove from promos array
+        promos = promos.filter(promo => promo.id !== id);
 
-            // Remove from promos array
-            promos = promos.filter(promo => promo.id !== idToRemove);
+        // Remove table row
+        const row = document.getElementById(`promo_row_${id}`);
+        if (row) row.remove();
 
-            // Remove row from table
-            const rowToRemove = promoTableBody.querySelector(`tr[data-id="${idToRemove}"]`);
-            if (rowToRemove) {
-                promoTableBody.removeChild(rowToRemove);
-            }
+        // Remove hidden inputs
+        const hiddenContainer = document.getElementById(`promo_hidden_container_${id}`);
+        if (hiddenContainer) hiddenContainer.remove();
 
-            // Remove hidden inputs container
-            const hiddenContainer = document.getElementById(`promo_container_${idToRemove}`);
-            if (hiddenContainer) {
-                hiddenContainer.remove();
-            }
+        showPromoMessage('Promo removed successfully!', 'success');
+    }
 
-            showPromoMessage('Promo removed successfully!', 'success');
+    // Initialize event listeners
+    document.addEventListener('DOMContentLoaded', function () {
+        // Set up promo selection type handling
+        promoSelectionRadios.forEach(radio => {
+            radio.addEventListener('change', handleSelectionTypeChange);
+        });
+
+        // Calculate discount based on percentage
+        if (percentageInput) {
+            percentageInput.addEventListener('input', calculateUponEnrollment);
         }
+
+        // Add promo button handler
+        if (addPromoButton) {
+            addPromoButton.addEventListener('click', addPromoToTable);
+        }
+
+        // Initialize selection display
+        handleSelectionTypeChange();
     });
 
-    // Event listeners
-    promoSelectionRadios.forEach(radio => {
-        radio.addEventListener('change', handleSelectionTypeChange);
-    });
-
-    percentageInput.addEventListener('input', calculateUponEnrollment);
-    addPromoButton.addEventListener('click', addPromoToTable);
-
-    // Initialize
-    handleSelectionTypeChange();
-    calculateUponEnrollment();
+    // Make functions globally available
+    window.removePromo = removePromo;
 </script>
 
 <script>
@@ -1316,16 +1615,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     form.addEventListener('submit', function (event) {
         event.preventDefault(); // Stop default form submit
 
+        // Check that at least one schedule is added
+        if (schedules.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Schedule',
+                text: 'Please add at least one schedule to continue.',
+                confirmButtonColor: '#10b981'
+            });
+            return;
+        }
+
+        // Confirm submission
         Swal.fire({
-            title: 'Are you sure?',
-            text: "Do you want to submit this form?",
+            title: 'Create Program',
+            text: "Are you ready to create this program?",
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Yes, submit it!',
-            cancelButtonText: 'No, cancel',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, create it!',
+            cancelButtonText: 'No, keep editing',
+            customClass: {
+                confirmButton: 'rounded-lg px-4 py-2',
+                cancelButton: 'rounded-lg px-4 py-2'
+            }
         }).then((result) => {
             if (result.isConfirmed) {
-                form.submit(); // Submit form to same page
+                form.submit(); // Submit form
             }
         });
     });

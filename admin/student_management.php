@@ -124,6 +124,9 @@ $conn->close();
                                 <tr class="bg-gray-50">
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Action</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Student Name</th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -137,15 +140,18 @@ $conn->close();
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Action</th>
+
                                 </tr>
                             </thead>
 
                             <tbody class="divide-y divide-gray-100" id="studentTableBody">
                                 <?php while ($row = mysqli_fetch_assoc($result)): ?>
                                     <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <a href="#" class="text-primary hover:underline text-sm viewStudentBtn"
+                                                data-id="<?= $row['id'] ?>">View</a>
+
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div>
                                                 <p class="text-sm font-medium">
@@ -196,11 +202,7 @@ $conn->close();
 
 
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <a href="#" class="text-primary hover:underline text-sm viewStudentBtn"
-                                                data-id="<?= $row['id'] ?>">View</a>
 
-                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                             </tbody>
