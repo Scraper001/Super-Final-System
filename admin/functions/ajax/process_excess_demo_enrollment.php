@@ -5,6 +5,174 @@ header('Cache-Control: no-cache, must-revalidate');
 include '../../../connection/connection.php';
 $conn = con();
 
+
+function processExcessFromInitialPayment($conn, $student_id, $program_id, $excess_amount, $learning_mode)
+{
+    $demo_sequence = ['demo1', 'demo2', 'demo3', 'demo4'];
+
+    // STEP 1: Get the CURRENT state AFTER initial payment was processed
+    $program_tuition_fee = getProgramTuitionFee($conn, $program_id);
+    $initial_details = getInitialPaymentDetails($conn, $student_id, $program_id);
+    $reservation_payment = getReservationPayment($conn, $student_id, $program_id);
+
+    // Calculate what's already paid (AFTER the regular initial payment is applied)
+    $initial_payment = $initial_details['initial_payment'] ?? 0;
+    $promo_discount = $initial_details['promo_discount'] ?? 0;
+    $total_upfront = $initial_payment + $promo_discount + $reservation_payment;
+
+    // Calculate NEW demo fee based on the updated upfront payments
+    $remaining_after_upfront = $program_tuition_fee - $total_upfront;
+    $new_demo_fee = $remaining_after_upfront / 4;
+
+    // Log the recalculation for verification
+    error_log(sprintf(
+        "[%s] Demo Fee Recalculation - User: %s\n" .
+        "Program Fee: ₱%s | Initial: ₱%s | Promo: ₱%s | Reservation: ₱%s\n" .
+        "Total Upfront: ₱%s | Remaining: ₱%s | NEW Demo Fee: ₱%s",
+        "2025-08-05 13:05:48",
+        "Scraper001",
+        number_format($program_tuition_fee, 2),
+        number_format($initial_payment, 2),
+        number_format($promo_discount, 2),
+        number_format($reservation_payment, 2),
+        number_format($total_upfront, 2),
+        number_format($remaining_after_upfront, 2),
+        number_format($new_demo_fee, 2)
+    ));
+
+    // STEP 2: Now allocate excess using the NEW demo fee
+    $allocations = [];
+    $remaining_excess = $excess_amount;
+
+    foreach ($demo_sequence as $index => $demo) {
+        // Get current payment for this demo
+        $current_paid = getCurrentDemoPayment($conn, $student_id, $program_id, $demo);
+        $remaining_for_demo = $new_demo_fee - $current_paid;
+
+        // Skip demos that are already fully paid
+        if ($remaining_for_demo <= 0) {
+            continue;
+        }
+
+        // Stop if no more excess to allocate
+        if ($remaining_excess <= 0) {
+            break;
+        }
+
+        // Calculate how much to allocate to this demo
+        $allocation_amount = min($remaining_excess, $remaining_for_demo);
+        $remaining_excess -= $allocation_amount;
+        $new_balance = $remaining_for_demo - $allocation_amount;
+
+        // IMPORTANT FIX: Create variables for bind_param
+        $status = 'Active';
+        $description = 'Allocation from initial payment excess';
+        $processed_by = 'Scraper001';
+
+        // Insert allocation record with CORRECT demo fee
+        $sql_insert = "INSERT INTO pos_transactions 
+                      (student_id, program_id, learning_mode, payment_type, demo_type, 
+                       cash_received, balance, status, description, processed_by, transaction_date) 
+                      VALUES (?, ?, ?, 'demo_payment', ?, ?, ?, ?, ?, ?, NOW())";
+
+        $stmt = $conn->prepare($sql_insert);
+        $payment_type = 'demo_payment'; // Create a variable for this value
+
+        // Fix bind_param by using variables instead of literals
+        $stmt->bind_param(
+            "iissddss",
+            $student_id,
+            $program_id,
+            $learning_mode,
+            $demo,
+            $allocation_amount,
+            $new_balance,
+            $status,
+            $description,
+            $processed_by
+        );
+        $stmt->execute();
+
+        $allocations[] = [
+            'demo_type' => $demo,
+            'amount' => $allocation_amount,
+            'remaining_balance' => $new_balance,
+            'standard_fee' => $new_demo_fee,
+            'current_paid_before' => $current_paid,
+            'current_paid_after' => $current_paid + $allocation_amount,
+            'fully_paid' => ($new_balance <= 0)
+        ];
+
+        error_log(sprintf(
+            "[%s] Demo Allocation - User: %s\n" .
+            "Demo: %s | Amount: ₱%s | New Balance: ₱%s | New Demo Fee: ₱%s",
+            "2025-08-05 13:05:48",
+            "Scraper001",
+            $demo,
+            number_format($allocation_amount, 2),
+            number_format($new_balance, 2),
+            number_format($new_demo_fee, 2)
+        ));
+    }
+
+    // Return any unallocated excess
+    if ($remaining_excess > 0) {
+        error_log(sprintf(
+            "[%s] Unallocated Excess - User: %s\n" .
+            "Amount: ₱%s - Could not allocate to any demos",
+            "2025-08-05 13:05:48",
+            "Scraper001",
+            number_format($remaining_excess, 2)
+        ));
+    }
+
+    return [
+        'allocations' => $allocations,
+        'remaining_excess' => $remaining_excess,
+        'new_demo_fee' => $new_demo_fee,
+        'original_excess' => $excess_amount
+    ];
+}
+
+// Function to get program details
+function getProgramDetails($conn, $program_id)
+{
+    $sql = "SELECT * FROM program WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $program_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        return $row;
+    }
+
+    return [
+        'program_name' => 'Unknown Program',
+        'initial_fee' => 0,
+        'reservation_fee' => 0,
+        'assesment_fee' => 0,
+        'tuition_fee' => 0,
+        'total_tuition' => 0,
+        'misc_fee' => 0
+    ];
+}
+
+
+
+function getReservationPayment($conn, $student_id, $program_id)
+{
+    $sql = "SELECT SUM(cash_received) as total_paid FROM pos_transactions 
+            WHERE student_id = ? AND program_id = ? AND payment_type = 'reservation'";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $student_id, $program_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    return safe_float($row['total_paid'] ?? 0);
+}
+
+
 function safe_float($value)
 {
     if (is_null($value) || $value === '')
@@ -91,14 +259,17 @@ function getDemoPaymentRequirement($conn, $student_id, $program_id, $demo_type)
     // Get the actual program tuition fee from the program table
     $program_tuition_fee = getProgramTuitionFee($conn, $program_id);
 
+    // Get reservation payment - THIS IS THE MISSING PIECE
+    $reservation_payment = getReservationPayment($conn, $student_id, $program_id);
+
     // CORRECTED CALCULATION:
-    // Total paid initially = initial_payment + promo_discount
-    // Remaining amount = program_tuition_fee - (initial_payment + promo_discount)
+    // Total paid initially = initial_payment + promo_discount + reservation_payment
+    // Remaining amount = program_tuition_fee - (initial_payment + promo_discount + reservation_payment)
     // Demo amount = remaining_amount / 4
 
     $initial_payment = $initial_details['initial_payment'];
     $promo_discount = $initial_details['promo_discount'];
-    $total_paid_initially = $initial_payment + $promo_discount;
+    $total_paid_initially = $initial_payment + $promo_discount + $reservation_payment;
 
     $remaining_after_initial = $program_tuition_fee - $total_paid_initially;
     $demo_amount = $remaining_after_initial / 4;
@@ -150,10 +321,13 @@ function recalculateDemoAmounts($conn, $student_id, $program_id)
     // Get the actual program tuition fee
     $program_tuition_fee = getProgramTuitionFee($conn, $program_id);
 
+    // Get reservation payment - ADD THIS
+    $reservation_payment = getReservationPayment($conn, $student_id, $program_id);
+
     // CORRECTED: Calculate total demo amount using proper formula
     $initial_payment = $initial_details['initial_payment'];
     $promo_discount = $initial_details['promo_discount'];
-    $total_paid_initially = $initial_payment + $promo_discount;
+    $total_paid_initially = $initial_payment + $promo_discount + $reservation_payment;
     $total_demo_amount = $program_tuition_fee - $total_paid_initially;
 
     // Get current payments for each demo
@@ -223,43 +397,73 @@ function getCurrentDemoPayment($conn, $student_id, $program_id, $demo_type)
 }
 
 // Function to process excess allocation for demo payments
-function processExcessAllocationForDemo($conn, $student_id, $program_id, $current_demo_type, $excess_amount, $payment_amount)
+function processExcessAllocationForDemo($conn, $student_id, $program_id, $current_demo_type, $excess_amount, $payment_amount, $learning_mode)
 {
     // Define demo sequence
     $demo_sequence = ['demo1', 'demo2', 'demo3', 'demo4'];
-    $current_demo_index = array_search($current_demo_type, $demo_sequence);
 
-    if ($current_demo_index === false) {
-        return false;
-    }
+    // CRITICAL: Get ALL upfront payments
+    $program_tuition_fee = getProgramTuitionFee($conn, $program_id);
+    $initial_details = getInitialPaymentDetails($conn, $student_id, $program_id);
+    $reservation_payment = getReservationPayment($conn, $student_id, $program_id);
+    $promo_discount = $initial_details['promo_discount'] ?? 0;
 
-    // Check if we need recalculation due to partial payments
-    $has_partial_payments = hasPartiallyPaidDemos($conn, $student_id, $program_id);
-    $demo_requirements = [];
+    // FIXED: Calculate total upfront payments
+    $total_upfront = ($initial_details['initial_payment'] ?? 0) + $promo_discount + $reservation_payment;
 
-    if ($has_partial_payments) {
-        $recalculation = recalculateDemoAmounts($conn, $student_id, $program_id);
-        $demo_requirements = $recalculation['demo_amounts'];
-    } else {
-        // Use standard calculation for all demos
-        foreach ($demo_sequence as $demo) {
-            $demo_requirements[$demo] = getDemoPaymentRequirement($conn, $student_id, $program_id, $demo);
+    // Calculate all demo payments made so far
+    $demo_payments = 0;
+    foreach ($demo_sequence as $demo) {
+        if ($demo != $current_demo_type) { // Exclude current demo
+            $demo_payments += getCurrentDemoPayment($conn, $student_id, $program_id, $demo);
         }
     }
+
+    // FIXED: Calculate remaining amount after ALL upfront payments and previous demo payments
+    // But excluding the current demo's previous payments and current payment
+    $remaining = $program_tuition_fee - $total_upfront - $demo_payments;
+
+    // Calculate remaining demos count (excluding current demo and fully paid demos)
+    $remaining_demos = 0;
+    foreach ($demo_sequence as $demo) {
+        if ($demo != $current_demo_type) {
+            $current_paid = getCurrentDemoPayment($conn, $student_id, $program_id, $demo);
+            $demo_fee = ($program_tuition_fee - $total_upfront) / 4;
+
+            if ($current_paid < $demo_fee) {
+                $remaining_demos++;
+            }
+        }
+    }
+
+    // If no remaining demos, can't allocate excess
+    if ($remaining_demos == 0) {
+        return [
+            'allocations' => [],
+            'remaining_excess' => $excess_amount,
+            'reason' => 'No unpaid demos remaining for allocation'
+        ];
+    }
+
+    // Calculate standard demo fee for remaining demos
+    $standard_demo_fee = $remaining / ($remaining_demos + 1); // +1 for current demo
 
     $remaining_excess = $excess_amount;
     $allocations = [];
 
-    // Start from the next demo after current
-    for ($i = $current_demo_index + 1; $i < count($demo_sequence) && $remaining_excess > 0; $i++) {
-        $next_demo = $demo_sequence[$i];
+    // First, try to allocate to unpaid demos
+    foreach ($demo_sequence as $demo) {
+        // Skip current demo
+        if ($demo == $current_demo_type) {
+            continue;
+        }
 
         // Get current payment for this demo
-        $current_paid = getCurrentDemoPayment($conn, $student_id, $program_id, $next_demo);
-        $demo_requirement = $demo_requirements[$next_demo];
+        $current_paid = getCurrentDemoPayment($conn, $student_id, $program_id, $demo);
+        $demo_requirement = ($program_tuition_fee - $total_upfront) / 4;
         $remaining_balance = $demo_requirement - $current_paid;
 
-        if ($remaining_balance > 0) {
+        if ($remaining_balance > 0 && $remaining_excess > 0) {
             // Calculate how much to allocate to this demo
             $allocation_amount = min($remaining_excess, $remaining_balance);
 
@@ -267,23 +471,25 @@ function processExcessAllocationForDemo($conn, $student_id, $program_id, $curren
             $sql_insert = "INSERT INTO pos_transactions 
                           (student_id, program_id, learning_mode, payment_type, demo_type, 
                            cash_received, balance, status, description, processed_by, transaction_date) 
-                          VALUES (?, ?, '', 'demo_payment', ?, ?, ?, 'Active', 
-                                  'Excess allocation from demo payment', 'System', NOW())";
+                          VALUES (?, ?, ?, 'demo_payment', ?, ?, ?, 'Active', 
+                                  'Excess allocation from demo payment', ?, NOW())";
 
             $stmt = $conn->prepare($sql_insert);
             $new_balance = $remaining_balance - $allocation_amount;
             $stmt->bind_param(
-                "iisdd",
+                "iissddss",
                 $student_id,
                 $program_id,
-                $next_demo,
+                $learning_mode,
+                $demo,
                 $allocation_amount,
-                $new_balance
+                $new_balance,
+                "Scraper001"
             );
             $stmt->execute();
 
             $allocations[] = [
-                'demo_type' => $next_demo,
+                'demo_type' => $demo,
                 'amount' => $allocation_amount,
                 'remaining_balance' => $new_balance,
                 'demo_requirement' => $demo_requirement,
@@ -292,13 +498,30 @@ function processExcessAllocationForDemo($conn, $student_id, $program_id, $curren
             ];
 
             $remaining_excess -= $allocation_amount;
+
+            // Log allocation
+            error_log(sprintf(
+                "[%s] Demo Excess Allocation - User: %s\n" .
+                "From Demo: %s | To Demo: %s | Amount: ₱%s | New Balance: ₱%s",
+                date('Y-m-d H:i:s'),
+                "Scraper001",
+                $current_demo_type,
+                $demo,
+                number_format($allocation_amount, 2),
+                number_format($new_balance, 2)
+            ));
+
+            // If no more excess, stop allocating
+            if ($remaining_excess <= 0) {
+                break;
+            }
         }
     }
 
     return [
         'allocations' => $allocations,
         'remaining_excess' => $remaining_excess,
-        'demo_requirements' => $demo_requirements
+        'standard_demo_fee' => $standard_demo_fee
     ];
 }
 
@@ -413,6 +636,124 @@ try {
 
         $response['success'] = true;
 
+    } else if ($payment_type === 'initial_payment') {
+        // Process initial payment logic
+
+        // Calculate program tuition and get details
+        $program_tuition_fee = getProgramTuitionFee($conn, $program_id);
+        $initial_details_before = getInitialPaymentDetails($conn, $student_id, $program_id);
+        $reservation_payment = getReservationPayment($conn, $student_id, $program_id);
+        $promo_applied = isset($initial_details_before) ? ($initial_details_before['promo_discount'] ?? 0) : 0;
+        // Get initial payment requirements
+        $required_initial_amount = 0;
+        if (
+            isset($currentPackage) && isset($currentPackage['selection_type']) &&
+            $currentPackage['selection_type'] > 2 && isset($currentPackage['custom_initial_payment'])
+        ) {
+            $required_initial_amount = floatval($currentPackage['custom_initial_payment']);
+        } else {
+            // Get program details for standard initial payment
+            $program_details = getProgramDetails($conn, $program_id);
+            $required_initial_amount = $program_details['initial_fee'] ?? 0;
+        }
+
+        // Calculate how much to apply to initial payment and how much is excess
+        $applied_to_initial = min($payment_amount, $required_initial_amount);
+        $excess_amount = $payment_amount - $applied_to_initial;
+
+        // STEP 1: Insert the main initial payment record
+        $sql = "INSERT INTO pos_transactions 
+       (student_id, program_id, learning_mode, payment_type, selected_schedules,
+        total_amount, cash_received, change_amount, credit_amount, balance, subtotal, promo_discount,
+        status, enrollment_status, description, processed_by, transaction_date) 
+       VALUES (?, ?, ?, 'initial_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'Active', 'Enrolled', 
+               'Initial payment processed', ?, NOW())";
+
+        // Prepare the statement for the initial payment
+        $stmt = $conn->prepare($sql);
+        $change_amount = 0;
+        $balance = 0;
+        $processed_by = "Scraper001";
+
+        // CORRECT: Using variables for all parameters
+        $stmt->bind_param(
+            "iisssdddddss",
+            $student_id,
+            $program_id,
+            $learning_mode,
+            $selected_schedules,
+            $payment_amount,
+            $applied_to_initial,
+            $change_amount,
+            $required_initial_amount,
+            $balance,
+            $program_tuition_fee,
+            $promo_applied,
+            $processed_by
+        );
+        $stmt->execute();
+
+        // Log the initial payment
+        error_log(sprintf(
+            "[%s] Initial Payment Processed - User: %s\n" .
+            "Student ID: %s | Program ID: %s | Payment: ₱%s | Applied: ₱%s | Excess: ₱%s",
+            "2025-08-05 11:19:41",
+            "Scraper001",
+            $student_id,
+            $program_id,
+            number_format($payment_amount, 2),
+            number_format($applied_to_initial, 2),
+            number_format($excess_amount, 2)
+        ));
+
+        // STEP 2: Now handle excess payment if it exists - USING THE RECALCULATED DEMO FEES
+        if ($excess_amount > 0) {
+            // Get the updated initial details AFTER inserting the initial payment
+            $initial_details_after = getInitialPaymentDetails($conn, $student_id, $program_id);
+
+            // Calculate the NEW demo fees before allocating excess
+            $initial_payment_after = $initial_details_after['initial_payment'] ?? 0;
+            $promo_discount = $initial_details_after['promo_discount'] ?? 0;
+            $total_upfront = $initial_payment_after + $promo_discount + $reservation_payment;
+            $remaining_for_demos = $program_tuition_fee - $total_upfront;
+            $new_demo_fee = $remaining_for_demos / 4;
+
+            // Log the recalculation
+            error_log(sprintf(
+                "[%s] Demo Fee Recalculation - User: %s\n" .
+                "Before Initial: ₱%s per demo | After Initial: ₱%s per demo\n" .
+                "Total Tuition: ₱%s | Initial: ₱%s | Promo: ₱%s | Reservation: ₱%s",
+                "2025-08-05 11:19:41",
+                "Scraper001",
+                number_format(($program_tuition_fee - ($initial_details_before['initial_payment'] ?? 0) - ($initial_details_before['promo_discount'] ?? 0) - $reservation_payment) / 4, 2),
+                number_format($new_demo_fee, 2),
+                number_format($program_tuition_fee, 2),
+                number_format($initial_payment_after, 2),
+                number_format($promo_discount, 2),
+                number_format($reservation_payment, 2)
+            ));
+
+            // Now process the excess allocation with the NEW demo fee
+            $allocation_result = processExcessFromInitialPayment(
+                $conn,
+                $student_id,
+                $program_id,
+                $excess_amount,
+                $learning_mode
+            );
+
+            $response['data']['allocation_result'] = $allocation_result;
+            $response['data']['old_demo_fee'] = ($program_tuition_fee - ($initial_details_before['initial_payment'] ?? 0) - ($initial_details_before['promo_discount'] ?? 0) - $reservation_payment) / 4;
+            $response['data']['new_demo_fee'] = $new_demo_fee;
+            $response['data']['timestamp'] = '2025-08-05 11:19:41';
+            $response['data']['user'] = 'Scraper001';
+            $response['message'] = 'Initial payment processed with excess allocation to demos.';
+        } else {
+            $response['message'] = 'Initial payment processed successfully without excess.';
+        }
+
+        // Return success
+        $response['success'] = true;
     } else {
         // Handle other payment types (initial_payment, etc.)
         $response['message'] = 'Processing ' . $payment_type . ' payment...';
@@ -427,6 +768,19 @@ try {
     $response['success'] = false;
     $response['message'] = 'Error processing payment: ' . $e->getMessage();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Display current payment status summary
 function getPaymentSummary($conn, $student_id, $program_id)

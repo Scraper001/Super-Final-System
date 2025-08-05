@@ -2995,9 +2995,9 @@ if (isset($_GET['student_id'])) {
         const calculateTotal = (program, package) => {
             let subtotal = parseFloat(program.total_tuition || 0);
             <?php if ($promo_is_showing > 0) { ?>
-                    let discount = <?php echo $row_promo['enrollment_fee'] ?>;
+                let discount = <?php echo $row_promo['enrollment_fee'] ?>;
             <?php } else { ?>
-                    let discount = 0;
+                let discount = 0;
             <?php } ?>
             // Calculate discount if promo/package is selected
             if (package && (package.package_name !== 'Regular Package')) {
@@ -4138,9 +4138,11 @@ if (isset($_GET['student_id'])) {
 
 
             // You can use a different backend here if needed
+            // Change the routing logic in your form submission
             let ajaxUrl = 'functions/ajax/process_enrollment.php';
-            // Example: route to another backend if excess demo payment
-            if (paymentType === 'demo_payment' && excessData) {
+
+            // Route BOTH demo and initial payments with excess to the fixed processor
+            if (excessData && (paymentType === 'demo_payment' || paymentType === 'initial_payment')) {
                 ajaxUrl = 'functions/ajax/process_excess_demo_enrollment.php';
             }
 

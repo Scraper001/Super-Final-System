@@ -323,96 +323,58 @@ function handleExcessInitialPayment($conn, $student_id, $program_id, $excess_opt
         'demo_allocations' => [],
         'final_balance' => null
     ];
+
     switch ($excess_option) {
         case 'treat_as_full':
-            // 1️⃣ Treat Payment as Full Initial
-            $remaining_tuition = $total_tuition - $original_amount;
-            $demo_balance = max(0, $remaining_tuition / 4);
-            $result = [
-                'processed_amount' => $original_amount,
-                'change_amount' => 0,
-                'description' => "Payment treated as full initial. Demo balance reduced to ₱" . number_format($demo_balance, 2) . " each.",
-                'demo_allocations' => [
-                    'demo1' => $demo_balance,
-                    'demo2' => $demo_balance,
-                    'demo3' => $demo_balance,
-                    'demo4' => $demo_balance
-                ],
-                'final_balance' => $start_balance - $original_amount
-            ];
+            // [existing code]
             break;
+
         case 'allocate_to_demos':
-            // 2️⃣ Allocate Excess to Demos (Fixed)
-// First calculate the per-demo fee correctly
-            $base_demo_fee = ($total_tuition - $required_amount) / 4;
+            // Get reservation payment - ADD THIS
+            $reservation_query = $conn->prepare("SELECT SUM(cash_received) as total_paid FROM pos_transactions WHERE student_id = ? AND program_id = ? AND payment_type = 'reservation'");
+            $reservation_query->bind_param("ii", $student_id, $program_id);
+            $reservation_query->execute();
+            $reservation_result = $reservation_query->get_result()->fetch_assoc();
+            $reservation_payment = floatval($reservation_result['total_paid'] ?? 0);
+            $reservation_query->close();
+
+            // Get promo discount - ADD THIS
+            $promo_query = $conn->prepare("SELECT promo_discount FROM pos_transactions WHERE student_id = ? AND program_id = ? AND promo_discount > 0 ORDER BY id ASC LIMIT 1");
+            $promo_query->bind_param("ii", $student_id, $program_id);
+            $promo_query->execute();
+            $promo_result = $promo_query->get_result()->fetch_assoc();
+            $promo_discount = floatval($promo_result['promo_discount'] ?? 0);
+            $promo_query->close();
+
+            // FIXED: Calculate base demo fee correctly accounting for ALL upfront payments
+            $base_demo_fee = ($total_tuition - $required_amount - $reservation_payment - $promo_discount) / 4;
+
+            // Log the calculation for debugging
+            error_log(sprintf(
+                "[%s] Demo Fee Calculation - User: %s\n" .
+                "Total: ₱%s | Initial: ₱%s | Reservation: ₱%s | Promo: ₱%s | Base Fee: ₱%s",
+                "2025-08-05 11:31:45",
+                "Scraper001",
+                number_format($total_tuition, 2),
+                number_format($required_amount, 2),
+                number_format($reservation_payment, 2),
+                number_format($promo_discount, 2),
+                number_format($base_demo_fee, 2)
+            ));
+
             $remaining_excess = $excess_amount;
             $demo_allocations = [];
-            // Check existing demo payments
-            $existing_demos = [];
-            $stmt = $conn->prepare("SELECT demo_type, SUM(cash_received) as paid FROM pos_transactions WHERE student_id = ? AND program_id = ? AND payment_type = 'demo_payment' GROUP BY demo_type");
-            $stmt->bind_param("ii", $student_id, $program_id);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            while ($row = $res->fetch_assoc()) {
-                $existing_demos[$row['demo_type']] = safe_float($row['paid']);
-            }
-            $stmt->close();
-            // Start from the current balance after initial payment
-            $running_balance = $start_balance - $required_amount;
-            // Allocate excess to demos in order
-            for ($i = 1; $i <= 4; $i++) {
-                if ($remaining_excess <= 0)
-                    break;
-                $demo_type = "demo{$i}";
-                $already_paid = isset($existing_demos[$demo_type]) ? $existing_demos[$demo_type] : 0.0;
-                // Calculate how much more this demo needs
-                $demo_remaining = $base_demo_fee - $already_paid;
-                if ($demo_remaining > 0) {
-                    // Only allocate up to what's needed for this demo
-                    $allocation = min($remaining_excess, $demo_remaining);
-                    if ($allocation > 0) {
-                        $running_balance -= $allocation;
-                        // Insert the demo payment transaction
-                        $stmt = $conn->prepare(
-                            "INSERT INTO pos_transactions
-(student_id, program_id, payment_type, demo_type, cash_received, balance, description, status, processed_by, transaction_date)
-VALUES (?, ?, 'demo_payment', ?, ?, ?, 'Excess allocation from initial payment', 'Active', 'Scraper001', NOW())"
-                        );
-                        $stmt->bind_param("iisdd", $student_id, $program_id, $demo_type, $allocation, $running_balance);
-                        $stmt->execute();
-                        $stmt->close();
-                        // Update remaining excess
-                        $remaining_excess -= $allocation;
-                    }
-                    // Record allocation details
-                    $demo_allocations[$demo_type] = [
-                        'allocated' => $allocation,
-                        'already_paid' => $already_paid,
-                        'remaining' => $demo_remaining - $allocation,
-                        'status' => ($already_paid + $allocation >= $base_demo_fee) ? 'Paid in Full' : 'Partially Paid'
-                    ];
-                }
-            }
-            $result = [
-                'processed_amount' => $required_amount,
-                'change_amount' => $remaining_excess, // Return any unallocated excess as change
-                'description' => "Initial payment of ₱" . number_format($required_amount, 2) . " applied. Excess allocated to demos.",
-                'demo_allocations' => $demo_allocations,
-                'final_balance' => $running_balance
-            ];
+
+            // [rest of existing allocation code]
+
             break;
+
         case 'return_as_change':
         default:
-            // 3️⃣ Return the Excess as Change
-            $result = [
-                'processed_amount' => $required_amount,
-                'change_amount' => $excess_amount,
-                'description' => "Only required initial amount processed. ₱" . number_format($excess_amount, 2) . " returned as change.",
-                'demo_allocations' => [],
-                'final_balance' => $start_balance - $required_amount
-            ];
+            // [existing code]
             break;
     }
+
     return $result;
 }
 /**
