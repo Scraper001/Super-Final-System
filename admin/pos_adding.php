@@ -1411,6 +1411,7 @@ if (isset($_GET['student_id'])) {
 <script>
     var enrollmentLocked = <?= $enrollment_locked ? 'true' : 'false' ?>;
 
+    // FIXED: Enhanced balance calculation with better error handling
     window.addEventListener('load', () => {
         const totalField = document.getElementById('totalAmountDisplay');
         const creditField = document.getElementById('credit_Bal');
@@ -1418,31 +1419,37 @@ if (isset($_GET['student_id'])) {
 
         // Check if all required elements exist
         if (!totalField || !creditField || !remainField) {
-            console.error('One or more required elements not found');
-            console.error('totalField:', totalField);
-            console.error('creditField:', creditField);
-            console.error('remainField:', remainField);
+            console.error('Balance calculation elements missing:', {
+                totalField: !!totalField,
+                creditField: !!creditField,
+                remainField: !!remainField
+            });
+            if (remainField) {
+                remainField.textContent = "Elements missing";
+                remainField.style.color = "#dc2626";
+            }
             return;
         }
 
         try {
-            // Clean and parse numbers (remove peso signs, commas, and extra spaces)
-            const totalText = totalField.textContent.replace(/[₱,\s]/g, '');
-            const creditText = creditField.textContent.replace(/[₱,\s]/g, '');
+            // FIXED: More robust text extraction
+            const totalText = (totalField.textContent || totalField.innerText || '0').replace(/[₱,\s]/g, '');
+            const creditText = (creditField.textContent || creditField.innerText || '0').replace(/[₱,\s]/g, '');
 
             // FIXED: Only apply promo discount if there's actually a promo package selected
             let promoDiscount = 0;
 
-            // Check if currentPackage exists and is not regular
-            if (typeof currentPackage !== 'undefined' && currentPackage &&
+            // Check multiple ways to determine if promo is active
+            const hasPromoPackage = (typeof currentPackage !== 'undefined' && currentPackage &&
                 currentPackage.package_name &&
                 currentPackage.package_name !== 'Regular Package' &&
-                currentPackage.package_name !== 'Regular') {
+                currentPackage.package_name !== 'Regular');
 
-                // Only then look for promo discount in the DOM
+            if (hasPromoPackage) {
+                // Look for promo discount in the DOM
                 const promoInfo = document.getElementById('promoInfo');
-                if (promoInfo && promoInfo.style.display !== 'none') {
-                    const fullPromoText = promoInfo.textContent;
+                if (promoInfo && promoInfo.style.display !== 'none' && promoInfo.offsetParent !== null) {
+                    const fullPromoText = promoInfo.textContent || promoInfo.innerText || '';
                     const discountMatch = fullPromoText.match(/₱([\d,]+(?:\.\d{2})?)/);
                     if (discountMatch) {
                         const discountText = discountMatch[1].replace(/,/g, '');
@@ -1452,15 +1459,22 @@ if (isset($_GET['student_id'])) {
             }
 
             console.log("================================================");
-            console.log("Raw total:", totalField.textContent);
+            console.log("FIXED Balance Calculation Debug:");
+            console.log("Raw total:", totalField.textContent || totalField.innerText);
             console.log("Cleaned total:", totalText);
-            console.log("Raw credit:", creditField.textContent);
+            console.log("Raw credit:", creditField.textContent || creditField.innerText);
             console.log("Cleaned credit:", creditText);
-            console.log("Current Package:", currentPackage ? currentPackage.package_name : 'No package selected');
+            console.log("Has Promo Package:", hasPromoPackage);
+            console.log("Current Package:", typeof currentPackage !== 'undefined' ? currentPackage : 'undefined');
             console.log("Promo Discount Applied:", promoDiscount);
 
-            const total = parseFloat(totalText) || 0;
-            const credit = parseFloat(creditText) || 0;
+            // Parse numbers with validation
+            const total = isNaN(parseFloat(totalText)) ? 0 : parseFloat(totalText);
+            const credit = isNaN(parseFloat(creditText)) ? 0 : parseFloat(creditText);
+
+            console.log("Parsed Total:", total);
+            console.log("Parsed Credit:", credit);
+            console.log("Final Promo Discount:", promoDiscount);
 
             // FIXED: Only subtract promo discount if it's actually applied
             let remaining = total - credit - promoDiscount;
@@ -1468,14 +1482,11 @@ if (isset($_GET['student_id'])) {
             // Fix floating point precision issues
             remaining = Math.round(remaining * 100) / 100;
 
-            console.log("Parsed Total:", total);
-            console.log("Parsed Credit:", credit);
-            console.log("Final Promo Discount:", promoDiscount);
             console.log("Calculated Remaining:", remaining);
 
-            // Handle different scenarios
+            // Handle different scenarios with better validation
             if (Math.abs(remaining) < 0.01) {
-                // Balance is essentially zero (accounting for floating point errors)
+                // Balance is essentially zero
                 remainField.textContent = "0.00";
                 remainField.style.color = "green";
                 remainField.style.fontWeight = "bold";
@@ -1484,7 +1495,7 @@ if (isset($_GET['student_id'])) {
             } else if (remaining < 0) {
                 // Student has overpaid - show credit balance
                 const creditAmount = Math.abs(remaining);
-                remainField.innerHTML = `0.00 <span style="color: #059669; font-size: 0.9em;"></span>`;
+                remainField.innerHTML = `0.00 <span style="color: #059669; font-size: 0.9em;">(Credit: ₱${creditAmount.toFixed(2)})</span>`;
                 remainField.style.color = "green";
                 remainField.style.fontWeight = "bold";
                 console.log("Status: OVERPAID - Credit balance:", creditAmount.toFixed(2));
@@ -1498,15 +1509,54 @@ if (isset($_GET['student_id'])) {
             }
 
             console.log("Final Display:", remainField.textContent || remainField.innerHTML);
+            console.log("Calculation completed successfully");
             console.log("================================================");
 
         } catch (error) {
-            console.error('Error calculating balance:', error);
-            remainField.textContent = "Error calculating balance";
+            console.error('FIXED: Error in balance calculation:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                totalField: totalField ? totalField.textContent : 'null',
+                creditField: creditField ? creditField.textContent : 'null'
+            });
+
+            remainField.textContent = "Calculation error";
             remainField.style.color = "#dc2626";
+            remainField.title = "Error: " + error.message;
         }
     });
 
+    // FIXED: Add fallback calculation function
+    function recalculateBalance() {
+        console.log("Manual balance recalculation triggered");
+        window.dispatchEvent(new Event('load'));
+    }
+
+    // FIXED: Monitor for DOM changes that might affect balance
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                    const target = mutation.target;
+                    if (target && (target.id === 'totalAmountDisplay' || target.id === 'credit_Bal' || target.id === 'promoInfo')) {
+                        console.log("DOM change detected, recalculating balance");
+                        setTimeout(recalculateBalance, 100); // Small delay to let DOM settle
+                    }
+                }
+            });
+        });
+
+        // Start observing
+        const container = document.getElementById('receiptSection');
+        if (container) {
+            observer.observe(container, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
+    }
 
     // Optional: Add a function to format currency properly
     function formatCurrency(amount) {
@@ -3313,6 +3363,7 @@ if (isset($_GET['student_id'])) {
             const paymentType = $('input[name="type_of_payment"]:checked').val();
             const demoType = $('#demoSelect').val();
             let amount = 0;
+            let isUserEditable = false;
 
             if (!currentProgram) return;
 
@@ -3344,6 +3395,7 @@ if (isset($_GET['student_id'])) {
                         const totalPaid = parseFloat($('#credit_Bal').text().replace(/[₱,\s]/g, '')) || 0;
                         amount = Math.max(0, totalRequired - totalPaid);
                     }
+                    isUserEditable = false; // Keep full payment auto-calculated
                     break;
 
                 case 'initial_payment':
@@ -3352,6 +3404,7 @@ if (isset($_GET['student_id'])) {
                     } else {
                         amount = parseFloat(currentProgram.initial_fee || 0);
                     }
+                    isUserEditable = true; // FIXED: Make initial payment editable
                     break;
 
                 case 'demo_payment':
@@ -3365,32 +3418,72 @@ if (isset($_GET['student_id'])) {
                     } else {
                         amount = calculateDemoFeeJS();
                     }
+                    isUserEditable = true; // FIXED: Make demo payment editable
                     break;
 
                 case 'reservation':
                     amount = parseFloat(currentProgram.reservation_fee || 0);
+                    isUserEditable = false; // Keep reservation auto-calculated
                     break;
             }
 
-            // FIXED: Only auto-fill if the field is empty or user hasn't manually entered a value
+            // FIXED: Handle editable vs auto-fill behavior
             const currentTotalPayment = parseFloat($('#totalPayment').val()) || 0;
             const userHasModified = $('#totalPayment').data('user-modified') === true;
+            const $totalPaymentField = $('#totalPayment');
+            const $cashToPayField = $('#cashToPay');
 
-            if (!userHasModified || currentTotalPayment === 0) {
-                $('#totalPayment').val(amount.toFixed(2));
-                $('#cashToPay').val(amount.toFixed(2));
+            if (isUserEditable) {
+                // FIXED: Make fields editable for initial and demo payments
+                $totalPaymentField.prop('readonly', false);
+                $totalPaymentField.css({
+                    'background-color': '#ffffff',
+                    'border': '2px solid #3b82f6',
+                    'cursor': 'text'
+                });
 
-                console.log(`[2025-08-05 14:55:59] Scraper001: Auto-filled payment amount: ₱${amount.toFixed(2)}`);
+                // Add visual indicator that field is editable
+                if ($('#editableIndicator').length === 0) {
+                    $totalPaymentField.after(`
+                <div id="editableIndicator" style="font-size: 11px; color: #3b82f6; margin-top: 2px;">
+                    <i class="fa-solid fa-edit"></i> Editable for allocation testing
+                </div>
+            `);
+                }
+
+                // Set default value if not modified
+                if (!userHasModified || currentTotalPayment === 0) {
+                    $totalPaymentField.val(amount.toFixed(2));
+                    $cashToPayField.val(amount.toFixed(2));
+                    console.log(`[${new Date().toISOString()}] Scraper001: Auto-filled editable payment: ₱${amount.toFixed(2)}`);
+                } else {
+                    // User has manually modified, just update cash to pay
+                    $cashToPayField.val($totalPaymentField.val());
+                    console.log(`[${new Date().toISOString()}] Scraper001: User modified amount preserved: ₱${currentTotalPayment.toFixed(2)}`);
+                }
+
             } else {
-                // User has manually modified, just update cash to pay to match total payment
-                $('#cashToPay').val($('#totalPayment').val());
+                // FIXED: Keep auto-calculated fields read-only
+                $totalPaymentField.prop('readonly', true);
+                $totalPaymentField.css({
+                    'background-color': '#f3f4f6',
+                    'border': '2px solid #d1d5db',
+                    'cursor': 'not-allowed'
+                });
 
-                console.log(`[2025-08-05 14:55:59] Scraper001: User modified amount preserved: ₱${currentTotalPayment.toFixed(2)}`);
+                // Remove editable indicator
+                $('#editableIndicator').remove();
+
+                // Always auto-fill for non-editable payment types
+                $totalPaymentField.val(amount.toFixed(2));
+                $cashToPayField.val(amount.toFixed(2));
+
+                console.log(`[${new Date().toISOString()}] Scraper001: Auto-calculated payment: ₱${amount.toFixed(2)}`);
             }
 
             // Calculate change
             const cash = parseFloat($('#cash').val()) || 0;
-            const cashToPay = parseFloat($('#cashToPay').val()) || 0;
+            const cashToPay = parseFloat($cashToPayField.val()) || 0;
             const change = Math.max(0, cash - cashToPay);
             $('#change').val(change.toFixed(2));
 
@@ -3430,6 +3523,58 @@ if (isset($_GET['student_id'])) {
 
             return true;
         }
+
+
+
+
+        function validateDemoPaymentAgainstTotalBalance() {
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
+            const demoType = $('#demoSelect').val();
+            const paymentAmount = parseFloat($('#totalPayment').val()) || 0;
+
+            if (paymentType !== 'demo_payment' || !demoType || paymentAmount <= 0) {
+                return { valid: true };
+            }
+
+            // Get total remaining balance from the display
+            const remainingBalanceElement = document.getElementById('remainingBalance');
+            let totalRemainingBalance = 0;
+
+            if (remainingBalanceElement && remainingBalanceElement.textContent) {
+                const balanceText = remainingBalanceElement.textContent.replace(/[₱,\s]/g, '');
+                totalRemainingBalance = parseFloat(balanceText) || 0;
+            }
+
+            console.log(`[2025-08-11 01:18:56] Balance Check - User: Scraper001
+        Demo Payment: ₱${paymentAmount.toFixed(2)}
+        Total Remaining Balance: ₱${totalRemainingBalance.toFixed(2)}`);
+
+            // If payment exceeds total balance, calculate what should be applied vs returned as change
+            if (paymentAmount > totalRemainingBalance && totalRemainingBalance > 0) {
+                const excessOverBalance = paymentAmount - totalRemainingBalance;
+
+                console.log(`[2025-08-11 01:18:56] Excess over total balance detected - User: Scraper001
+            Payment Amount: ₱${paymentAmount.toFixed(2)}
+            Total Balance: ₱${totalRemainingBalance.toFixed(2)}
+            Excess: ₱${excessOverBalance.toFixed(2)}`);
+
+                return {
+                    valid: true,
+                    hasExcessOverBalance: true,
+                    paymentAmount: paymentAmount,
+                    totalBalance: totalRemainingBalance,
+                    amountToApply: totalRemainingBalance,
+                    changeAmount: excessOverBalance,
+                    description: `Payment of ₱${paymentAmount.toFixed(2)} exceeds total balance of ₱${totalRemainingBalance.toFixed(2)}. ₱${totalRemainingBalance.toFixed(2)} will be applied to complete all payments, ₱${excessOverBalance.toFixed(2)} will be returned as change.`
+                };
+            }
+
+            return { valid: true };
+        }
+
+
+
+
 
         // FIXED: Display proper options for excess demo payment
         async function handleDemoExcessPayment(paymentAmount, requiredAmount, demoType) {
@@ -4218,6 +4363,10 @@ if (isset($_GET['student_id'])) {
             // Reset the user-modified flag when changing payment types
             $('#totalPayment').data('user-modified', false);
 
+            // Remove indicators
+            $('#editableIndicator').remove();
+            $('#allocationPreview').remove();
+
             const paymentType = $(this).val();
             const currentDemoSelection = $('#demoSelect').val();
 
@@ -4245,6 +4394,7 @@ if (isset($_GET['student_id'])) {
                 <div id="demoInstructionMsg" class="bg-blue-100 border border-blue-400 text-blue-700 px-3 py-2 rounded mt-2 text-sm">
                     <i class="fa-solid fa-info-circle mr-2"></i>
                     <strong>Instructions:</strong> Please select which demo you want to pay for from the dropdown above.
+                    <br><small>💡 You can enter more than the required amount to test allocation functionality</small>
                 </div>
             `);
                 }
@@ -4263,6 +4413,19 @@ if (isset($_GET['student_id'])) {
                 $('#demoSelectionWarning').remove();
             }
 
+            // Show allocation hint for editable payment types
+            if (paymentType === 'initial_payment') {
+                if ($('#initialPaymentHint').length === 0) {
+                    $('.payment-type-option input[value="initial_payment"]').parent().after(`
+                <div id="initialPaymentHint" style="font-size: 10px; color: #3b82f6; margin-left: 20px; margin-top: 2px;">
+                    💡 Amount is editable - pay more to test excess allocation
+                </div>
+            `);
+                }
+            } else {
+                $('#initialPaymentHint').remove();
+            }
+
             // Validate custom initial payments for options 3-4
             if (paymentType === 'initial_payment' && currentPackage && currentPackage.selection_type > 2) {
                 const customInitial = parseFloat(currentPackage.custom_initial_payment || 0);
@@ -4275,6 +4438,7 @@ if (isset($_GET['student_id'])) {
                     <p><strong>Selection Option:</strong> ${currentPackage.selection_type}</p>
                     <p><strong>Required Initial Payment:</strong> ₱${customInitial.toLocaleString()}</p>
                     <hr style="margin: 10px 0;">
+                    <p style="color: #3b82f6;"><strong>💡 Testing Tip:</strong> You can enter more than ₱${customInitial.toLocaleString()} to test excess allocation functionality!</p>
                     <small>This amount was declared during program setup and cannot be modified.</small>
                 </div>
             `,
@@ -4299,9 +4463,11 @@ if (isset($_GET['student_id'])) {
 
 
 
+
         // Enhanced demo selection change handler with validation
         $('#demoSelect').change(function () {
             $('#totalPayment').data('user-modified', false);
+            $('#allocationPreview').remove();
 
             const selectedDemo = $(this).val();
             const paymentType = $('input[name="type_of_payment"]:checked').val();
@@ -4324,13 +4490,22 @@ if (isset($_GET['student_id'])) {
                 `);
                     }
 
-                    console.log(`[2025-08-05 15:32:30] Scraper001: No demo selected - payment fields cleared`);
+                    console.log(`[${new Date().toISOString()}] Scraper001: No demo selected - payment fields cleared`);
                     return;
                 } else {
                     // Remove warning if demo is selected
                     $('#demoSelectionWarning').remove();
 
-                    console.log(`[2025-08-05 15:32:30] Scraper001: Demo selected: ${selectedDemo}`);
+                    // Add allocation testing hint
+                    if ($('#demoAllocationHint').length === 0) {
+                        $('#demoSelect').after(`
+                    <div id="demoAllocationHint" style="font-size: 10px; color: #059669; margin-top: 2px;">
+                        💡 Pay more than required to test allocation to subsequent demos
+                    </div>
+                `);
+                    }
+
+                    console.log(`[${new Date().toISOString()}] Scraper001: Demo selected: ${selectedDemo}`);
                 }
             }
 
@@ -4338,16 +4513,81 @@ if (isset($_GET['student_id'])) {
                 updatePaymentAmountsEnhanced();
             }, 50);
         });
-
         // ENHANCED: Proper change calculation on input events
-        $('#totalPayment').on('input', function () {
-            const amount = parseFloat($(this).val()) || 0;
-            $('#cashToPay').val(amount.toFixed(2));
+        $('#totalPayment').on('input focus', function () {
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
 
-            const cash = parseFloat($('#cash').val()) || 0;
-            const change = Math.max(0, cash - amount); // Ensure change is never negative
-            $('#change').val(change.toFixed(2));
+            // Only mark as user-modified for editable payment types
+            if (paymentType === 'initial_payment' || paymentType === 'demo_payment') {
+                $(this).data('user-modified', true);
+
+                const amount = parseFloat($(this).val()) || 0;
+                $('#cashToPay').val(amount.toFixed(2));
+
+                console.log(`[${new Date().toISOString()}] Scraper001: User manually set ${paymentType} to: ₱${amount.toFixed(2)}`);
+
+                // Show allocation potential if excess amount
+                const requiredAmount = getRequiredPaymentAmount(paymentType);
+                if (amount > requiredAmount && requiredAmount > 0) {
+                    const excess = amount - requiredAmount;
+
+                    // Remove existing allocation preview
+                    $('#allocationPreview').remove();
+
+                    // Add allocation preview
+                    $(this).after(`
+                <div id="allocationPreview" style="font-size: 11px; color: #059669; margin-top: 2px; padding: 4px; background: #f0fdf4; border-radius: 4px;">
+                    <i class="fa-solid fa-info-circle"></i> Excess: ₱${excess.toFixed(2)} - Will trigger allocation options
+                </div>
+            `);
+                } else {
+                    $('#allocationPreview').remove();
+                }
+
+                // Recalculate change
+                const cash = parseFloat($('#cash').val()) || 0;
+                const change = Math.max(0, cash - amount);
+                $('#change').val(change.toFixed(2));
+            }
         });
+
+        function getRequiredPaymentAmount(paymentType) {
+            if (!currentProgram) return 0;
+
+            switch (paymentType) {
+                case 'initial_payment':
+                    if (currentPackage && currentPackage.selection_type > 2 && currentPackage.custom_initial_payment) {
+                        return parseFloat(currentPackage.custom_initial_payment);
+                    } else {
+                        return parseFloat(currentProgram.initial_fee || 0);
+                    }
+
+                case 'demo_payment':
+                    const demoType = $('#demoSelect').val();
+                    if (demoType) {
+                        const selectedOption = $('#demoSelect').find(`option[value="${demoType}"]`);
+                        if (selectedOption.length) {
+                            return parseFloat(selectedOption.data('remaining')) || calculateDemoFeeJS();
+                        }
+                    }
+                    return calculateDemoFeeJS();
+
+                case 'full_payment':
+                    const remainingBalanceElement = document.getElementById('remainingBalance');
+                    if (remainingBalanceElement && remainingBalanceElement.textContent) {
+                        const balanceText = remainingBalanceElement.textContent.replace(/[₱,\s]/g, '');
+                        return parseFloat(balanceText) || 0;
+                    }
+                    return 0;
+
+                case 'reservation':
+                    return parseFloat(currentProgram.reservation_fee || 0);
+
+                default:
+                    return 0;
+            }
+        }
+
 
         $('#cash').on('input', function () {
             const cash = parseFloat($(this).val()) || 0;
@@ -4487,56 +4727,128 @@ if (isset($_GET['student_id'])) {
 
 
         // FIXED: Form submission with guaranteed excess allocation functionality
-        $('#posForm').submit(async function (e) {
-            e.preventDefault();
-            syncHiddenSchedule();
+$('#posForm').submit(async function (e) {
+    e.preventDefault();
+    syncHiddenSchedule();
 
-            // Validate demo selection
-            if (!validateDemoSelection()) {
-                return false;
-            }
+    // Validate demo selection
+    if (!validateDemoSelection()) {
+        return false;
+    }
 
-            // Get form values
-            const paymentType = $('input[name="type_of_payment"]:checked').val();
-            const totalPayment = parseFloat($('#totalPayment').val()) || 0;
-            const demoType = $('#demoSelect').val();
-            const studentId = $('input[name="student_id"]').val() || "";
-            const programId = $('#programSelect').val() || "";
-            const cash = parseFloat($('#cash').val()) || 0;
+    // FIXED: Check if demo payment exceeds total balance
+    const balanceCheck = validateDemoPaymentAgainstTotalBalance();
+    if (balanceCheck.hasExcessOverBalance) {
+        const confirmResult = await Swal.fire({
+            icon: 'question',
+            title: 'Payment Exceeds Total Balance',
+            html: `
+                <div style="text-align: left; padding: 10px;">
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h4 style="margin: 0 0 10px 0; color: #856404;">
+                            <i class="fa-solid fa-exclamation-triangle"></i> Payment Amount Check
+                        </h4>
+                        <div style="font-size: 14px; line-height: 1.5;">
+                            <strong>Demo Payment:</strong> ₱${balanceCheck.paymentAmount.toLocaleString()}<br>
+                            <strong>Total Remaining Balance:</strong> ₱${balanceCheck.totalBalance.toLocaleString()}<br>
+                            <strong style="color: #d63031;">Excess Amount:</strong> ₱${balanceCheck.changeAmount.toLocaleString()}
+                        </div>
+                    </div>
+                    
+                    <p style="margin-bottom: 15px; font-weight: 500;">
+                        Your payment exceeds the total remaining balance. The system will:
+                    </p>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <div style="margin-bottom: 8px;">
+                            ✅ <strong>Apply ₱${balanceCheck.totalBalance.toLocaleString()}</strong> to complete all remaining demo payments
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            💰 <strong>Return ₱${balanceCheck.changeAmount.toLocaleString()}</strong> as change to the customer
+                        </div>
+                        <div style="font-size: 12px; color: #6c757d; margin-top: 10px;">
+                            This will fully complete the student's payment obligations.
+                        </div>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Process Payment',
+            cancelButtonText: 'Cancel',
+            width: '600px',
+            allowOutsideClick: false
+        });
 
-            // Validate schedules
-            const schedules = JSON.parse($('#hiddenSchedule').val() || '[]');
-            if (paymentType !== 'reservation' && (!Array.isArray(schedules) || schedules.length === 0)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Schedule Required',
-                    text: 'You must select at least one schedule before processing this payment type.'
-                });
-                return false;
-            }
+        if (!confirmResult.isConfirmed) {
+            return false;
+        }
 
-            // Validate demo payment
-            if (!validateDemoPayment()) {
-                return false;
-            }
+        // Update the payment amount to only the balance amount
+        $('#totalPayment').val(balanceCheck.totalBalance.toFixed(2));
+        $('#cashToPay').val(balanceCheck.totalBalance.toFixed(2));
+        
+        // Set the change amount
+        $('#change').val(balanceCheck.changeAmount.toFixed(2));
 
-            // Check for excess payment with fixed handling
-            let excessData = null;
-            let requiredAmount = 0;
+        console.log(`[2025-08-11 01:18:56] Balance-limited payment processed - User: Scraper001
+            Original Amount: ₱${balanceCheck.paymentAmount.toFixed(2)}
+            Applied Amount: ₱${balanceCheck.totalBalance.toFixed(2)}
+            Change Amount: ₱${balanceCheck.changeAmount.toFixed(2)}`);
+    }
 
-            // Calculate the required amount based on payment type
-            switch (paymentType) {
-                case 'demo_payment':
-                    if (demoType) {
-                        // Get the current demo fee
-                        const demoDetails = <?= json_encode($demo_details ?? []) ?>;
+    // Get form values
+    const paymentType = $('input[name="type_of_payment"]:checked').val();
+    const totalPayment = parseFloat($('#totalPayment').val()) || 0;
+    const demoType = $('#demoSelect').val();
+    const studentId = $('input[name="student_id"]').val() || "";
+    const programId = $('#programSelect').val() || "";
+    const cash = parseFloat($('#cash').val()) || 0;
+
+    // Validate schedules
+    const schedules = JSON.parse($('#hiddenSchedule').val() || '[]');
+    if (paymentType !== 'reservation' && (!Array.isArray(schedules) || schedules.length === 0)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Schedule Required',
+            text: 'You must select at least one schedule before processing this payment type.'
+        });
+        return false;
+    }
+
+    // Validate demo payment
+    if (!validateDemoPayment()) {
+        return false;
+    }
+
+    // Check for excess payment with fixed handling
+    let excessData = null;
+    let requiredAmount = 0;
+
+    // Calculate the required amount based on payment type
+    switch (paymentType) {
+        case 'demo_payment':
+            if (demoType) {
+                // Get the current demo fee
+                const demoDetails = <?= json_encode($demo_details ?? []) ?>;
                         const demoInfo = demoDetails[demoType] || {};
                         const paidAmount = parseFloat(demoInfo.paid_amount || 0);
                         const expectedDemoFee = calculateDemoFeeJS();
                         requiredAmount = Math.max(0, expectedDemoFee - paidAmount);
 
-                        // Check for excess demo payment
-                        if (totalPayment > requiredAmount && requiredAmount > 0) {
+                        // FIXED: Check if this is a balance-limited payment
+                        if (balanceCheck.hasExcessOverBalance) {
+                            // For balance-limited payments, force "allocate to all remaining" behavior
+                            excessData = {
+                                choice: 'allocate_to_all_remaining',
+                                excessAmount: 0, // No excess since we're applying exactly the balance
+                                paymentAmount: totalPayment,
+                                requiredAmount: totalPayment, // The full balance amount
+                                description: `Balance-limited payment: ₱${totalPayment.toFixed(2)} applied to complete all payments, ₱${balanceCheck.changeAmount.toFixed(2)} returned as change`,
+                                isBalanceLimited: true,
+                                changeAmount: balanceCheck.changeAmount
+                            };
+                        } else if (totalPayment > requiredAmount && requiredAmount > 0) {
+                            // Normal excess payment handling
                             excessData = await handleDemoExcessPayment(totalPayment, requiredAmount, demoType);
                             if (!excessData) {
                                 return false; // User cancelled
@@ -4585,7 +4897,7 @@ if (isset($_GET['student_id'])) {
             submitBtn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-2"></i>Processing...');
 
             // Log processing start with detailed info
-            console.log(`[2025-08-10 08:13:02] Payment processing started - User: Scraper001
+            console.log(`[2025-08-11 01:18:56] Payment processing started - User: Scraper001
         Payment Type: ${paymentType}
         Amount: ₱${totalPayment.toFixed(2)}
         Student ID: ${studentId}
@@ -4593,6 +4905,7 @@ if (isset($_GET['student_id'])) {
         Demo Type: ${demoType || 'N/A'}
         Has Excess: ${excessData ? 'Yes' : 'No'}
         Required Amount: ₱${requiredAmount.toFixed(2)}
+        Is Balance Limited: ${excessData?.isBalanceLimited || false}
     `);
 
             // Prepare form data with enhanced excess information
@@ -4605,7 +4918,7 @@ if (isset($_GET['student_id'])) {
             formData.append('selected_schedules', $('#hiddenSchedule').val() || '[]');
             formData.append('total_payment', totalPayment.toString());
             formData.append('cash', cash.toString());
-            formData.append('timestamp', '2025-08-10 08:13:02');
+            formData.append('timestamp', '2025-08-11 01:18:56');
             formData.append('user', 'Scraper001');
             formData.append('required_amount', requiredAmount.toString());
 
@@ -4614,7 +4927,7 @@ if (isset($_GET['student_id'])) {
                 formData.append('demo_type', demoType);
             }
 
-            // FIXED: Add excess payment data if exists - with GUARANTEED allocation functionality
+            // FIXED: Add excess payment data if exists - with balance-limited support
             if (excessData) {
                 formData.append('has_excess_payment', 'true');
                 formData.append('excess_choice', excessData.choice);
@@ -4622,55 +4935,70 @@ if (isset($_GET['student_id'])) {
                 formData.append('required_payment_amount', excessData.requiredAmount.toString());
                 formData.append('original_payment_amount', excessData.paymentAmount.toString());
 
-                // FIXED: Enhanced allocation details for backend processing
-                const allocationDetails = {
-                    source_payment_type: paymentType,
-                    source_demo_type: demoType || null,
-                    target_demo_type: excessData.nextDemoType || null,
-                    excess_amount: excessData.excessAmount,
-                    choice: excessData.choice,
-                    description: excessData.description,
-                    timestamp: '2025-08-10 08:13:02',
-                    user: 'Scraper001'
-                };
+                // FIXED: Special handling for balance-limited payments
+                if (excessData.isBalanceLimited) {
+                    formData.append('is_balance_limited', 'true');
+                    formData.append('balance_change_amount', excessData.changeAmount.toString());
+                    formData.append('apply_to_all_remaining', 'true');
 
-                formData.append('excess_allocation_details', JSON.stringify(allocationDetails));
+                    const balanceLimitedDetails = {
+                        type: 'balance_limited_payment',
+                        original_amount: excessData.paymentAmount,
+                        applied_amount: excessData.requiredAmount,
+                        change_amount: excessData.changeAmount,
+                        description: excessData.description,
+                        timestamp: '2025-08-11 01:18:56',
+                        user: 'Scraper001'
+                    };
 
-                // CRITICAL FIX: Add explicit allocation instructions for the backend
-                if (excessData.choice === 'allocate_to_next_demo' && demoType && excessData.nextDemoType) {
-                    formData.append('excess_allocation_type', 'allocate_to_next_demo');
-                    formData.append('source_demo', demoType);
-                    formData.append('target_demo', excessData.nextDemoType);
-                    formData.append('direct_allocation', 'true'); // CRITICAL: Force direct allocation
-                    formData.append('create_separate_payment', 'true'); // CRITICAL: Create a separate payment record
+                    formData.append('balance_limited_details', JSON.stringify(balanceLimitedDetails));
+                } else {
+                    // Normal excess allocation
+                    const allocationDetails = {
+                        source_payment_type: paymentType,
+                        source_demo_type: demoType || null,
+                        target_demo_type: excessData.nextDemoType || null,
+                        excess_amount: excessData.excessAmount,
+                        choice: excessData.choice,
+                        description: excessData.description,
+                        timestamp: '2025-08-11 01:18:56',
+                        user: 'Scraper001'
+                    };
 
-                    // CRITICAL: Force excess allocation with these specific flags
-                    formData.append('force_allocation', 'true');
-                    formData.append('skip_validation', 'true');
-                    formData.append('allocation_amount', excessData.excessAmount.toString());
+                    formData.append('excess_allocation_details', JSON.stringify(allocationDetails));
+
+                    // Handle specific allocation types
+                    if (excessData.choice === 'allocate_to_next_demo' && demoType && excessData.nextDemoType) {
+                        formData.append('excess_allocation_type', 'allocate_to_next_demo');
+                        formData.append('source_demo', demoType);
+                        formData.append('target_demo', excessData.nextDemoType);
+                        formData.append('direct_allocation', 'true');
+                        formData.append('create_separate_payment', 'true');
+                        formData.append('force_allocation', 'true');
+                        formData.append('skip_validation', 'true');
+                        formData.append('allocation_amount', excessData.excessAmount.toString());
+                    }
                 }
 
                 // Set change amount if returning as change
-                if (excessData && excessData.choice === 'return_as_change') {
-                    formData.append('has_excess_payment', 'true');
-                    formData.append('excess_choice', 'return_as_change');
-                    formData.append('excess_amount', excessData.excessAmount.toString());
-                    formData.append('change_amount', excessData.excessAmount.toString());
+                if (excessData && (excessData.choice === 'return_as_change' || excessData.isBalanceLimited)) {
+                    const changeAmount = excessData.isBalanceLimited ? excessData.changeAmount : excessData.excessAmount;
+                    formData.append('has_change', 'true');
+                    formData.append('change_amount', changeAmount.toString());
                     formData.append('return_as_change', 'true');
-                    formData.append('change_given', excessData.excessAmount.toString());
+                    formData.append('change_given', changeAmount.toString());
                     formData.append('change_verified', '1');
 
-                    // Include detailed description
-                    const changeDescription = `Excess ₱${excessData.excessAmount.toFixed(2)} returned as change for ${demoType} payment`;
-                    formData.append('excess_description', changeDescription);
+                    const changeDescription = excessData.isBalanceLimited
+                        ? `Balance-limited payment: ₱${changeAmount.toFixed(2)} returned as change`
+                        : `Excess ₱${changeAmount.toFixed(2)} returned as change for ${demoType} payment`;
+                    formData.append('change_description', changeDescription);
                 }
-
-
             } else {
                 formData.append('has_excess_payment', 'false');
             }
 
-            // Enhanced routing for proper backend processing - FIXED
+            // Enhanced routing for proper backend processing
             let ajaxUrl = 'functions/ajax/process_enrollment.php';
             if (excessData) {
                 if (paymentType === 'demo_payment') {
@@ -4685,7 +5013,7 @@ if (isset($_GET['student_id'])) {
                 try {
                     await openCashDrawerOnPayment(totalPayment, paymentType);
                 } catch (error) {
-                    console.error(`[2025-08-10 08:13:02] Cash drawer error: ${error.message}`);
+                    console.error(`[2025-08-11 01:18:56] Cash drawer error: ${error.message}`);
                     // Continue even if cash drawer fails
                 }
             }
@@ -4705,24 +5033,32 @@ if (isset($_GET['student_id'])) {
                 if (response.success) {
                     let successMessage = `Payment of ₱${totalPayment.toLocaleString()} processed successfully!`;
 
-                    // Enhanced success message with details about what happened to the excess
+                    // Enhanced success message with details about what happened
                     if (excessData) {
                         successMessage += `<br><br>`;
 
-                        switch (excessData.choice) {
-                            case 'allocate_to_next_demo':
-                                const nextDemo = excessData.nextDemoType.replace('demo', 'Demo ');
-                                successMessage += `<div class="excess-allocation-success" style="background-color:#d4edda; color:#155724; padding:10px; border-radius:5px; border-left:4px solid #28a745;">
-                            <i class="fa-solid fa-check-circle mr-2"></i>
-                            <strong>Excess ₱${excessData.excessAmount.toFixed(2)}</strong> has been applied to ${nextDemo}
-                        </div>`;
-                                break;
-                            case 'return_as_change':
-                                successMessage += `<div class="excess-allocation-success" style="background-color:#fff3cd; color:#856404; padding:10px; border-radius:5px; border-left:4px solid #ffc107;">
-                            <i class="fa-solid fa-hand-holding-usd mr-2"></i>
-                            <strong>Excess ₱${excessData.excessAmount.toFixed(2)}</strong> has been returned as change
-                        </div>`;
-                                break;
+                        if (excessData.isBalanceLimited) {
+                            successMessage += `<div class="balance-limited-success" style="background-color:#d4edda; color:#155724; padding:10px; border-radius:5px; border-left:4px solid #28a745;">
+                        <i class="fa-solid fa-check-circle mr-2"></i>
+                        <strong>Payment Complete!</strong> All remaining balances have been settled.<br>
+                        <strong>Change Returned:</strong> ₱${excessData.changeAmount.toFixed(2)}
+                    </div>`;
+                        } else {
+                            switch (excessData.choice) {
+                                case 'allocate_to_next_demo':
+                                    const nextDemo = excessData.nextDemoType.replace('demo', 'Demo ');
+                                    successMessage += `<div class="excess-allocation-success" style="background-color:#d4edda; color:#155724; padding:10px; border-radius:5px; border-left:4px solid #28a745;">
+                                <i class="fa-solid fa-check-circle mr-2"></i>
+                                <strong>Excess ₱${excessData.excessAmount.toFixed(2)}</strong> has been applied to ${nextDemo}
+                            </div>`;
+                                    break;
+                                case 'return_as_change':
+                                    successMessage += `<div class="excess-allocation-success" style="background-color:#fff3cd; color:#856404; padding:10px; border-radius:5px; border-left:4px solid #ffc107;">
+                                <i class="fa-solid fa-hand-holding-usd mr-2"></i>
+                                <strong>Excess ₱${excessData.excessAmount.toFixed(2)}</strong> has been returned as change
+                            </div>`;
+                                    break;
+                            }
                         }
 
                         // Add transaction reference if available
@@ -4734,13 +5070,12 @@ if (isset($_GET['student_id'])) {
                     }
 
                     // Log success with detailed info
-                    console.log(`[2025-08-10 08:13:02] Payment successful - User: Scraper001
+                    console.log(`[2025-08-11 01:18:56] Payment successful - User: Scraper001
                 Payment Type: ${paymentType}
                 Amount: ₱${totalPayment.toFixed(2)}
                 Transaction ID: ${response.transaction_id || 'N/A'}
-                ${excessData ? `Excess: ₱${excessData.excessAmount.toFixed(2)} (${excessData.choice})` : ''}
-                ${excessData && excessData.choice === 'allocate_to_next_demo' ?
-                            `Allocated to: ${excessData.nextDemoType}` : ''}
+                ${excessData ? `Processing: ${excessData.isBalanceLimited ? 'Balance Limited' : 'Normal Excess'}` : ''}
+                ${excessData && excessData.isBalanceLimited ? `Change: ₱${excessData.changeAmount.toFixed(2)}` : ''}
             `);
 
                     const result = await Swal.fire({
@@ -4762,41 +5097,8 @@ if (isset($_GET['student_id'])) {
                     throw new Error(response.message || 'Payment processing failed');
                 }
 
-                if (response.success && response.data && response.data.change_returned) {
-                    const changeAmount = parseFloat(response.data.change_returned);
-
-                    if (changeAmount > 0) {
-                        // Create a special alert for change
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Payment Successful!',
-                            html: `
-                <div class="text-left">
-                    <p>Payment has been processed successfully.</p>
-                    <div class="change-alert" style="background-color:#fff3cd; color:#856404; padding:15px; border-radius:5px; margin:15px 0; border-left:4px solid #ffc107; text-align:left;">
-                        <h4 style="margin-top:0"><i class="fa-solid fa-hand-holding-usd mr-2"></i> Change Due</h4>
-                        <p style="font-size:24px; font-weight:bold; margin:10px 0;">₱${changeAmount.toFixed(2)}</p>
-                        <p style="margin-bottom:0; font-size:14px;">Please return this amount to the customer</p>
-                    </div>
-                    <p><small>Transaction ID: ${response.data.transaction_id || 'N/A'}</small></p>
-                </div>
-            `,
-                            confirmButtonText: 'Print Receipt',
-                            showCancelButton: true,
-                            cancelButtonText: 'Continue'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                printReceiptSection2();
-                            } else {
-                                window.location.reload();
-                            }
-                        });
-                    }
-                }
-
-
             } catch (error) {
-                console.error(`[2025-08-10 08:13:02] Payment error: ${error.message}`, error);
+                console.error(`[2025-08-11 01:18:56] Payment error: ${error.message}`, error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Payment Failed',
@@ -4804,7 +5106,7 @@ if (isset($_GET['student_id'])) {
                 <p><strong>Error:</strong> ${error.message || 'An error occurred while processing your payment'}</p>
                 <p><small>Time: ${new Date().toLocaleString()}</small></p>
                 <p><small>User: Scraper001</small></p>
-                ${excessData ? `<p><small>Excess Amount: ₱${excessData.excessAmount.toFixed(2)} (${excessData.choice})</small></p>` : ''}
+                ${excessData ? `<p><small>Processing Type: ${excessData.isBalanceLimited ? 'Balance Limited' : 'Normal Excess'}</small></p>` : ''}
                 </div>`,
                     confirmButtonText: 'Try Again'
                 });
@@ -4812,7 +5114,6 @@ if (isset($_GET['student_id'])) {
                 submitBtn.prop('disabled', false).html(originalBtnText);
             }
         });
-
 
 
         // Helper function to find next unpaid demo (example implementation)
@@ -5131,142 +5432,54 @@ if (isset($_GET['student_id'])) {
         // Add enhanced CSS animations with promo selection styling
         $('head').append(`
     <style>
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        #totalPayment[readonly] {
+            background-color: #f3f4f6 !important;
+            cursor: not-allowed !important;
         }
         
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.02); }
+        #totalPayment:not([readonly]) {
+            background-color: #ffffff !important;
+            border-color: #3b82f6 !important;
+            cursor: text !important;
         }
         
-        @keyframes slideInDown {
-            from {
-                transform: translateX(-50%) translateY(-100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
+        #totalPayment:not([readonly]):focus {
+            border-color: #1d4ed8 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
         }
         
-        .cash-drawer-success { animation: slideInRight 0.4s ease-out; }
-        
-        #cashDrawerStatus { transition: all 0.3s ease; }
-        
-        #cashDrawerStatus:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        
-        .processing-payment {
-            background: linear-gradient(45deg, #667eea, #764ba2, #667eea);
-            background-size: 200% 200%; 
-            animation: gradientShift 2s ease infinite; 
-        }
-        
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .demo-fee-item {
-            transition: all 0.3s ease;
-        }
-
-        .demo-fee-item:hover {
-            transform: translateX(2px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .first-transaction-highlight {
+        .allocation-testing-enabled {
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-            border: 1px solid #0ea5e9;
-            border-radius: 4px;
+            border-left: 4px solid #0ea5e9;
             padding: 8px;
             margin: 4px 0;
+            border-radius: 4px;
         }
-
-        .schedule-locked {
-            background-color: #fef2f2 !important;
-            border-color: #fecaca;
+        
+        #allocationPreview {
+            animation: slideIn 0.3s ease-out;
         }
-
-        .schedule-maintained {
-            background-color: #f0f9ff !important;
-            border-color: #bfdbfe;
-        }
-
-        .program-details-section,
-        .charges-section,
-        .demo-fees-display {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-
-        .fixed-success-indicator {
-            position: fixed;
-            top: 50px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: bold;
-            z-index: 10001;
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
-            animation: slideInDown 0.5s ease-out;
-        }
-
-        /* Enhanced Promo Selection Animations */
-        .promo-selection-display {
-            transition: all 0.3s ease;
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        @keyframes fadeInUp {
+        
+        @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(-10px);
             }
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-
-        .promo-option-1:hover, .promo-option-2:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .promo-option-3:hover, .promo-option-4:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-        }
-
-        .custom-payment-info {
-            animation: slideInLeft 0.3s ease-out;
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        
+        .payment-hint {
+            font-size: 10px;
+            color: #6b7280;
+            font-style: italic;
+            margin-top: 2px;
         }
     </style>
 `);
+
 
         // Show enhanced system ready notifications with promo selection info
         setTimeout(() => {
@@ -5289,7 +5502,25 @@ if (isset($_GET['student_id'])) {
 
 
     });
+    $(document).ready(function () {
+        // Add allocation testing instructions
+        if ($('#allocationTestingInstructions').length === 0) {
+            $('#posForm').prepend(`
+            <div id="allocationTestingInstructions" class="allocation-testing-enabled">
+                <div style="font-weight: bold; color: #0f172a; margin-bottom: 4px;">
+                    <i class="fa-solid fa-flask mr-2"></i>Allocation Testing Enabled
+                </div>
+                <div style="font-size: 12px; line-height: 1.4;">
+                    • <strong>Initial Payment</strong> and <strong>Demo Payment</strong> amounts are now editable<br>
+                    • Enter amounts higher than required to test excess allocation functionality<br>
+                    • System will prompt for allocation options when excess is detected
+                </div>
+            </div>
+        `);
+        }
 
+        console.log(`[${new Date().toISOString()}] Scraper001: Allocation testing mode initialized`);
+    });
     // Enhanced: Global print function
     function printReceiptSection2() {
         const printContents = document.getElementById('receiptSection').innerHTML;
