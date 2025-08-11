@@ -148,13 +148,15 @@ function calculateCorrectDemoFee($conn, $student_id, $program_id)
     $demo_fee = ($after_promo_amount - $reservation_payment - $initial_payment) / 4;
 
     error_log(sprintf(
-        "[2025-08-10 08:41:40] CORRECTED Demo Fee Calculation - User: Scraper001
+        "[%s] CORRECTED Demo Fee Calculation - User: %s
         Total Tuition: ₱%s
         Promo Discount: ₱%s
         After Promo: ₱%s
         Reservation: ₱%s
         Initial: ₱%s
         CORRECT Demo Fee: ₱%s",
+        date('Y-m-d H:i:s'),
+        'Scraper001',
         number_format($total_tuition, 2),
         number_format($promo_discount, 2),
         number_format($after_promo_amount, 2),
@@ -228,8 +230,10 @@ function handleDemoOverpaymentAdjustments($conn, $student_id, $program_id)
                 $total_overpayment += $overpayment;
 
                 error_log(sprintf(
-                    "[2025-08-10 08:41:40] Demo Overpayment Adjustment - User: Scraper001
+                    "[%s] Demo Overpayment Adjustment - User: %s
                     Demo: %s | Overpayment: ₱%s | Adjustment: ₱%s",
+                    date('Y-m-d H:i:s'),
+                    'Scraper001',
                     $demo,
                     number_format($overpayment, 2),
                     number_format($negative_amount, 2)
@@ -275,8 +279,10 @@ function processExcessFromInitialPayment($conn, $student_id, $program_id, $exces
     $allocations = [];
 
     error_log(sprintf(
-        "[2025-08-10 08:41:40] Starting Excess Allocation with Package Preservation - User: Scraper001
+        "[%s] Starting Excess Allocation with Package Preservation - User: %s
         Original Package: %s | Excess Amount: ₱%s | Correct Demo Fee: ₱%s",
+        date('Y-m-d H:i:s'),
+        'Scraper001',
         $original_package_name,
         number_format($excess_amount, 2),
         number_format($correct_demo_fee, 2)
@@ -348,8 +354,10 @@ function processExcessFromInitialPayment($conn, $student_id, $program_id, $exces
             $remaining_excess -= $allocation_amount;
 
             error_log(sprintf(
-                "[2025-08-10 08:41:40] Demo Allocation with Package Preservation - User: Scraper001
+                "[%s] Demo Allocation with Package Preservation - User: %s
                 Demo: %s | Allocated: ₱%s | Package: %s | New Balance: ₱%s",
+                date('Y-m-d H:i:s'),
+                'Scraper001',
                 $demo,
                 number_format($allocation_amount, 2),
                 $original_package_name,
@@ -369,7 +377,7 @@ function processExcessFromInitialPayment($conn, $student_id, $program_id, $exces
 }
 
 /**
- * CORRECTED: Process excess allocation for demo payments with enhanced direct allocation
+ * FIXED: Process excess allocation for demo payments - NOW CONTINUES TO ALL SUBSEQUENT DEMOS
  */
 function processExcessAllocationForDemo($conn, $student_id, $program_id, $current_demo_type, $excess_amount, $learning_mode, $original_package_name = 'Regular Package')
 {
@@ -402,14 +410,35 @@ function processExcessAllocationForDemo($conn, $student_id, $program_id, $curren
     }
     $promo_stmt->close();
 
-    // Only allocate to demos AFTER the current one
+    error_log(sprintf(
+        "[%s] FIXED: Starting Enhanced Demo Allocation - User: %s
+        Current Demo: %s | Excess Amount: ₱%s | Demo Fee: ₱%s",
+        date('Y-m-d H:i:s'),
+        'Scraper001',
+        $current_demo_type,
+        number_format($excess_amount, 2),
+        number_format($correct_demo_fee, 2)
+    ));
+
+    // FIXED: Allocate to ALL demos after the current one, not just the next one
     for ($i = $current_index + 1; $i < count($demo_sequence); $i++) {
-        if ($remaining_excess <= 0.01)
+        if ($remaining_excess <= 0.01) {
+            error_log(sprintf("[%s] No more excess to allocate, stopping at demo index %d", date('Y-m-d H:i:s'), $i));
             break;
+        }
 
         $demo = $demo_sequence[$i];
         $current_paid = getCurrentDemoPayment($conn, $student_id, $program_id, $demo);
         $needed_amount = $correct_demo_fee - $current_paid;
+
+        error_log(sprintf(
+            "[%s] Processing %s: Current Paid: ₱%s, Needed: ₱%s, Remaining Excess: ₱%s",
+            date('Y-m-d H:i:s'),
+            $demo,
+            number_format($current_paid, 2),
+            number_format($needed_amount, 2),
+            number_format($remaining_excess, 2)
+        ));
 
         if ($needed_amount > 0.01) {
             $allocation_amount = min($remaining_excess, $needed_amount);
@@ -424,10 +453,12 @@ function processExcessAllocationForDemo($conn, $student_id, $program_id, $curren
             $status = 'Active';
             $enrollment_status = 'Enrolled'; // Required field
             $description = sprintf(
-                'Excess from %s payment (package: %s, corrected demo fee ₱%s)',
+                'Excess allocation from %s payment (package: %s, corrected demo fee ₱%s, sequence: %d of %d)',
                 $current_demo_type,
                 $original_package_name,
-                number_format($correct_demo_fee, 2)
+                number_format($correct_demo_fee, 2),
+                $i - $current_index,
+                count($demo_sequence) - $current_index - 1
             );
             $processed_by = 'Scraper001';
 
@@ -462,7 +493,7 @@ function processExcessAllocationForDemo($conn, $student_id, $program_id, $curren
             );
 
             if (!$stmt->execute()) {
-                error_log("Error inserting demo allocation: " . $stmt->error);
+                error_log("Error inserting demo allocation for {$demo}: " . $stmt->error);
                 continue;
             }
 
@@ -475,22 +506,38 @@ function processExcessAllocationForDemo($conn, $student_id, $program_id, $curren
                 'current_paid_before' => $current_paid,
                 'current_paid_after' => $current_paid + $allocation_amount,
                 'package_preserved' => $original_package_name,
-                'promo_discount_preserved' => $promo_discount_from_original
+                'promo_discount_preserved' => $promo_discount_from_original,
+                'fully_paid' => ($new_balance <= 0.01),
+                'sequence_number' => $i - $current_index
             ];
 
             $remaining_excess -= $allocation_amount;
 
             error_log(sprintf(
-                "[2025-08-10 08:41:40] Demo Excess Allocation - User: Scraper001
-                From %s to %s: ₱%s | Package: %s | New Balance: ₱%s",
-                $current_demo_type,
+                "[%s] FIXED: Successfully allocated to %s - Amount: ₱%s, New Balance: ₱%s, Remaining Excess: ₱%s",
+                date('Y-m-d H:i:s'),
                 $demo,
                 number_format($allocation_amount, 2),
-                $original_package_name,
-                number_format($new_balance, 2)
+                number_format($new_balance, 2),
+                number_format($remaining_excess, 2)
+            ));
+        } else {
+            error_log(sprintf(
+                "[%s] %s already fully paid (₱%s >= ₱%s), skipping",
+                date('Y-m-d H:i:s'),
+                $demo,
+                number_format($current_paid, 2),
+                number_format($correct_demo_fee, 2)
             ));
         }
     }
+
+    error_log(sprintf(
+        "[%s] FIXED: Demo allocation completed - Allocated to %d demos, Remaining excess: ₱%s",
+        date('Y-m-d H:i:s'),
+        count($allocations),
+        number_format($remaining_excess, 2)
+    ));
 
     return [
         'allocations' => $allocations,
@@ -669,10 +716,12 @@ try {
         }
 
         error_log(sprintf(
-            "[2025-08-10 08:41:40] Demo Payment with Package Preservation - User: Scraper001
+            "[%s] Demo Payment with Package Preservation - User: %s
             Student ID: %d | Program ID: %d | Demo: %s | Package: %s
             Payment Amount: ₱%s | Applied to Demo: ₱%s | Excess: ₱%s
             Demo Requirement: ₱%s | New Balance: ₱%s | Promo Discount: ₱%s",
+            date('Y-m-d H:i:s'),
+            'Scraper001',
             $student_id,
             $program_id,
             $demo_type,
@@ -733,7 +782,7 @@ try {
                         'Excess allocation from %s (amount: ₱%s, timestamp: %s)',
                         $demo_type,
                         number_format($allocation_amount, 2),
-                        '2025-08-10 08:41:40'
+                        date('Y-m-d H:i:s')
                     );
                     $processed_by_var = 'Scraper001';
 
@@ -778,15 +827,17 @@ try {
                                 'target_requirement' => $target_demo_requirement,
                                 'target_remaining_before' => $target_remaining,
                                 'target_remaining_after' => $new_balance,
-                                'timestamp' => '2025-08-10 08:41:40',
+                                'timestamp' => date('Y-m-d H:i:s'),
                                 'user' => 'Scraper001',
                                 'success' => true
                             ];
 
                             error_log(sprintf(
-                                "[2025-08-10 08:41:40] DIRECT ALLOCATION SUCCESS - User: Scraper001
+                                "[%s] DIRECT ALLOCATION SUCCESS - User: %s
                                 Source: %s, Target: %s, Amount: ₱%s
                                 Target Requirement: ₱%s, Remaining Before: ₱%s, Remaining After: ₱%s",
+                                date('Y-m-d H:i:s'),
+                                'Scraper001',
                                 $demo_type,
                                 $target_demo,
                                 number_format($allocation_amount, 2),
@@ -844,8 +895,10 @@ try {
 
                 if ($update_stmt->execute()) {
                     error_log(sprintf(
-                        "[2025-08-10 08:52:16] CHANGE RECORDED SUCCESSFULLY - User: Scraper001
+                        "[%s] CHANGE RECORDED SUCCESSFULLY - User: %s
                 Transaction ID: %d, Change Amount: ₱%s",
+                        date('Y-m-d H:i:s'),
+                        'Scraper001',
                         $last_insert_id,
                         number_format($excess_after_current, 2)
                     ));
@@ -863,7 +916,7 @@ try {
             }
         }
 
-        // Process excess using the original function if needed (though our direct allocation is preferred)
+        // FIXED: Process excess using the enhanced function that continues to ALL subsequent demos
         if ($excess_after_current > 0 && $excess_choice === 'allocate_to_demos' && empty($response['data']['direct_allocation'])) {
             $allocation_result = processExcessAllocationForDemo(
                 $conn,
@@ -878,9 +931,32 @@ try {
             if ($allocation_result && !empty($allocation_result['allocations'])) {
                 $response['data']['excess_allocations'] = $allocation_result['allocations'];
                 $response['data']['remaining_excess'] = $allocation_result['remaining_excess'];
-                $response['message'] = 'Demo payment processed with package preservation and corrected excess allocation.';
+
+                // Count how many demos were fully paid
+                $fully_paid_count = 0;
+                foreach ($allocation_result['allocations'] as $alloc) {
+                    if ($alloc['fully_paid']) {
+                        $fully_paid_count++;
+                    }
+                }
+
+                $response['data']['demos_fully_paid'] = $fully_paid_count;
+                $response['message'] = sprintf(
+                    'Demo payment processed with enhanced allocation to %d subsequent demos (%d fully paid). Remaining excess: ₱%s',
+                    count($allocation_result['allocations']),
+                    $fully_paid_count,
+                    number_format($allocation_result['remaining_excess'], 2)
+                );
+
+                error_log(sprintf(
+                    "[%s] FIXED: Enhanced allocation completed - %d demos allocated, %d fully paid, ₱%s remaining",
+                    date('Y-m-d H:i:s'),
+                    count($allocation_result['allocations']),
+                    $fully_paid_count,
+                    number_format($allocation_result['remaining_excess'], 2)
+                ));
             } else {
-                $response['message'] = 'Demo payment processed successfully with package preserved.';
+                $response['message'] = 'Demo payment processed successfully with package preservation and corrected excess allocation.';
             }
         } else if (empty($response['message'])) {
             $response['message'] = 'Demo payment processed successfully with package preserved.';
@@ -974,8 +1050,10 @@ try {
         }
 
         error_log(sprintf(
-            "[2025-08-10 08:41:40] Initial Payment with Package Preservation - User: Scraper001
+            "[%s] Initial Payment with Package Preservation - User: %s
             Package: %s | Promo Discount: ₱%s | Excess: ₱%s",
+            date('Y-m-d H:i:s'),
+            'Scraper001',
             $package_name,
             number_format($promo_discount_to_apply, 2),
             number_format($excess_amount, 2)
@@ -993,7 +1071,7 @@ try {
             $response['data']['allocation_result'] = $allocation_result;
             $response['data']['package_preserved'] = $package_name;
             $response['data']['promo_discount_applied'] = $promo_discount_to_apply;
-            $response['data']['timestamp'] = "2025-08-10 08:41:40";
+            $response['data']['timestamp'] = date('Y-m-d H:i:s');
             $response['data']['user'] = 'Scraper001';
             $response['message'] = 'Initial payment processed with package preservation and excess allocation.';
         } else {
@@ -1010,7 +1088,7 @@ try {
     error_log("Error in process_excess_demo_enrollment.php: " . $e->getMessage());
     $response['success'] = false;
     $response['message'] = 'Error processing payment: ' . $e->getMessage();
-    $response['timestamp'] = "2025-08-10 08:41:40";
+    $response['timestamp'] = date('Y-m-d H:i:s');
     $response['processed_by'] = 'Scraper001';
 }
 

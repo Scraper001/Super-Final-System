@@ -1415,7 +1415,6 @@ if (isset($_GET['student_id'])) {
         const totalField = document.getElementById('totalAmountDisplay');
         const creditField = document.getElementById('credit_Bal');
         const remainField = document.getElementById('remainingBalance');
-        const promoText = document.getElementById('promo_discount_text');
 
         // Check if all required elements exist
         if (!totalField || !creditField || !remainField) {
@@ -1426,38 +1425,29 @@ if (isset($_GET['student_id'])) {
             return;
         }
 
-        // FIXED: Track user modifications to payment fields
-        $('#totalPayment').on('input focus', function () {
-            // Mark as user-modified when user types or focuses on the field
-            $(this).data('user-modified', true);
-
-            const amount = parseFloat($(this).val()) || 0;
-            $('#cashToPay').val(amount.toFixed(2));
-
-            console.log(`[2025-08-05 14:55:59] Scraper001: User manually set payment to: ₱${amount.toFixed(2)}`);
-
-            // Recalculate change
-            const cash = parseFloat($('#cash').val()) || 0;
-            const change = Math.max(0, cash - amount);
-            $('#change').val(change.toFixed(2));
-        });
-
-
         try {
             // Clean and parse numbers (remove peso signs, commas, and extra spaces)
             const totalText = totalField.textContent.replace(/[₱,\s]/g, '');
             const creditText = creditField.textContent.replace(/[₱,\s]/g, '');
 
-            // Parse promo discount if it exists
+            // FIXED: Only apply promo discount if there's actually a promo package selected
             let promoDiscount = 0;
-            if (promoText && promoText.parentElement) {
-                // Get the full text content of the parent li element
-                const fullPromoText = promoText.parentElement.textContent;
-                // Extract the discount amount using regex to find ₱ followed by numbers
-                const discountMatch = fullPromoText.match(/₱([\d,]+(?:\.\d{2})?)/);
-                if (discountMatch) {
-                    const discountText = discountMatch[1].replace(/,/g, '');
-                    promoDiscount = parseFloat(discountText) || 0;
+
+            // Check if currentPackage exists and is not regular
+            if (typeof currentPackage !== 'undefined' && currentPackage &&
+                currentPackage.package_name &&
+                currentPackage.package_name !== 'Regular Package' &&
+                currentPackage.package_name !== 'Regular') {
+
+                // Only then look for promo discount in the DOM
+                const promoInfo = document.getElementById('promoInfo');
+                if (promoInfo && promoInfo.style.display !== 'none') {
+                    const fullPromoText = promoInfo.textContent;
+                    const discountMatch = fullPromoText.match(/₱([\d,]+(?:\.\d{2})?)/);
+                    if (discountMatch) {
+                        const discountText = discountMatch[1].replace(/,/g, '');
+                        promoDiscount = parseFloat(discountText) || 0;
+                    }
                 }
             }
 
@@ -1466,13 +1456,13 @@ if (isset($_GET['student_id'])) {
             console.log("Cleaned total:", totalText);
             console.log("Raw credit:", creditField.textContent);
             console.log("Cleaned credit:", creditText);
-            console.log("Raw promo discount:", promoText ? promoText.parentElement.textContent : 'N/A');
-            console.log("Parsed promo discount:", promoDiscount);
+            console.log("Current Package:", currentPackage ? currentPackage.package_name : 'No package selected');
+            console.log("Promo Discount Applied:", promoDiscount);
 
             const total = parseFloat(totalText) || 0;
             const credit = parseFloat(creditText) || 0;
 
-            // Calculate remaining balance: total - credit - promo discount
+            // FIXED: Only subtract promo discount if it's actually applied
             let remaining = total - credit - promoDiscount;
 
             // Fix floating point precision issues
@@ -1480,8 +1470,8 @@ if (isset($_GET['student_id'])) {
 
             console.log("Parsed Total:", total);
             console.log("Parsed Credit:", credit);
-            console.log("Parsed Promo Discount:", promoDiscount);
-            console.log("Raw Remaining:", remaining);
+            console.log("Final Promo Discount:", promoDiscount);
+            console.log("Calculated Remaining:", remaining);
 
             // Handle different scenarios
             if (Math.abs(remaining) < 0.01) {
@@ -1516,6 +1506,8 @@ if (isset($_GET['student_id'])) {
             remainField.style.color = "#dc2626";
         }
     });
+
+
     // Optional: Add a function to format currency properly
     function formatCurrency(amount) {
         return new Intl.NumberFormat('en-PH', {
