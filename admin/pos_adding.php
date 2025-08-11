@@ -1436,48 +1436,23 @@ if (isset($_GET['student_id'])) {
             const totalText = (totalField.textContent || totalField.innerText || '0').replace(/[₱,\s]/g, '');
             const creditText = (creditField.textContent || creditField.innerText || '0').replace(/[₱,\s]/g, '');
 
-            // FIXED: Only apply promo discount if there's actually a promo package selected
-            let promoDiscount = 0;
-
-            // Check multiple ways to determine if promo is active
-            const hasPromoPackage = (typeof currentPackage !== 'undefined' && currentPackage &&
-                currentPackage.package_name &&
-                currentPackage.package_name !== 'Regular Package' &&
-                currentPackage.package_name !== 'Regular');
-
-            if (hasPromoPackage) {
-                // Look for promo discount in the DOM
-                const promoInfo = document.getElementById('promoInfo');
-                if (promoInfo && promoInfo.style.display !== 'none' && promoInfo.offsetParent !== null) {
-                    const fullPromoText = promoInfo.textContent || promoInfo.innerText || '';
-                    const discountMatch = fullPromoText.match(/₱([\d,]+(?:\.\d{2})?)/);
-                    if (discountMatch) {
-                        const discountText = discountMatch[1].replace(/,/g, '');
-                        promoDiscount = parseFloat(discountText) || 0;
-                    }
-                }
-            }
-
             console.log("================================================");
             console.log("FIXED Balance Calculation Debug:");
             console.log("Raw total:", totalField.textContent || totalField.innerText);
             console.log("Cleaned total:", totalText);
             console.log("Raw credit:", creditField.textContent || creditField.innerText);
             console.log("Cleaned credit:", creditText);
-            console.log("Has Promo Package:", hasPromoPackage);
-            console.log("Current Package:", typeof currentPackage !== 'undefined' ? currentPackage : 'undefined');
-            console.log("Promo Discount Applied:", promoDiscount);
 
             // Parse numbers with validation
             const total = isNaN(parseFloat(totalText)) ? 0 : parseFloat(totalText);
             const credit = isNaN(parseFloat(creditText)) ? 0 : parseFloat(creditText);
 
-            console.log("Parsed Total:", total);
+            console.log("Parsed Total (after promo):", total);
             console.log("Parsed Credit:", credit);
-            console.log("Final Promo Discount:", promoDiscount);
 
-            // FIXED: Only subtract promo discount if it's actually applied
-            let remaining = total - credit - promoDiscount;
+            // FIXED: Use the "After Promo Deduction" amount directly
+            // The total amount already has promo discount applied from PHP backend
+            let remaining = total - credit;
 
             // Fix floating point precision issues
             remaining = Math.round(remaining * 100) / 100;
