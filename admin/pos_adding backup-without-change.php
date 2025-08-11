@@ -4659,21 +4659,10 @@ if (isset($_GET['student_id'])) {
                 }
 
                 // Set change amount if returning as change
-                if (excessData && excessData.choice === 'return_as_change') {
-                    formData.append('has_excess_payment', 'true');
-                    formData.append('excess_choice', 'return_as_change');
-                    formData.append('excess_amount', excessData.excessAmount.toString());
+                if (excessData.choice === 'return_as_change') {
                     formData.append('change_amount', excessData.excessAmount.toString());
                     formData.append('return_as_change', 'true');
-                    formData.append('change_given', excessData.excessAmount.toString());
-                    formData.append('change_verified', '1');
-
-                    // Include detailed description
-                    const changeDescription = `Excess ₱${excessData.excessAmount.toFixed(2)} returned as change for ${demoType} payment`;
-                    formData.append('excess_description', changeDescription);
                 }
-
-
             } else {
                 formData.append('has_excess_payment', 'false');
             }
@@ -4769,40 +4758,6 @@ if (isset($_GET['student_id'])) {
                 } else {
                     throw new Error(response.message || 'Payment processing failed');
                 }
-
-                if (response.success && response.data && response.data.change_returned) {
-                    const changeAmount = parseFloat(response.data.change_returned);
-
-                    if (changeAmount > 0) {
-                        // Create a special alert for change
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Payment Successful!',
-                            html: `
-                <div class="text-left">
-                    <p>Payment has been processed successfully.</p>
-                    <div class="change-alert" style="background-color:#fff3cd; color:#856404; padding:15px; border-radius:5px; margin:15px 0; border-left:4px solid #ffc107; text-align:left;">
-                        <h4 style="margin-top:0"><i class="fa-solid fa-hand-holding-usd mr-2"></i> Change Due</h4>
-                        <p style="font-size:24px; font-weight:bold; margin:10px 0;">₱${changeAmount.toFixed(2)}</p>
-                        <p style="margin-bottom:0; font-size:14px;">Please return this amount to the customer</p>
-                    </div>
-                    <p><small>Transaction ID: ${response.data.transaction_id || 'N/A'}</small></p>
-                </div>
-            `,
-                            confirmButtonText: 'Print Receipt',
-                            showCancelButton: true,
-                            cancelButtonText: 'Continue'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                printReceiptSection2();
-                            } else {
-                                window.location.reload();
-                            }
-                        });
-                    }
-                }
-
-
             } catch (error) {
                 console.error(`[2025-08-10 08:13:02] Payment error: ${error.message}`, error);
                 Swal.fire({

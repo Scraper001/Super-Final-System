@@ -812,55 +812,9 @@ try {
 
         // If there's still excess after direct allocation and 'return_as_change' was chosen
         if ($excess_after_current > 0 && $excess_choice === 'return_as_change') {
-            // Update the change_amount in the most recently inserted record
-            $last_insert_id = $conn->insert_id; // Get the ID of the payment we just inserted
-
-            // Update the change_amount field for this transaction
-            $update_change_sql = "UPDATE pos_transactions 
-                         SET change_amount = ?, 
-                             change_given = ?,
-                             change_verified = 1,
-                             excess_amount = ?,
-                             excess_option = 'return_as_change',
-                             excess_description = ?
-                         WHERE id = ?";
-
-            $update_stmt = $conn->prepare($update_change_sql);
-            $description = sprintf(
-                'Change of ₱%s returned from excess payment for %s',
-                number_format($excess_after_current, 2),
-                $demo_type
-            );
-
-            if ($update_stmt) {
-                $update_stmt->bind_param(
-                    "dddsi",
-                    $excess_after_current,   // change_amount
-                    $excess_after_current,   // change_given
-                    $excess_after_current,   // excess_amount
-                    $description,            // excess_description
-                    $last_insert_id          // id
-                );
-
-                if ($update_stmt->execute()) {
-                    error_log(sprintf(
-                        "[2025-08-10 08:52:16] CHANGE RECORDED SUCCESSFULLY - User: Scraper001
-                Transaction ID: %d, Change Amount: ₱%s",
-                        $last_insert_id,
-                        number_format($excess_after_current, 2)
-                    ));
-
-                    // Update response to reflect change recorded
-                    $response['data']['change_returned'] = $excess_after_current;
-                    $response['data']['change_recorded'] = true;
-                    $response['data']['transaction_id'] = $last_insert_id;
-                    $response['message'] = 'Demo payment processed successfully with excess returned as change.';
-                } else {
-                    error_log("ERROR recording change amount: " . $update_stmt->error);
-                }
-
-                $update_stmt->close();
-            }
+            $response['data']['change_returned'] = $excess_after_current;
+            $response['data']['return_as_change'] = true;
+            $response['message'] = 'Demo payment processed successfully with excess returned as change.';
         }
 
         // Process excess using the original function if needed (though our direct allocation is preferred)
