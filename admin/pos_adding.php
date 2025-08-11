@@ -4727,22 +4727,22 @@ if (isset($_GET['student_id'])) {
 
 
         // FIXED: Form submission with guaranteed excess allocation functionality
-$('#posForm').submit(async function (e) {
-    e.preventDefault();
-    syncHiddenSchedule();
+        $('#posForm').submit(async function (e) {
+            e.preventDefault();
+            syncHiddenSchedule();
 
-    // Validate demo selection
-    if (!validateDemoSelection()) {
-        return false;
-    }
+            // Validate demo selection
+            if (!validateDemoSelection()) {
+                return false;
+            }
 
-    // FIXED: Check if demo payment exceeds total balance
-    const balanceCheck = validateDemoPaymentAgainstTotalBalance();
-    if (balanceCheck.hasExcessOverBalance) {
-        const confirmResult = await Swal.fire({
-            icon: 'question',
-            title: 'Payment Exceeds Total Balance',
-            html: `
+            // FIXED: Check if demo payment exceeds total balance
+            const balanceCheck = validateDemoPaymentAgainstTotalBalance();
+            if (balanceCheck.hasExcessOverBalance) {
+                const confirmResult = await Swal.fire({
+                    icon: 'question',
+                    title: 'Payment Exceeds Total Balance',
+                    html: `
                 <div style="text-align: left; padding: 10px;">
                     <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                         <h4 style="margin: 0 0 10px 0; color: #856404;">
@@ -4772,64 +4772,64 @@ $('#posForm').submit(async function (e) {
                     </div>
                 </div>
             `,
-            showCancelButton: true,
-            confirmButtonText: 'Process Payment',
-            cancelButtonText: 'Cancel',
-            width: '600px',
-            allowOutsideClick: false
-        });
+                    showCancelButton: true,
+                    confirmButtonText: 'Process Payment',
+                    cancelButtonText: 'Cancel',
+                    width: '600px',
+                    allowOutsideClick: false
+                });
 
-        if (!confirmResult.isConfirmed) {
-            return false;
-        }
+                if (!confirmResult.isConfirmed) {
+                    return false;
+                }
 
-        // Update the payment amount to only the balance amount
-        $('#totalPayment').val(balanceCheck.totalBalance.toFixed(2));
-        $('#cashToPay').val(balanceCheck.totalBalance.toFixed(2));
-        
-        // Set the change amount
-        $('#change').val(balanceCheck.changeAmount.toFixed(2));
+                // Update the payment amount to only the balance amount
+                $('#totalPayment').val(balanceCheck.totalBalance.toFixed(2));
+                $('#cashToPay').val(balanceCheck.totalBalance.toFixed(2));
 
-        console.log(`[2025-08-11 01:18:56] Balance-limited payment processed - User: Scraper001
+                // Set the change amount
+                $('#change').val(balanceCheck.changeAmount.toFixed(2));
+
+                console.log(`[2025-08-11 01:18:56] Balance-limited payment processed - User: Scraper001
             Original Amount: ₱${balanceCheck.paymentAmount.toFixed(2)}
             Applied Amount: ₱${balanceCheck.totalBalance.toFixed(2)}
             Change Amount: ₱${balanceCheck.changeAmount.toFixed(2)}`);
-    }
+            }
 
-    // Get form values
-    const paymentType = $('input[name="type_of_payment"]:checked').val();
-    const totalPayment = parseFloat($('#totalPayment').val()) || 0;
-    const demoType = $('#demoSelect').val();
-    const studentId = $('input[name="student_id"]').val() || "";
-    const programId = $('#programSelect').val() || "";
-    const cash = parseFloat($('#cash').val()) || 0;
+            // Get form values
+            const paymentType = $('input[name="type_of_payment"]:checked').val();
+            const totalPayment = parseFloat($('#totalPayment').val()) || 0;
+            const demoType = $('#demoSelect').val();
+            const studentId = $('input[name="student_id"]').val() || "";
+            const programId = $('#programSelect').val() || "";
+            const cash = parseFloat($('#cash').val()) || 0;
 
-    // Validate schedules
-    const schedules = JSON.parse($('#hiddenSchedule').val() || '[]');
-    if (paymentType !== 'reservation' && (!Array.isArray(schedules) || schedules.length === 0)) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Schedule Required',
-            text: 'You must select at least one schedule before processing this payment type.'
-        });
-        return false;
-    }
+            // Validate schedules
+            const schedules = JSON.parse($('#hiddenSchedule').val() || '[]');
+            if (paymentType !== 'reservation' && (!Array.isArray(schedules) || schedules.length === 0)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Schedule Required',
+                    text: 'You must select at least one schedule before processing this payment type.'
+                });
+                return false;
+            }
 
-    // Validate demo payment
-    if (!validateDemoPayment()) {
-        return false;
-    }
+            // Validate demo payment
+            if (!validateDemoPayment()) {
+                return false;
+            }
 
-    // Check for excess payment with fixed handling
-    let excessData = null;
-    let requiredAmount = 0;
+            // Check for excess payment with fixed handling
+            let excessData = null;
+            let requiredAmount = 0;
 
-    // Calculate the required amount based on payment type
-    switch (paymentType) {
-        case 'demo_payment':
-            if (demoType) {
-                // Get the current demo fee
-                const demoDetails = <?= json_encode($demo_details ?? []) ?>;
+            // Calculate the required amount based on payment type
+            switch (paymentType) {
+                case 'demo_payment':
+                    if (demoType) {
+                        // Get the current demo fee
+                        const demoDetails = <?= json_encode($demo_details ?? []) ?>;
                         const demoInfo = demoDetails[demoType] || {};
                         const paidAmount = parseFloat(demoInfo.paid_amount || 0);
                         const expectedDemoFee = calculateDemoFeeJS();

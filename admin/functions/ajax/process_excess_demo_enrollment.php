@@ -43,6 +43,82 @@ function getProgramDetails($conn, $program_id)
     ];
 }
 
+
+function calculateRemainingBalanceWithPromo($conn, $student_id, $program_id)
+{
+    try {
+        // Get program total tuition
+        $total_tuition_sql = "SELECT total_tuition FROM program WHERE id = ?";
+        $stmt = $conn->prepare($total_tuition_sql);
+        $stmt->bind_param("i", $program_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $total_tuition = 0;
+        if ($row = $result->fetch_assoc()) {
+            $total_tuition = floatval($row['total_tuition']);
+        }
+        $stmt->close();
+
+        // Get promo discount applied
+        $promo_discount = 0;
+        $promo_sql = "SELECT promo_discount FROM pos_transactions 
+                      WHERE student_id = ? AND program_id = ? AND promo_discount > 0 
+                      ORDER BY transaction_date ASC LIMIT 1";
+        $promo_stmt = $conn->prepare($promo_sql);
+        $promo_stmt->bind_param("ii", $student_id, $program_id);
+        $promo_stmt->execute();
+        $promo_result = $promo_stmt->get_result();
+        if ($promo_row = $promo_result->fetch_assoc()) {
+            $promo_discount = floatval($promo_row['promo_discount']);
+        }
+        $promo_stmt->close();
+
+        // Calculate after-promo amount
+        $after_promo_amount = $total_tuition - $promo_discount;
+
+        // Get total payments made
+        $payments_sql = "SELECT SUM(cash_received) as total_payments FROM pos_transactions 
+                        WHERE student_id = ? AND program_id = ? 
+                        AND payment_type IN ('initial_payment', 'demo_payment', 'reservation', 'full_payment')";
+        $payments_stmt = $conn->prepare($payments_sql);
+        $payments_stmt->bind_param("ii", $student_id, $program_id);
+        $payments_stmt->execute();
+        $payments_result = $payments_stmt->get_result();
+        $total_payments = 0;
+        if ($payments_row = $payments_result->fetch_assoc()) {
+            $total_payments = floatval($payments_row['total_payments']);
+        }
+        $payments_stmt->close();
+
+        // Calculate correct remaining balance
+        $remaining_balance = $after_promo_amount - $total_payments;
+
+        // Ensure no negative balance
+        $remaining_balance = max(0, $remaining_balance);
+
+        error_log(sprintf(
+            "[2025-08-11 01:31:24] Balance Calculation - User: Scraper001
+            Total Tuition: ₱%s
+            Promo Discount: ₱%s
+            After Promo: ₱%s
+            Total Payments: ₱%s
+            Remaining Balance: ₱%s",
+            number_format($total_tuition, 2),
+            number_format($promo_discount, 2),
+            number_format($after_promo_amount, 2),
+            number_format($total_payments, 2),
+            number_format($remaining_balance, 2)
+        ));
+
+        return $remaining_balance;
+
+    } catch (Exception $e) {
+        error_log("[2025-08-11 01:31:24] Error calculating remaining balance: " . $e->getMessage());
+        return 0;
+    }
+}
+
+
 function getProgramTuitionFee($conn, $program_id)
 {
     $sql = "SELECT total_tuition FROM program WHERE id = ?";
