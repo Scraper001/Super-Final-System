@@ -1416,117 +1416,69 @@ if (isset($_GET['student_id'])) {
         const totalField = document.getElementById('totalAmountDisplay');
         const creditField = document.getElementById('credit_Bal');
         const remainField = document.getElementById('remainingBalance');
+        const afterPromoField = document.getElementById('afterPromoAmount');
 
         // Check if all required elements exist
         if (!totalField || !creditField || !remainField) {
-            console.error('Balance calculation elements missing:', {
-                totalField: !!totalField,
-                creditField: !!creditField,
-                remainField: !!remainField
-            });
-            if (remainField) {
-                remainField.textContent = "Elements missing";
-                remainField.style.color = "#dc2626";
-            }
+            console.error('One or more required elements not found');
             return;
         }
 
         try {
-            // FIXED: More robust text extraction
-            const totalText = (totalField.textContent || totalField.innerText || '0').replace(/[₱,\s]/g, '');
-            const creditText = (creditField.textContent || creditField.innerText || '0').replace(/[₱,\s]/g, '');
-
-            // FIXED: Only apply promo discount if there's actually a promo package selected
-            let promoDiscount = 0;
-
-            // Check multiple ways to determine if promo is active
-            const hasPromoPackage = (typeof currentPackage !== 'undefined' && currentPackage &&
-                currentPackage.package_name &&
-                currentPackage.package_name !== 'Regular Package' &&
-                currentPackage.package_name !== 'Regular');
-
-            if (hasPromoPackage) {
-                // Look for promo discount in the DOM
-                const promoInfo = document.getElementById('promoInfo');
-                if (promoInfo && promoInfo.style.display !== 'none' && promoInfo.offsetParent !== null) {
-                    const fullPromoText = promoInfo.textContent || promoInfo.innerText || '';
-                    const discountMatch = fullPromoText.match(/₱([\d,]+(?:\.\d{2})?)/);
-                    if (discountMatch) {
-                        const discountText = discountMatch[1].replace(/,/g, '');
-                        promoDiscount = parseFloat(discountText) || 0;
-                    }
-                }
+            // Get the "After Promo Deduction" amount if it exists, otherwise use total
+            let effectiveTotal = 0;
+            if (afterPromoField && afterPromoField.textContent && afterPromoField.style.display !== 'none') {
+                // Use the after-promo amount if promo is applied
+                const afterPromoText = afterPromoField.textContent.replace(/[₱,\s]/g, '');
+                effectiveTotal = parseFloat(afterPromoText) || 0;
+            } else {
+                // Use original total if no promo
+                const totalText = totalField.textContent.replace(/[₱,\s]/g, '');
+                effectiveTotal = parseFloat(totalText) || 0;
             }
 
-            console.log("================================================");
-            console.log("FIXED Balance Calculation Debug:");
-            console.log("Raw total:", totalField.textContent || totalField.innerText);
-            console.log("Cleaned total:", totalText);
-            console.log("Raw credit:", creditField.textContent || creditField.innerText);
-            console.log("Cleaned credit:", creditText);
-            console.log("Has Promo Package:", hasPromoPackage);
-            console.log("Current Package:", typeof currentPackage !== 'undefined' ? currentPackage : 'undefined');
-            console.log("Promo Discount Applied:", promoDiscount);
+            // Get total payments made
+            const creditText = creditField.textContent.replace(/[₱,\s]/g, '');
+            const totalPaid = parseFloat(creditText) || 0;
 
-            // Parse numbers with validation
-            const total = isNaN(parseFloat(totalText)) ? 0 : parseFloat(totalText);
-            const credit = isNaN(parseFloat(creditText)) ? 0 : parseFloat(creditText);
-
-            console.log("Parsed Total:", total);
-            console.log("Parsed Credit:", credit);
-            console.log("Final Promo Discount:", promoDiscount);
-
-            // FIXED: Only subtract promo discount if it's actually applied
-            let remaining = total - credit - promoDiscount;
+            // Calculate remaining balance using the effective total (after promo if applicable)
+            let remaining = effectiveTotal - totalPaid;
 
             // Fix floating point precision issues
             remaining = Math.round(remaining * 100) / 100;
 
+            console.log("================================================");
+            console.log("Effective Total (after promo):", effectiveTotal);
+            console.log("Total Paid:", totalPaid);
             console.log("Calculated Remaining:", remaining);
 
-            // Handle different scenarios with better validation
+            // Handle different scenarios
             if (Math.abs(remaining) < 0.01) {
                 // Balance is essentially zero
                 remainField.textContent = "0.00";
                 remainField.style.color = "green";
                 remainField.style.fontWeight = "bold";
-                console.log("Status: FULLY PAID");
-
             } else if (remaining < 0) {
                 // Student has overpaid - show credit balance
-                const creditAmount = Math.abs(remaining);
-                remainField.innerHTML = `0.00 <span style="color: #059669; font-size: 0.9em;">(Credit: ₱${creditAmount.toFixed(2)})</span>`;
+                remainField.textContent = "0.00";
                 remainField.style.color = "green";
                 remainField.style.fontWeight = "bold";
-                console.log("Status: OVERPAID - Credit balance:", creditAmount.toFixed(2));
-
             } else {
                 // Student still owes money
                 remainField.textContent = remaining.toFixed(2);
-                remainField.style.color = "#dc2626"; // red color
+                remainField.style.color = "#dc2626";
                 remainField.style.fontWeight = "bold";
-                console.log("Status: BALANCE DUE:", remaining.toFixed(2));
             }
 
-            console.log("Final Display:", remainField.textContent || remainField.innerHTML);
-            console.log("Calculation completed successfully");
+            console.log("Final Display:", remainField.textContent);
             console.log("================================================");
 
         } catch (error) {
-            console.error('FIXED: Error in balance calculation:', error);
-            console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                totalField: totalField ? totalField.textContent : 'null',
-                creditField: creditField ? creditField.textContent : 'null'
-            });
-
-            remainField.textContent = "Calculation error";
+            console.error('Error calculating balance:', error);
+            remainField.textContent = "Error calculating balance";
             remainField.style.color = "#dc2626";
-            remainField.title = "Error: " + error.message;
         }
     });
-
     // FIXED: Add fallback calculation function
     function recalculateBalance() {
         console.log("Manual balance recalculation triggered");
@@ -3463,7 +3415,7 @@ if (isset($_GET['student_id'])) {
                 }
 
             } else {
-                // FIXED: Keep auto-calculated fields read-only
+                // FIXED: Keep auto-calculated fields read-only COMMENT THIS WHEN WE NEED RESERVE BLOCKING
                 $totalPaymentField.prop('readonly', true);
                 $totalPaymentField.css({
                     'background-color': '#f3f4f6',
