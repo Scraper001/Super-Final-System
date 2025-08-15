@@ -4124,28 +4124,62 @@ if (isset($_GET['student_id'])) {
             // Handle demo payment availability
             const hasAvailableDemos = populateDemoSelect();
 
-            // SIMPLIFIED: Just get the balance from the remaining balance display
-            const remainingBalanceElement = document.getElementById('remainingBalance');
+            // FIXED: Get current balance properly for first-time and existing students
             let currentBalance = 0;
+            const remainingBalanceElement = document.getElementById('remainingBalance');
 
             if (remainingBalanceElement && remainingBalanceElement.textContent) {
+                // For existing students with payment history
                 const balanceText = remainingBalanceElement.textContent.replace(/[₱,\s]/g, '');
                 currentBalance = parseFloat(balanceText) || 0;
+            } else if (isFirstTransaction && currentProgram) {
+                // For first-time students, use total tuition as balance
+                const totalTuition = parseFloat($('#finalTotalHidden').val()) || parseFloat(currentProgram.total_tuition || 0);
+                const promoDiscount = parseFloat($('#promoAppliedHidden').val() || 0);
+                currentBalance = totalTuition - promoDiscount;
+            } else if (currentProgram) {
+                // Fallback calculation
+                const totalTuition = parseFloat(currentProgram.total_tuition || 0);
+                const totalPaid = parseFloat($('#credit_Bal').text().replace(/[₱,\s]/g, '')) || 0;
+                const promoDiscount = parseFloat($('#promoAppliedHidden').val() || 0);
+                currentBalance = (totalTuition - promoDiscount) - totalPaid;
             }
 
-            console.log(`[2025-08-05 14:41:54] Scraper001: Balance Check - Current Balance: ₱${currentBalance.toFixed(2)}`);
+            console.log(`[${new Date().toISOString()}] Scraper001: Full Payment Validation
+    Is First Transaction: ${isFirstTransaction}
+    Current Program: ${currentProgram ? currentProgram.program_name : 'None'}
+    Calculated Balance: ₱${currentBalance.toFixed(2)}
+    Paid Payment Types: ${paidPaymentTypes.join(', ')}
+    Element Balance Text: ${remainingBalanceElement ? remainingBalanceElement.textContent : 'N/A'}`);
 
             const $fullPaymentOption = $('label[data-payment-type="full_payment"]');
             const $fullPaymentInput = $('input[name="type_of_payment"][value="full_payment"]');
             const $fullPaymentStatus = $fullPaymentOption.find('.payment-status');
 
-            // Only hide full payment if balance is zero or negative
-            if (currentBalance <= 0.01) {
+            // FIXED: Show full payment if there's any balance OR it's a first transaction
+            const shouldShowFullPayment = currentBalance > 0.01 || (isFirstTransaction && currentProgram);
+
+            if (shouldShowFullPayment && !paidPaymentTypes.includes('full_payment')) {
+                $fullPaymentOption.removeClass('payment-hidden');
+                $fullPaymentInput.prop('disabled', false);
+                
+                if (isFirstTransaction) {
+                    $fullPaymentStatus.text(`(Total: ₱${currentBalance.toFixed(2)})`).show();
+                } else {
+                    $fullPaymentStatus.text(`(Balance: ₱${currentBalance.toFixed(2)})`).show();
+                }
+
+                // Remove complete message if balance exists
+                $('#comprehensivePaymentComplete').remove();
+
+                console.log(`[${new Date().toISOString()}] Scraper001: Full payment available - balance: ₱${currentBalance.toFixed(2)}`);
+            } else {
+                // Hide full payment only if truly no balance and not first transaction
                 $fullPaymentOption.addClass('payment-hidden');
                 $fullPaymentInput.prop('disabled', true);
                 $fullPaymentStatus.text('(Balance: ₱0.00)').show();
 
-                console.log(`[2025-08-05 14:41:54] Scraper001: Full payment hidden - no balance`);
+                console.log(`[${new Date().toISOString()}] Scraper001: Full payment hidden - no balance`);
 
                 // Show complete message if all demos are also done
                 if (!hasAvailableDemos) {
@@ -4166,16 +4200,6 @@ if (isset($_GET['student_id'])) {
                 `);
                     }
                 }
-            } else {
-                // Show full payment with current balance
-                $fullPaymentOption.removeClass('payment-hidden');
-                $fullPaymentInput.prop('disabled', false);
-                $fullPaymentStatus.text(`(Balance: ₱${currentBalance.toFixed(2)})`).show();
-
-                // Remove complete message if balance exists
-                $('#comprehensivePaymentComplete').remove();
-
-                console.log(`[2025-08-05 14:41:54] Scraper001: Full payment available - balance: ₱${currentBalance.toFixed(2)}`);
             }
 
             // Hide if explicitly marked as paid
@@ -4196,6 +4220,11 @@ if (isset($_GET['student_id'])) {
                 loadProgramDetails(id);
                 loadPackages(id);
                 loadSchedules(id);
+                
+                // ADDED: Validate payment types after program is loaded
+                setTimeout(() => {
+                    validatePaymentTypes();
+                }, 500);
             } else {
                 resetProgram();
                 $('#packageSelect').html('<option value="">Select a program first</option>').prop('disabled', true);
