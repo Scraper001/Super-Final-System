@@ -12,9 +12,6 @@ $current_user = 'Scraper001'; // Current user
 
 
 
-
-
-
 $current_package = null;
 if (isset($_GET['student_id'])) {
     // Get the latest package info from pos_transactions
@@ -2872,11 +2869,11 @@ if (isset($_GET['student_id'])) {
                     if (descriptionKey && item[descriptionKey]) {
                         const description = item[descriptionKey].toLowerCase();
                         if (description.includes('online')) {
-                            optionText += ' ';
+                            optionText += '';
                         } else if (description.includes('f2f') || description.includes('face to face') || description.includes('F2F') || description.includes('classroom')) {
                             optionText += '';
                         } else if (description.includes('hybrid') || description.includes('blended')) {
-                            optionText += ' ';
+                            optionText += '';
                         } else {
                             optionText += ` (${item[descriptionKey]})`;
                         }
