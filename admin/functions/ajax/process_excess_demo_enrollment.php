@@ -594,6 +594,7 @@ function processExcessFromInitialPayment($conn, $student_id, $program_id, $exces
     return [
         'allocations' => $allocations,
         'remaining_excess' => $remaining_excess,
+        'change_amount' => $remaining_excess, // FIXED: Treat remaining excess as change to return
         'correct_demo_fee' => $correct_demo_fee,
         'original_excess' => $excess_amount,
         'overpayment_adjustments' => $overpayment_adjustments,
@@ -1174,7 +1175,10 @@ try {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
         $stmt = $conn->prepare($sql);
-        $change_amount = 0;
+        $balance = 0;
+
+        $stmt = $conn->prepare($sql);
+        $change_amount = 0; // Will be calculated after excess processing
         $balance = 0;
 
         // FIXED: Include package_name in bind_param
@@ -1202,6 +1206,8 @@ try {
         if (!$stmt->execute()) {
             throw new Exception("Failed to insert initial payment: " . $stmt->error);
         }
+        
+        $initial_payment_id = $conn->insert_id; // Store the ID for potential update
 
         error_log(sprintf(
             "[2025-08-11 01:24:15] Initial Payment with Package Preservation - User: Scraper001
@@ -1220,12 +1226,32 @@ try {
                 $learning_mode
             );
 
+            // FIXED: Update the initial payment record with change amount if there's remaining excess
+            if (isset($allocation_result['change_amount']) && $allocation_result['change_amount'] > 0) {
+                $update_sql = "UPDATE pos_transactions SET change_amount = ? WHERE id = ?";
+                $update_stmt = $conn->prepare($update_sql);
+                $update_stmt->bind_param("di", $allocation_result['change_amount'], $initial_payment_id);
+                $update_stmt->execute();
+                $update_stmt->close();
+            }
+
             $response['data']['allocation_result'] = $allocation_result;
             $response['data']['package_preserved'] = $package_name;
             $response['data']['promo_discount_applied'] = $promo_discount_to_apply;
             $response['data']['timestamp'] = "2025-08-11 01:24:15";
             $response['data']['user'] = 'Scraper001';
-            $response['message'] = 'Initial payment processed with package preservation and excess allocation.';
+            
+            // FIXED: Include change amount in response if any remaining excess
+            if (isset($allocation_result['change_amount']) && $allocation_result['change_amount'] > 0) {
+                $response['data']['change_amount'] = $allocation_result['change_amount'];
+                $response['data']['has_change'] = true;
+                $response['message'] = sprintf(
+                    'Initial payment processed with excess allocation. Change to return: ₱%s',
+                    number_format($allocation_result['change_amount'], 2)
+                );
+            } else {
+                $response['message'] = 'Initial payment processed with package preservation and excess allocation.';
+            }
         } else {
             $response['message'] = 'Initial payment processed successfully with package preserved.';
         }
