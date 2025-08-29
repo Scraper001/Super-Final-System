@@ -5054,6 +5054,16 @@ if (isset($_GET['student_id'])) {
                         }
                     }
 
+                    // FIXED: Handle change amount for initial payments
+                    if (paymentType === 'initial_payment' && response.data && response.data.has_change && response.data.change_amount > 0) {
+                        successMessage += `<br><br>`;
+                        successMessage += `<div class="initial-payment-change" style="background-color:#fff3cd; color:#856404; padding:15px; border-radius:8px; border-left:4px solid #ffc107;">
+                            <i class="fa-solid fa-hand-holding-usd mr-2"></i>
+                            <strong style="font-size: 1.1em;">Change to return: ₱${response.data.change_amount.toFixed(2)}</strong><br>
+                            <small>After allocating excess to available demos</small>
+                        </div>`;
+                    }
+
                     // Log success with detailed info
                     console.log(`[2025-08-11 01:18:56] Payment successful - User: Scraper001
                 Payment Type: ${paymentType}
